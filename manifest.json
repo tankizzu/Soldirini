@@ -2,7 +2,7 @@
  "name": "Soldirini",
  "short_name": "Soldirini",
  "description": "Rimborsi km, ore e ritenuta d'acconto per tutti i tuoi progetti, sul tuo Google Drive.",
- "id": "./",
+ "id": "./?app=2",
  "start_url": "./",
  "scope": "./",
  "display": "standalone",
