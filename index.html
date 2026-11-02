@@ -192,6 +192,12 @@ details.fold>.fbody{padding:0 14px 14px}
 details.fold>summary:focus-visible{outline:2px solid var(--pri);outline-offset:-2px;border-radius:var(--r)}
 .annonote{margin:0 0 10px}
 #rieCards,#rieAnno,#docList,#tasList{align-items:start}
+.cards{grid-template-columns:minmax(0,1fr)}
+@media(min-width:760px){.cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+#rieAnno{grid-template-columns:minmax(0,1fr)}
+.card,details.fold,.calwrap>*,.two>*{min-width:0}
+main{overflow-x:clip}
+@media(max-width:520px){.chart .ax{font-size:19px}.tab{font-size:12.5px}.tab th,.tab td{padding:7px 6px}}
 nav.tabs button{padding:9px 4px}
 @media(max-width:420px){nav.tabs{gap:0;padding:6px 4px}nav.tabs button{font-size:13.5px;padding:9px 2px}}
 .hero.small{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin:2px 0 10px}.hero.small div:first-child b{font-size:20px}
