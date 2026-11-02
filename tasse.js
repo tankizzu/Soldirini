@@ -71,13 +71,13 @@ function pagineReport(y){
   const put=(html,h)=>{if(used+h>AV)nuova();box.insertAdjacentHTML('beforeend',html);used+=h;};
   const row=(cols,vals,st='')=>`<div style="display:grid;grid-template-columns:${cols.map(c=>c.w+'px').join(' ')};height:${RH}px;align-items:center;border-bottom:1px solid #d8dedc;${st}">${vals.map((v,i)=>`<span style="overflow:hidden;white-space:nowrap;text-overflow:ellipsis;padding:0 4px;text-align:${cols[i].al||'left'}">${v}</span>`).join('')}</div>`;
   const sezione=(titolo,cols,rows,foot,nota)=>{
-    put(`<div style="font:700 11.5pt system-ui,Arial;color:#0f6b5c;margin:14px 0 4px">${titolo}</div>`+(nota?`<div style="color:#555;margin-bottom:4px">${nota}</div>`:''),nota?44:32);
-    const head=row(cols,cols.map(c=>`<b>${c.t}</b>`),'background:#e3f1ec;border-bottom:1.5px solid #0f6b5c');put(head,RH);
+    put(`<div style="font:700 11.5pt system-ui,Arial;color:#2a2c30;margin:14px 0 4px">${titolo}</div>`+(nota?`<div style="color:#555;margin-bottom:4px">${nota}</div>`:''),nota?44:32);
+    const head=row(cols,cols.map(c=>`<b>${c.t}</b>`),'background:#ecebe8;border-bottom:1.5px solid #2a2c30');put(head,RH);
     for(const r of rows){if(used+RH>AV){nuova();put(head,RH);}put(row(cols,r),RH);}
-    if(foot)put(row(cols,foot.map(v=>`<b>${v}</b>`),'background:#f3f6f5;border-bottom:1.5px solid #0f6b5c'),RH);
+    if(foot)put(row(cols,foot.map(v=>`<b>${v}</b>`),'background:#f3f6f5;border-bottom:1.5px solid #2a2c30'),RH);
   };
   nuova();
-  put(`<div style="font:700 17pt system-ui,Arial;color:#0f6b5c">Riepilogo compensi e rimborsi ${y}</div>
+  put(`<div style="font:700 17pt system-ui,Arial;color:#2a2c30">Riepilogo compensi e rimborsi ${y}</div>
     <div style="margin:3px 0 2px;font-size:9.5pt">${esc([pr.nome,pr.cognome].filter(Boolean).join(' '))}${pr.cf?' · C.F. '+esc(pr.cf):''} · creato con Soldirini il ${new Date().toLocaleDateString('it-IT')}</div>
     <div style="color:#444">Conteggio per <b>data di pagamento</b> (principio di cassa): se il pagamento non è segnato si usa il mese previsto per il progetto. Compensi e ritenute sono separati dai <b>rimborsi spese</b>, che non sono reddito.</div>`,78);
   const ps=Object.values(A.per).filter(t=>t.lordo||t.rimb);
@@ -315,7 +315,7 @@ function icsPromemoria(){
 
 // ---------- estensioni di interfaccia ----------
 const _render5=render;
-render=function(){_render5();if(tab==='tas')renderTasse();aggiornaPromemoriaCache();};
+render=function(){document.body.dataset.tab=tab;_render5();if(tab==='tas')renderTasse();aggiornaPromemoriaCache();};
 const _renderRie5=renderRiepilogo;
 renderRiepilogo=function(){
   _renderRie5();if(rieMode!=='anno')return;const y=cur.slice(0,4);const L=elencoPagamenti(y);

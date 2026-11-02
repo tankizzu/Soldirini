@@ -22,7 +22,7 @@ const monthName=ym=>{const [y,m]=ym.split('-').map(Number);return `${MESI[m-1]} 
 const lastDay=ym=>{const [y,m]=ym.split('-').map(Number);return new Date(y,m,0).getDate();};
 const today=()=>ymd(new Date());
 const TIPI={allenamento:'Allenamento',partita:'Partita',amichevole:'Amichevole',lavoro:'Lavoro',altro:'Altro'};
-const COLORI=['#0f6b5c','#1b3a7a','#c2410c','#7c3aed','#be185d','#0369a1','#4d7c0f','#a16207','#475569'];
+const COLORI=['#5b6475','#7d5c52','#6e6079','#776a52','#58665f','#8a6f3e','#4f6d7a','#7a5566','#707070'];
 const min=t=>{const m=/^(\d{1,2})[:.](\d{2})$/.exec(String(t||'').trim());return m?(+m[1])*60+(+m[2]):null;};
 const normT=t=>{const v=min(t);return v==null?'':`${Math.floor(v/60)}:${pad(v%60)}`;};
 
@@ -52,7 +52,7 @@ function nuovoProgetto(o={}){
     ore:{attivo:false,tariffa:13.75,ritenuta:20,fasce:[{id:'m',nome:'Mattina',da:'9:45',a:'14:00'},{id:'p',nome:'Pomeriggio',da:'14:30',a:'19:00'}]},
     def:{tipo:'allenamento'},updatedAt:Date.now()},o);
 }
-const BULLDOGS={nome:'Bulldogs Rignano',colore:'#1b3a7a',
+const BULLDOGS={nome:'Bulldogs Rignano',colore:'#4a5f8a',
   rimborso:{attivo:true,origine:'Rignano Flaminio',tariffa:0.3979,tariffaData:'11-10-26',occasione:'Istruttore Settore Under15',mansione:'Coach',squadra:'Under15',
     assoc:{riga1:'Spett.le',nome:'Associazione Sportiva Dilettantistica',nomeBig:'BULLDOGS',via:'VIA TOSCANINI 11 A3',citta:'RIGNANO FLAMINIO (RM)',cf:'96581030580'},
     luoghi:[{id:'so',nome:"Palestra Sant'Oreste, via Begues",km:13.7},{id:'sa',nome:'Palestra Sacrofano',km:38.4},{id:'cn',nome:'Palestra Castelnuovo',km:26.5}],logo:'@bulldogs'}};
@@ -361,14 +361,14 @@ async function pdfRimborso(pid,ym){
 function pagineOre(ym){
   const m=oreMesi(ym.slice(0,4)).find(x=>x.ym===ym);if(!m)return [];
   const pr=intestazione();
-  const th=t=>`<th style="border:1px solid #0f3d35;background:#0f6b5c;color:#fff;padding:5px 4px;font-size:10.5pt">${t}</th>`;
-  const td=(t,al='left',b)=>`<td style="border:1px solid #9aa5a1;padding:4px;text-align:${al};font-size:10pt;${al!=='left'?'white-space:nowrap;':''}${b?'font-weight:700;background:#e3f1ec;':''}">${t}</td>`;
+  const th=t=>`<th style="border:1px solid #1b1c1e;background:#2a2c30;color:#fff;padding:5px 4px;font-size:10.5pt">${t}</th>`;
+  const td=(t,al='left',b)=>`<td style="border:1px solid #9aa5a1;padding:4px;text-align:${al};font-size:10pt;${al!=='left'?'white-space:nowrap;':''}${b?'font-weight:700;background:#ecebe8;':''}">${t}</td>`;
   const head=`<tr>${['Data','Progetto','Attività','Orari','Ore','Lordo','Ritenuta','Netto'].map(th).join('')}</tr>`;
   const rows=m.righe.map(r=>{const net=r2(r.lordo-r2(r.lordo*r.rit/100));return `<tr>${td(parseYmd(r.data).toLocaleDateString('it-IT'),'center')}${td(esc(r.progetto))}${td(esc(r.attivita))}${td(r.fisso?'compenso fisso':r.fasce.map(f=>esc(f.da+'–'+f.a)).join('<br>'),'center')}${td(r.fisso?'':nf(r.ore),'center')}${td(eur(r.lordo),'right')}${td(eur(r2(r.lordo*r.rit/100)),'right')}${td(eur(net),'right')}</tr>`;});
   const T=m.progetti.reduce((a,p)=>({ore:a.ore+p.ore,lordo:a.lordo+p.lordo,rit:a.rit+p.rit,netto:a.netto+p.netto}),{ore:0,lordo:0,rit:0,netto:0});
   const tot=`<tr>${td('Totale','left',1)}${td('','left',1)}${td('','left',1)}${td('','left',1)}${td(nf(T.ore),'center',1)}${td(eur(T.lordo),'right',1)}${td(eur(T.rit),'right',1)}${td(eur(T.netto),'right',1)}</tr>`;
   const perP=`<table style="border-collapse:collapse;width:100%;margin-top:18px"><tr>${['Progetto','Ore','Lordo','Ritenuta','Netto'].map(th).join('')}</tr>${m.progetti.map(p=>`<tr>${td(esc(p.nome))}${td(nf(p.ore),'center')}${td(eur(p.lordo),'right')}${td(eur(p.rit),'right')}${td(eur(p.netto),'right')}</tr>`).join('')}<tr>${td('Totale','left',1)}${td(nf(T.ore),'center',1)}${td(eur(T.lordo),'right',1)}${td(eur(T.rit),'right',1)}${td(eur(T.netto),'right',1)}</tr></table>`;
-  const titolo=`<div style="font:700 17pt system-ui,Arial;color:#0f6b5c">Prospetto ore e ritenuta d'acconto</div><div style="font:12pt system-ui,Arial;margin:4px 0 14px">${esc(pr)} · ${esc(monthName(ym))}</div>`;
+  const titolo=`<div style="font:700 17pt system-ui,Arial;color:#2a2c30">Prospetto ore e ritenuta d'acconto</div><div style="font:12pt system-ui,Arial;margin:4px 0 14px">${esc(pr)} · ${esc(monthName(ym))}</div>`;
   // pagine da ~28 righe
   const per=26,pages=[];
   for(let i=0;i<Math.max(1,rows.length);i+=per){
@@ -557,7 +557,7 @@ function renderRiepilogo(){
   $('rieTitle').textContent=rieMode==='mese'?monthName(cur):'Anno '+cur.slice(0,4);
   document.querySelectorAll('#rieSeg button').forEach(b=>b.classList.toggle('on',b.dataset.m===rieMode));
   const {per,tot}=riepilogo(key);
-  const card=(t,p)=>`<div class="card pc" style="--c:${p?p.colore:'#0f6b5c'}"><h3>${p?`<i></i>${esc(p.nome)}`:'Totale'}</h3>
+  const card=(t,p)=>`<div class="card pc" style="--c:${p?p.colore:'#2a2c30'}"><h3>${p?`<i></i>${esc(p.nome)}`:'Totale'}</h3>
     <div class="kv"><span>Attività</span><b>${t.n}</b></div>
     ${t.km||!p||p.rimborso.attivo?`<div class="kv"><span>Rimborsi km</span><b>${nf(t.km,1)} km · ${eur(t.rimb)}</b></div>`:''}
     ${t.lordo||!p||p.ore.attivo?`<div class="kv"><span>Ore</span><b>${nf(t.ore)}</b></div><div class="kv"><span>Lordo</span><b>${eur(t.lordo)}</b></div><div class="kv"><span>Ritenuta</span><b>− ${eur(t.rit)}</b></div><div class="kv"><span>Netto</span><b>${eur(t.netto)}</b></div>`:''}

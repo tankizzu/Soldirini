@@ -1,6 +1,6 @@
 // Soldirini funziona anche senza rete.
 // Quando cambi i file su GitHub, aumenta il numero di versione qui sotto.
-const VERSIONE = 'soldirini-6';
+const VERSIONE = 'soldirini-7';
 const FILE = ['./', 'index.html', 'app.js', 'plus.js', 'tasse.js', 'xlsx.js', 'modelli.js', 'docs.js', 'fonts.css', 'manifest.json',
   'soldirini-tonda-192.png', 'soldirini-tonda-512.png', 'soldirini-quadrata-192.png', 'soldirini-quadrata-512.png', 'logo-bulldogs.jpg',
   'lib/jszip.min.js', 'lib/jspdf.umd.min.js', 'lib/html2canvas.min.js', 'tpl/ricevuta.xlsx', 'tpl/nota.xlsx', 'tpl/ore.xlsx', 'tpl/esempio-polisportiva.xlsx'];
@@ -14,6 +14,10 @@ self.addEventListener('activate', e => {
 // Prima la rete (così prendi sempre l'ultima versione), se non c'è rete la copia salvata
 self.addEventListener('fetch', e => {
   const req = e.request;
+  if (req.method === 'GET' && /fontshare\.com$/.test(new URL(req.url).hostname)) {
+    e.respondWith(caches.open('font-soldirini').then(c => c.match(req).then(r => r || fetch(req).then(res => { c.put(req, res.clone()); return res; }))));
+    return;
+  }
   if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
   e.respondWith(
     fetch(req).then(res => {

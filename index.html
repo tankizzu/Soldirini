@@ -5,27 +5,29 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Soldirini</title>
 <meta name="description" content="Rimborsi km, ore e ritenuta d'acconto per tutti i tuoi progetti, sul tuo Google Drive.">
-<meta name="theme-color" content="#0f6b5c">
+<meta name="theme-color" content="#17191c">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" sizes="192x192" href="soldirini-tonda-192.png">
 <link rel="apple-touch-icon" href="soldirini-quadrata-192.png">
+<link rel="preconnect" href="https://api.fontshare.com" crossorigin>
+<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=pally@400,500,700&amp;display=swap">
 <link rel="stylesheet" href="fonts.css">
 <style>
-:root{--bg:#f3f6f5;--card:#fff;--ink:#14211e;--mut:#5f6e6a;--line:#dde5e2;--pri:#0f6b5c;--pri2:#12806d;--pri-ink:#fff;--gold:#f2b632;--err:#b42318;--ok:#137a4b;--shadow:0 1px 2px rgba(15,40,35,.06),0 4px 14px rgba(15,40,35,.06);--r:14px}
-:root[data-theme="dark"]{--bg:#0e1513;--card:#17211e;--ink:#e6efec;--mut:#9aaba6;--line:#2a3733;--pri:#33a58f;--pri2:#2b8f7c;--shadow:none}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1513;--card:#17211e;--ink:#e6efec;--mut:#9aaba6;--line:#2a3733;--pri:#33a58f;--pri2:#2b8f7c;--shadow:none}}
+:root{--bg:#f1f0ee;--card:#fff;--ink:#1b1c1e;--mut:#6b6a68;--line:#e2e0dc;--pri:#2a2c30;--pri2:#3d4046;--pri-ink:#fff;--top:#17191c;--gold:#e0a93a;--err:#b0412e;--ok:#3f7a52;--sez:#5b6475;--shadow:0 1px 2px rgba(20,20,20,.05),0 4px 14px rgba(20,20,20,.05);--r:14px;--font:"Pally",ui-rounded,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+:root[data-theme="dark"]{--bg:#0f1011;--card:#1a1b1e;--ink:#ebeae7;--mut:#a09e9a;--line:#2c2d31;--pri:#e6e4df;--pri2:#c9c7c2;--pri-ink:#16171a;--top:#0b0c0d;--shadow:none;color-scheme:dark}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1011;--card:#1a1b1e;--ink:#ebeae7;--mut:#a09e9a;--line:#2c2d31;--pri:#e6e4df;--pri2:#c9c7c2;--pri-ink:#16171a;--top:#0b0c0d;--shadow:none;color-scheme:dark}}
 *{box-sizing:border-box}
-html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 var(--font);-webkit-tap-highlight-color:transparent}
 body.noscroll{overflow:hidden}
 button,input,select,textarea{font:inherit;color:inherit}
 a{color:var(--pri)}
 [hidden]{display:none!important}
-header.top{position:sticky;top:0;z-index:20;background:#0f6b5c;color:#fff;padding:calc(env(safe-area-inset-top) + 8px) 16px 8px;display:flex;align-items:center;gap:10px}
+header.top{position:sticky;top:0;z-index:20;background:var(--top);color:#fff;padding:calc(env(safe-area-inset-top) + 8px) 16px 8px;display:flex;align-items:center;gap:10px}
 header.top img{width:34px;height:34px;border-radius:50%}
 header.top h1{font-size:19px;margin:0;font-weight:750;letter-spacing:.2px;flex:1}
 #acc{font-size:13px;opacity:.85;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .chip{border:0;border-radius:999px;padding:6px 11px;font-size:12.5px;font-weight:650;cursor:pointer;white-space:nowrap;max-width:46vw;overflow:hidden;text-overflow:ellipsis}
-.sync.ok{background:rgba(255,255,255,.18);color:#fff}.sync.busy{background:#f2b632;color:#3b2a00}.sync.off{background:#dbe3e0;color:#334}.sync.warn{background:#fff;color:#0f6b5c}.sync.err{background:#fde2e0;color:#b42318}
+.sync.ok{background:rgba(255,255,255,.18);color:#fff}.sync.busy{background:#f2b632;color:#3b2a00}.sync.off{background:#dbe3e0;color:#334}.sync.warn{background:#fff;color:#1b1c1e}.sync.err{background:#fde2e0;color:#b42318}
 nav.tabs{display:flex;gap:4px;padding:6px 10px;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:calc(env(safe-area-inset-top) + 50px);z-index:19;overflow-x:auto}
 nav.tabs button{flex:1;border:0;background:none;padding:9px 8px;border-radius:10px;font-weight:650;color:var(--mut);cursor:pointer;white-space:nowrap}
 nav.tabs button.on{background:color-mix(in srgb,var(--pri) 13%,transparent);color:var(--pri)}
@@ -33,7 +35,7 @@ main{max-width:1180px;margin:0 auto;padding:14px 16px 110px}
 .card{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);border:1px solid var(--line);padding:14px}
 .muted{color:var(--mut)}.sm{font-size:13px}
 h2{font-size:17px;margin:0}h3{font-size:15.5px;margin:0 0 8px;display:flex;align-items:center;gap:8px}
-.btn{border:0;background:var(--pri);color:#fff;border-radius:11px;padding:10px 15px;font-weight:650;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px;justify-content:center}
+.btn{border:0;background:var(--pri);color:var(--pri-ink);border-radius:11px;padding:10px 15px;font-weight:650;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px;justify-content:center}
 .btn:disabled{opacity:.45;cursor:default}
 .btn.ghost{background:transparent;color:var(--pri);border:1.5px solid color-mix(in srgb,var(--pri) 40%,transparent)}
 .btn.sm{padding:7px 11px;font-size:13.5px}
@@ -83,7 +85,7 @@ h2{font-size:17px;margin:0}h3{font-size:15.5px;margin:0 0 8px;display:flex;align
 .sec.closed .sechead::after{transform:rotate(-90deg)}.sec.closed #lista,.sec.closed #cerca{display:none}
 .fab{position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom));width:58px;height:58px;border-radius:18px;border:0;background:var(--gold);color:#3b2a00;font-size:30px;box-shadow:0 6px 18px rgba(0,0,0,.22);cursor:pointer;z-index:15}
 /* riepilogo e doc */
-.hero{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;background:linear-gradient(135deg,#0f6b5c,#12806d);color:#fff;border-radius:var(--r);padding:16px;margin-bottom:14px}
+.hero{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;background:linear-gradient(135deg,color-mix(in srgb,var(--sez) 70%,#16181b),#1f2125);color:#fff;border-radius:var(--r);padding:16px;margin-bottom:14px}
 .hero div{display:flex;flex-direction:column}.hero small{opacity:.8;font-size:12.5px}.hero b{font-size:19px}
 .hero div:first-child b{font-size:26px}
 @media(min-width:700px){.hero{grid-template-columns:repeat(4,1fr)}}
@@ -127,11 +129,11 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--pri)}
 #pjLogo{display:flex;align-items:center;gap:10px}#pjLogo img{height:64px;border-radius:6px;border:1px solid var(--line)}
 .foot{display:flex;gap:8px;margin-top:16px;position:sticky;bottom:-16px;background:var(--card);padding:10px 0}
 .foot .btn{flex:1}
-.toast{position:fixed;left:50%;bottom:calc(90px + env(safe-area-inset-bottom));transform:translate(-50%,20px);background:#14211e;color:#fff;padding:11px 16px;border-radius:12px;opacity:0;pointer-events:none;transition:.25s;z-index:80;max-width:min(92vw,520px);font-weight:550;text-align:center}
+.toast{position:fixed;left:50%;bottom:calc(90px + env(safe-area-inset-bottom));transform:translate(-50%,20px);background:var(--pri);color:var(--pri-ink);padding:11px 16px;border-radius:12px;opacity:0;pointer-events:none;transition:.25s;z-index:80;max-width:min(92vw,520px);font-weight:550;text-align:center}
 .toast.show{opacity:1;transform:translate(-50%,0)}.toast.err{background:#b42318}
 .busyov{position:fixed;inset:0;background:rgba(255,255,255,.6);z-index:90;display:grid;place-items:center}
 .busyov div{background:var(--card);padding:16px 20px;border-radius:14px;box-shadow:var(--shadow);font-weight:650;color:var(--ink)}
-.welcome{background:linear-gradient(135deg,#0f6b5c,#12806d);color:#fff;border:0}
+.welcome{background:linear-gradient(135deg,#2a2c30,#3a3d43);color:#fff;border:0}
 .welcome p{opacity:.92}.welcome .btn.ghost{color:#fff;border-color:rgba(255,255,255,.5)}
 .setup{border:2px solid var(--gold)}
 ul.tight{margin:6px 0;padding-left:18px}
@@ -213,6 +215,28 @@ nav.tabs button{padding:9px 4px}
 @media(max-width:420px){.cmp{grid-template-columns:1fr 78px 78px 60px;font-size:12.5px}}
 .basecard{margin-bottom:12px}.basecard .seg{flex-wrap:wrap}.basecard p{margin:8px 0 0}
 i.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px}
+
+/* colore di ogni sezione (toni spenti) */
+body[data-tab="cal"]{--sez:#5b6475}body[data-tab="rie"]{--sez:#6e6079}body[data-tab="doc"]{--sez:#776a52}body[data-tab="tas"]{--sez:#7d5c52}body[data-tab="pro"]{--sez:#58665f}
+:root[data-theme="dark"] body{--sez-l:55%}
+nav.tabs button.on{background:color-mix(in srgb,var(--sez) 16%,transparent);color:color-mix(in srgb,var(--sez) 85%,var(--ink))}
+nav.tabs{box-shadow:inset 0 -2px 0 color-mix(in srgb,var(--sez) 45%,transparent)}
+.monthbar h2{color:var(--ink)}
+.fab{background:var(--gold);color:#2a1e00}
+h1,h2,h3,.btn,nav.tabs button,.hero b,.kv b,summary{font-family:var(--font)}
+.btn.ghost{color:var(--ink);border-color:var(--line)}
+.btn.google{background:#fff;color:#1f1f1f}
+a{color:color-mix(in srgb,var(--sez) 70%,var(--ink))}
+.day.today .n{background:var(--sez)}.day.sel{outline-color:var(--sez)}
+.sechead .badge{background:color-mix(in srgb,var(--sez) 16%,transparent);color:color-mix(in srgb,var(--sez) 80%,var(--ink))}
+input:focus,select:focus,textarea:focus{border-color:var(--sez)}
+.check input{accent-color:var(--sez)}
+.fchip.on:not([style]),.pchip.on:not([style]){border-color:var(--sez);background:color-mix(in srgb,var(--sez) 14%,var(--card))}
+.chart .bn{fill:color-mix(in srgb,var(--sez) 80%,var(--ink))}.chart .lg i.bn{background:color-mix(in srgb,var(--sez) 80%,var(--ink))}
+.tab tfoot td{background:color-mix(in srgb,var(--sez) 10%,var(--card))}
+.xgrid td.mapped{background:color-mix(in srgb,var(--sez) 22%,var(--card))}.xgrid .ml{color:var(--ink)}
+.calc{color:color-mix(in srgb,var(--sez) 80%,var(--ink))}
+details.extra summary{color:color-mix(in srgb,var(--sez) 80%,var(--ink))}
 </style>
 </head>
 <body>
@@ -362,7 +386,7 @@ i.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6
 <div class="modal" id="pjModal" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="pjTitle">
     <div class="sheethead"><h2 id="pjTitle">Nuovo progetto</h2><button class="x" id="pjClose" aria-label="Chiudi">×</button></div>
-    <div id="pjPreset" class="sub" style="margin-bottom:10px"><span class="sm">Parti da un modello già pronto:</span><div class="row"><button type="button" class="pchip" data-preset="bulldogs" style="--c:#1b3a7a"><i></i>Bulldogs Rignano (ricevuta + nota km)</button></div></div>
+    <div id="pjPreset" class="sub" style="margin-bottom:10px"><span class="sm">Parti da un modello già pronto:</span><div class="row"><button type="button" class="pchip" data-preset="bulldogs" style="--c:#4a5f8a"><i></i>Bulldogs Rignano (ricevuta + nota km)</button></div></div>
     <label>Nome (squadra, società, lavoro…)<input id="pjNome" placeholder="es. Bulldogs Under15, Explora"></label>
     <label style="margin-top:8px">Di solito mi pagano<select id="pjRitardo"><option value="0">nello stesso mese</option><option value="1">il mese dopo</option><option value="2">dopo 2 mesi</option><option value="3">dopo 3 mesi</option></select></label>
     <p class="muted sm" style="margin:4px 0 0">Serve per contare ogni lavoro nell’anno giusto (es. dicembre pagato a gennaio). Se segni la data di pagamento, vale quella.</p>

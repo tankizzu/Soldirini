@@ -270,15 +270,15 @@ renderRiepilogo=function(){
 };
 async function pdfAnnoBytes(y){
   const pr=D().profilo;const A=aggrega(y);const {per,tot}=A;
-  const th=t=>`<th style="border:1px solid #0f3d35;background:#0f6b5c;color:#fff;padding:6px;font-size:10pt">${t}</th>`;
-  const td=(t,al='right',b)=>`<td style="border:1px solid #9aa5a1;padding:5px 6px;text-align:${al};font-size:10pt;white-space:nowrap;${b?'font-weight:700;background:#e3f1ec;':''}">${t}</td>`;
+  const th=t=>`<th style="border:1px solid #1b1c1e;background:#2a2c30;color:#fff;padding:6px;font-size:10pt">${t}</th>`;
+  const td=(t,al='right',b)=>`<td style="border:1px solid #9aa5a1;padding:5px 6px;text-align:${al};font-size:10pt;white-space:nowrap;${b?'font-weight:700;background:#ecebe8;':''}">${t}</td>`;
   const ps=Object.values(per).filter(t=>t.n);
   const t1=`<table style="border-collapse:collapse;width:100%"><tr>${['Committente / progetto','Tipo','Ore','Lordo','Ritenuta','Netto','Rimborsi'].map(th).join('')}</tr>${ps.map(t=>`<tr>${td(esc(t.p.nome),'left')}${td(t.p.ore.attivo?esc(CATEGORIE[t.p.ore.categoria||'altro']):'Solo rimborsi','left')}${td(nf(t.ore))}${td(eur(t.lordo))}${td(eur(t.rit))}${td(eur(t.netto))}${td(eur(t.rimb))}</tr>`).join('')}<tr>${td('Totale','left',1)}${td('','left',1)}${td(nf(tot.ore),'right',1)}${td(eur(tot.lordo),'right',1)}${td(eur(tot.rit),'right',1)}${td(eur(tot.netto),'right',1)}${td(eur(tot.rimb),'right',1)}</tr></table>`;
   let rows='';for(let m=1;m<=12;m++){const r=A.mesi[m-1];if(!r.n)continue;rows+=`<tr>${td(MESI[m-1],'left')}${td(eur(r.lordo))}${td(eur(r.rit))}${td(eur(r.netto))}${td(eur(r.rimb))}</tr>`;}
   const t2=`<table style="border-collapse:collapse;width:100%;margin-top:8px"><tr>${['Mese','Lordo','Ritenuta','Netto','Rimborsi'].map(th).join('')}</tr>${rows}</table>`;
   const sg=soglieAnno(y).map(s=>`<li>${esc(s.nome)}: ${eur(s.usato)} su ${eur(s.limite)}</li>`).join('');
   const pg=newPage();const box=el('div','position:absolute;left:52px;top:52px;width:690px;font-family:system-ui,Arial,sans-serif;color:#111;font-size:10.5pt');
-  box.innerHTML=`<div style="font:700 18pt system-ui,Arial;color:#0f6b5c">Riepilogo compensi e rimborsi ${y}</div><div style="font-size:10pt;color:#333">Conteggio per data di pagamento (principio di cassa)</div><div style="margin:4px 0 16px">${esc([pr.nome,pr.cognome].filter(Boolean).join(' '))}${pr.cf?' · C.F. '+esc(pr.cf):''} · creato il ${new Date().toLocaleDateString('it-IT')}</div>`+
+  box.innerHTML=`<div style="font:700 18pt system-ui,Arial;color:#2a2c30">Riepilogo compensi e rimborsi ${y}</div><div style="font-size:10pt;color:#333">Conteggio per data di pagamento (principio di cassa)</div><div style="margin:4px 0 16px">${esc([pr.nome,pr.cognome].filter(Boolean).join(' '))}${pr.cf?' · C.F. '+esc(pr.cf):''} · creato il ${new Date().toLocaleDateString('it-IT')}</div>`+
     `<div style="font-weight:700;margin:6px 0">Per committente</div>${t1}<div style="font-weight:700;margin:16px 0 0">Per mese</div>${t2}`+
     `<div style="font-weight:700;margin:16px 0 4px">Soglie</div><ul style="margin:0;padding-left:18px">${sg}</ul>`+
     `<p style="font-size:9pt;color:#555;margin-top:14px">I rimborsi spese documentati non sono compensi. Le ritenute indicate sono quelle calcolate da Soldirini sulle attività segnate: confrontale con le Certificazioni Uniche ricevute.</p>`;
