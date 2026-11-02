@@ -1,39 +1,63 @@
 {
-  "name": "Rimborsi Km Bulldogs",
-  "short_name": "Rimborsi",
-  "description": "Ricevuta e nota dei rimborsi km, anche offline.",
-  "id": "./",
-  "start_url": "./",
-  "scope": "./",
-  "display": "standalone",
-  "orientation": "any",
-  "background_color": "#1b3a7a",
-  "theme_color": "#1b3a7a",
-  "lang": "it",
-  "icons": [
+ "name": "Soldirini",
+ "short_name": "Soldirini",
+ "description": "Rimborsi km, ore e ritenuta d'acconto per tutti i tuoi progetti, sul tuo Google Drive.",
+ "id": "./",
+ "start_url": "./",
+ "scope": "./",
+ "display": "standalone",
+ "orientation": "any",
+ "background_color": "#0f6b5c",
+ "theme_color": "#0f6b5c",
+ "lang": "it",
+ "icons": [
+  {
+   "src": "soldirini-tonda-192.png",
+   "sizes": "192x192",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "soldirini-tonda-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "soldirini-quadrata-192.png",
+   "sizes": "192x192",
+   "type": "image/png",
+   "purpose": "maskable"
+  },
+  {
+   "src": "soldirini-quadrata-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "maskable"
+  }
+ ],
+ "shortcuts": [
+  {
+   "name": "Nuova attività",
+   "short_name": "Nuova",
+   "url": "./?nuovo=1",
+   "icons": [
     {
-      "src": "icona-tonda-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "icona-tonda-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "icona-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
-      "src": "icona-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
+     "src": "soldirini-tonda-192.png",
+     "sizes": "192x192"
     }
-  ]
+   ]
+  },
+  {
+   "name": "Riepilogo",
+   "short_name": "Riepilogo",
+   "url": "./?tab=rie",
+   "icons": [
+    {
+     "src": "soldirini-tonda-192.png",
+     "sizes": "192x192"
+    }
+   ]
+  }
+ ]
 }
