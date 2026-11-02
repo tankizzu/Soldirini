@@ -126,12 +126,12 @@ delEv=async function(){
   if(e.serie){quali=await ask('Questa attività si ripete. Cosa elimino?',[{t:'Annulla',v:null,cls:'ghost'},{t:'Solo questa',v:'una',cls:'ghost'},{t:'Questa e le successive',v:'dopo',cls:'danger'}]);if(!quali)return;}
   else if(!await conferma('Elimino questa attività?','Elimina','danger'))return;
   const L=quali==='dopo'?eventiTutti().filter(x=>x.serie===e.serie&&x.data>=e.data):[e];
-  for(const x of L){markExport(exportKeysOf(x));D().eventi[x.id]={id:x.id,pid:x.pid,data:x.data,deleted:true,updatedAt:now};}
+  for(const x of L){markExport(exportKeysOf(x));D().eventi[x.id]=Object.assign({},x,{deleted:true,deletedAt:now,updatedAt:now});}
   closeEv();changed();render();toast(L.length>1?`Eliminate ${L.length} attività`:'Eliminata');
 };
 function daConfermare(){const t=today();return eventiDel(e=>e.stato==='previsto'&&e.data<=t,true);}
 function confermaEv(ids,ok){const now=Date.now();for(const id of ids){const e=D().eventi[id];if(!e)continue;
-  if(ok){delete e.stato;e.updatedAt=now;markExport(exportKeysOf(e));}else D().eventi[id]={id:e.id,pid:e.pid,data:e.data,deleted:true,updatedAt:now};}
+  if(ok){delete e.stato;e.updatedAt=now;markExport(exportKeysOf(e));}else D().eventi[id]=Object.assign({},e,{deleted:true,deletedAt:now,updatedAt:now});}
   changed();render();toast(ok?(ids.length>1?`Confermate ${ids.length} attività`:'Confermata'):'Tolta: non l’hai fatta');}
 function renderConfermare(){
   const L=daConfermare();const box=$('confBox');box.hidden=!L.length;if(!L.length)return;
@@ -589,8 +589,8 @@ delProj=async function(){
   const p=pe.p;const n=eventiTutti().filter(e=>e.pid===p.id).length;
   if(!await conferma(`Elimino il progetto “${p.nome}”${n?` e le sue ${n} attività`:''}?`,'Elimina','danger'))return;
   const now=Date.now();
-  for(const e of eventiTutti().filter(e=>e.pid===p.id)){markExport(exportKeysOf(e));D().eventi[e.id]={id:e.id,pid:e.pid,data:e.data,deleted:true,updatedAt:now};}
-  D().progetti[p.id]=Object.assign({},prog(p.id),{deleted:true,updatedAt:now});delete DB.meta.queue['folder|'+p.id];
+  for(const e of eventiTutti().filter(e=>e.pid===p.id)){markExport(exportKeysOf(e));D().eventi[e.id]=Object.assign({},e,{deleted:true,deletedAt:now,updatedAt:now});}
+  D().progetti[p.id]=Object.assign({},prog(p.id),{deleted:true,deletedAt:now,updatedAt:now});delete DB.meta.queue['folder|'+p.id];
   closeProj();changed();render();toast('Progetto eliminato');
 };
 
@@ -703,14 +703,6 @@ function zoom(src){$('zoomImg').src=src;$('zoom').hidden=false;}
   render();
   if(q.get('nuovo'))openEv([today()]);
   prepGis();promemoria();
-  if('serviceWorker' in navigator&&location.protocol==='https:'){
-    // Aggiornamento automatico: controlla se c'è una versione nuova e ricarica la pagina quando arriva
-    const giaControllata=!!navigator.serviceWorker.controller;let ricaricata=false;
-    navigator.serviceWorker.addEventListener('controllerchange',()=>{if(giaControllata&&!ricaricata){ricaricata=true;location.reload();}});
-    navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(reg=>{
-      reg.update().catch(()=>{});
-      document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')reg.update().catch(()=>{});});
-    }).catch(()=>{});
-  }
+  if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
   if(!DEMO&&DB.meta.account)setTimeout(()=>sync(false),600);
 })();

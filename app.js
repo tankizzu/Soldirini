@@ -105,11 +105,13 @@ function riepilogo(prefix){ // prefix: 'YYYY-MM' o 'YYYY'
 
 // ---------------- unione dati (vince la modifica più recente) ----------------
 function mergeMap(a,b){const o={};for(const k of new Set([...Object.keys(a||{}),...Object.keys(b||{})])){const x=a?.[k],y=b?.[k];o[k]=!x?y:!y?x:((y.updatedAt||0)>(x.updatedAt||0)?y:x);}return o;}
+function mergeStorico(a,b){const m={};for(const x of [...(a||[]),...(b||[])])m[x.id]=x;return Object.values(m).sort((x,y)=>x.t-y.t).slice(-400);}
 function mergeData(a,b){
   if(!b)return a;
   return {v:1,profilo:(b.profilo?.updatedAt||0)>(a.profilo?.updatedAt||0)?b.profilo:a.profilo,
     pagamenti:mergeMap(a.pagamenti,b.pagamenti),impost:(b.impost?.updatedAt||0)>(a.impost?.updatedAt||0)?b.impost:(a.impost||b.impost),
     progetti:mergeMap(a.progetti,b.progetti),eventi:mergeMap(a.eventi,b.eventi),mesi:mergeMap(a.mesi,b.mesi),files:mergeMap(a.files,b.files),
+    cu:mergeMap(a.cu,b.cu),storico:mergeStorico(a.storico,b.storico),
     root:(b.root?.updatedAt||0)>(a.root?.updatedAt||0)?b.root:a.root};
 }
 const canon=o=>JSON.stringify(o,(k,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.keys(v).sort().reduce((r,x)=>(r[x]=v[x],r),{}):v);

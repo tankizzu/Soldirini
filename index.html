@@ -9,7 +9,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" sizes="192x192" href="soldirini-tonda-192.png">
 <link rel="apple-touch-icon" href="soldirini-quadrata-192.png">
-<link rel="stylesheet" href="fonts.css?v=5">
+<link rel="stylesheet" href="fonts.css">
 <style>
 :root{--bg:#f3f6f5;--card:#fff;--ink:#14211e;--mut:#5f6e6a;--line:#dde5e2;--pri:#0f6b5c;--pri2:#12806d;--pri-ink:#fff;--gold:#f2b632;--err:#b42318;--ok:#137a4b;--shadow:0 1px 2px rgba(15,40,35,.06),0 4px 14px rgba(15,40,35,.06);--r:14px}
 :root[data-theme="dark"]{--bg:#0e1513;--card:#17211e;--ink:#e6efec;--mut:#9aaba6;--line:#2a3733;--pri:#33a58f;--pri2:#2b8f7c;--shadow:none}
@@ -191,7 +191,20 @@ details.fold>.fbody{padding:0 14px 14px}
 .st>i{width:10px;height:10px;border-radius:50%;background:var(--c,var(--pri));display:inline-block;flex:none}
 details.fold>summary:focus-visible{outline:2px solid var(--pri);outline-offset:-2px;border-radius:var(--r)}
 .annonote{margin:0 0 10px}
-#rieCards,#rieAnno,#docList{align-items:start}
+#rieCards,#rieAnno,#docList,#tasList{align-items:start}
+nav.tabs button{padding:9px 4px}
+@media(max-width:420px){nav.tabs{gap:0;padding:6px 4px}nav.tabs button{font-size:13.5px;padding:9px 2px}}
+.hero.small{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin:2px 0 10px}.hero.small div:first-child b{font-size:20px}
+.cmp{display:grid;grid-template-columns:1fr 92px 92px 74px;gap:6px;align-items:center;padding:6px 0;border-bottom:1px dashed var(--line);font-size:13.5px}
+.cmp b{text-align:right;font-variant-numeric:tabular-nums}.cmp em{font-style:normal;text-align:right;font-weight:700;font-size:13px}
+.cmp.ok em{color:var(--ok)}.cmp.ko em{color:var(--err)}.cmp.head{border-bottom:1.5px solid var(--line);color:var(--mut)}.cmp.head b{font-size:12px}
+.cmpn{margin:2px 0 4px}
+.cuitem{border:1px solid var(--line);border-radius:12px;padding:10px;margin-top:10px}.cuh{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin-bottom:6px}.cuh b{font-size:15px}.cuh .muted{flex:1}
+.storbox{max-height:340px;overflow:auto}.stor{display:grid;grid-template-columns:96px 1fr;gap:8px;padding:5px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+.lock{position:fixed;inset:0;z-index:95;background:var(--bg);display:grid;place-items:center;padding:20px}
+.lockbox{display:flex;flex-direction:column;align-items:center;gap:10px;width:min(320px,100%)}.lockbox img{border-radius:50%}.lockbox h2{font-size:18px}
+.lockbox input{text-align:center;font-size:22px;letter-spacing:6px}.lockbox .btn{width:100%}.lockerr{color:var(--err);min-height:18px;font-size:13.5px}
+@media(max-width:420px){.cmp{grid-template-columns:1fr 78px 78px 60px;font-size:12.5px}}
 .basecard{margin-bottom:12px}.basecard .seg{flex-wrap:wrap}.basecard p{margin:8px 0 0}
 i.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px}
 </style>
@@ -207,6 +220,7 @@ i.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6
   <button data-tab="cal" class="on">Calendario</button>
   <button data-tab="rie">Riepilogo</button>
   <button data-tab="doc">Documenti</button>
+  <button data-tab="tas">Tasse</button>
   <button data-tab="pro">Progetti</button>
 </nav>
 <main>
@@ -251,6 +265,11 @@ i.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6
     <div class="cards" id="docList"></div>
   </section>
 
+  <section id="v-tas" hidden>
+    <div class="monthbar"><button class="ib" id="tPrev" aria-label="Anno prima">‹</button><h2 id="tasTitle"></h2><button class="ib" id="tNext" aria-label="Anno dopo">›</button></div>
+    <div class="cards" id="tasList"></div>
+  </section>
+
   <section id="v-pro" hidden>
     <div class="two">
       <div class="stack">
@@ -274,10 +293,14 @@ i.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6
           <div class="acts"><button class="btn ghost sm" id="firmaClr">Cancella</button><button class="btn sm" id="firmaSave">Salva firma</button><button class="btn ghost sm" id="firmaRm">Togli firma salvata</button></div><div id="firmaPrev" class="firmaprev"></div></div>
         <div class="card"><h3>Impostazioni</h3><div class="stack">
           <label>Aspetto<select id="tema"><option value="auto">Come il telefono</option><option value="light">Chiaro</option><option value="dark">Scuro</option></select></label>
-          <label class="check"><input type="checkbox" id="promem"> Promemoria la sera per le attività da confermare</label>
+          <label class="check"><input type="checkbox" id="promem"> Promemoria per le attività da confermare</label>
+          <div class="g2"><label>Alle ore<select id="oraProm"><option value="17:00">17:00</option><option value="17:30">17:30</option><option value="18:00">18:00</option><option value="18:30">18:30</option><option value="19:00">19:00</option><option value="19:30">19:30</option><option value="20:00">20:00</option><option value="20:30">20:30</option><option value="21:00">21:00</option><option value="21:30">21:30</option><option value="22:00">22:00</option><option value="22:30">22:30</option><option value="23:00">23:00</option><option value="23:30">23:30</option></select></label><div style="align-self:end"><button class="btn ghost sm" id="icsBtn">Aggiungi al calendario del telefono</button></div></div>
+          <p class="muted sm" style="margin:0">Il file del calendario mette un promemoria per ogni attività prevista: funziona anche ad app chiusa.</p>
           <p class="muted sm" style="margin:0">Soglie annue da tenere d’occhio (€ lordi):</p><div id="soglieEd" class="g2"></div></div></div>
+        <div class="card"><h3>Blocco dell’app</h3><div id="sicBox"></div></div>
+        <div class="card"><h3>Cestino</h3><p class="muted sm" style="margin-top:0">Le attività e i progetti eliminati restano qui 30 giorni.</p><div id="cestBox"></div></div>
+        <div class="card"><h3>Storico modifiche</h3><div id="storBox" class="storbox"></div></div>
         <div class="card"><h3>Copia di sicurezza</h3><p class="muted sm">Scarica tutti i tuoi dati in un file.</p><button class="btn ghost sm" id="backupBtn">Scarica backup</button></div>
-        <p class="muted sm" style="text-align:center">Soldirini · versione 5</p>
       </div>
     </div>
   </section>
@@ -369,7 +392,8 @@ i.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6
       <label class="check"><input type="checkbox" id="pjOre"> Ore e ritenuta d'acconto</label>
       <div class="sub" id="pjOreBox">
         <div class="g2"><label>€ lordi all'ora<input id="pjO-tariffa" inputmode="decimal"></label><label>Ritenuta %<input id="pjO-ritenuta" inputmode="decimal"></label>
-          <label class="s2" hidden>Tipo di compenso<select id="pjCat"><option value="sportivo">Compenso sportivo</option><option value="occasionale">Prestazione occasionale</option><option value="altro">Altro</option></select></label></div>
+          <label class="s2">Tipo di compenso<select id="pjCat"><option value="occasionale">Prestazione occasionale</option><option value="sportivo">Compenso sportivo</option><option value="altro">Altro</option></select></label></div>
+        <p class="muted sm" id="pjCatInfo" style="margin:0"></p>
         <label>Orari tipici</label><div id="pjFasce" class="stack"></div>
         <div><button type="button" class="btn ghost sm" id="pjFasciaAdd">+ Orario tipico</button></div>
       </div>
@@ -384,16 +408,33 @@ i.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6
 </div>
 
 <div class="modal" id="dlg" hidden><div class="sheet dlg" role="alertdialog" aria-modal="true"><p id="dlgMsg"></p><div class="acts" id="dlgBtns"></div></div></div>
+<div class="modal" id="cuModal" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="cuTitle">
+    <div class="sheethead"><h2 id="cuTitle">Certificazione Unica</h2><button class="x" id="cuClose" aria-label="Chiudi">×</button></div>
+    <p class="sm" id="cuMsg"></p>
+    <div class="g2"><label>Tipo<select id="cuTipo"><option value="autonomo">Lavoro autonomo / occasionale / sportivo</option><option value="dipendente">Lavoro dipendente</option></select></label><label>Anno dei redditi<input id="cuAnno" inputmode="numeric"></label>
+      <label class="s2">Chi l’ha rilasciata<input id="cuComm" placeholder="es. ASD Bulldogs"></label>
+      <label class="s2" id="cuPidRow">Progetto in Soldirini<select id="cuPid"></select></label></div>
+    <div id="cuAut" class="g2 blk"><label>Punto 4 · Ammontare lordo<input id="cu-p4" inputmode="decimal"></label><label>Punto 7 · Somme non soggette<input id="cu-p7" inputmode="decimal"></label>
+      <label>Punto 8 · Imponibile<input id="cu-p8" inputmode="decimal"></label><label>Punto 9 · Ritenute d’acconto<input id="cu-p9" inputmode="decimal"></label><label class="s2">Causale (punto 1)<input id="cuCaus" placeholder="es. M"></label></div>
+    <div id="cuDip" class="g2 blk" hidden><label>Punto 1 · Reddito di lavoro dipendente<input id="cu-p1" inputmode="decimal"></label><label>Punto 21 · Ritenute IRPEF<input id="cu-p21" inputmode="decimal"></label></div>
+    <div class="foot"><button class="btn danger" id="cuDel">Elimina</button><button class="btn" id="cuSave">Salva</button></div>
+  </div>
+</div>
+<div class="lock" id="lock" hidden><div class="lockbox"><img src="soldirini-tonda-192.png" alt="" width="72" height="72"><h2>Soldirini è bloccata</h2>
+  <input type="password" inputmode="numeric" id="lockPin" placeholder="PIN" aria-label="PIN" autocomplete="off"><div class="lockerr" id="lockErr"></div>
+  <button class="btn" id="lockOk">Sblocca</button><button class="btn ghost" id="lockBio" hidden>Usa impronta o volto</button><button class="btn ghost sm" id="lockForgot">Ho dimenticato il PIN</button></div></div>
 <div class="zoom" id="zoom" hidden><img id="zoomImg" alt="Scontrino"></div>
 <div class="toast" id="toast"></div>
 <div class="busyov" id="busy" hidden><div id="busyMsg">Attendi…</div></div>
-<script src="lib/jszip.min.js?v=5"></script>
-<script src="lib/jspdf.umd.min.js?v=5"></script>
-<script src="lib/html2canvas.min.js?v=5"></script>
-<script src="docs.js?v=5"></script>
-<script src="xlsx.js?v=5"></script>
-<script src="modelli.js?v=5"></script>
-<script src="app.js?v=5"></script>
-<script src="plus.js?v=5"></script>
+<script src="lib/jszip.min.js"></script>
+<script src="lib/jspdf.umd.min.js"></script>
+<script src="lib/html2canvas.min.js"></script>
+<script src="docs.js"></script>
+<script src="xlsx.js"></script>
+<script src="modelli.js"></script>
+<script src="app.js"></script>
+<script src="plus.js"></script>
+<script src="tasse.js"></script>
 </body>
 </html>
