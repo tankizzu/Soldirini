@@ -703,6 +703,14 @@ function zoom(src){$('zoomImg').src=src;$('zoom').hidden=false;}
   render();
   if(q.get('nuovo'))openEv([today()]);
   prepGis();promemoria();
-  if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
+  if('serviceWorker' in navigator&&location.protocol==='https:'){
+    // Aggiornamento automatico: controlla se c'è una versione nuova e ricarica la pagina quando arriva
+    const giaControllata=!!navigator.serviceWorker.controller;let ricaricata=false;
+    navigator.serviceWorker.addEventListener('controllerchange',()=>{if(giaControllata&&!ricaricata){ricaricata=true;location.reload();}});
+    navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(reg=>{
+      reg.update().catch(()=>{});
+      document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')reg.update().catch(()=>{});});
+    }).catch(()=>{});
+  }
   if(!DEMO&&DB.meta.account)setTimeout(()=>sync(false),600);
 })();
