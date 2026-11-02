@@ -9,7 +9,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" sizes="192x192" href="soldirini-tonda-192.png">
 <link rel="apple-touch-icon" href="soldirini-quadrata-192.png">
-<link rel="stylesheet" href="fonts.css">
+<link rel="stylesheet" href="fonts.css?v=5">
 <style>
 :root{--bg:#f3f6f5;--card:#fff;--ink:#14211e;--mut:#5f6e6a;--line:#dde5e2;--pri:#0f6b5c;--pri2:#12806d;--pri-ink:#fff;--gold:#f2b632;--err:#b42318;--ok:#137a4b;--shadow:0 1px 2px rgba(15,40,35,.06),0 4px 14px rgba(15,40,35,.06);--r:14px}
 :root[data-theme="dark"]{--bg:#0e1513;--card:#17211e;--ink:#e6efec;--mut:#9aaba6;--line:#2a3733;--pri:#33a58f;--pri2:#2b8f7c;--shadow:none}
@@ -277,6 +277,7 @@ i.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6
           <label class="check"><input type="checkbox" id="promem"> Promemoria la sera per le attività da confermare</label>
           <p class="muted sm" style="margin:0">Soglie annue da tenere d’occhio (€ lordi):</p><div id="soglieEd" class="g2"></div></div></div>
         <div class="card"><h3>Copia di sicurezza</h3><p class="muted sm">Scarica tutti i tuoi dati in un file.</p><button class="btn ghost sm" id="backupBtn">Scarica backup</button></div>
+        <p class="muted sm" style="text-align:center">Soldirini · versione 5</p>
       </div>
     </div>
   </section>
@@ -386,13 +387,13 @@ i.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6
 <div class="zoom" id="zoom" hidden><img id="zoomImg" alt="Scontrino"></div>
 <div class="toast" id="toast"></div>
 <div class="busyov" id="busy" hidden><div id="busyMsg">Attendi…</div></div>
-<script src="lib/jszip.min.js"></script>
-<script src="lib/jspdf.umd.min.js"></script>
-<script src="lib/html2canvas.min.js"></script>
-<script src="docs.js"></script>
-<script src="xlsx.js"></script>
-<script src="modelli.js"></script>
-<script src="app.js"></script>
-<script src="plus.js"></script>
+<script src="lib/jszip.min.js?v=5"></script>
+<script src="lib/jspdf.umd.min.js?v=5"></script>
+<script src="lib/html2canvas.min.js?v=5"></script>
+<script src="docs.js?v=5"></script>
+<script src="xlsx.js?v=5"></script>
+<script src="modelli.js?v=5"></script>
+<script src="app.js?v=5"></script>
+<script src="plus.js?v=5"></script>
 </body>
 </html>
