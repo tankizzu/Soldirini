@@ -1,5 +1,13 @@
 # Soldirini – Cronologia delle modifiche
 
+## v9 – 5/11/2026
+**Aggiunto**
+- Documento di riferimento Word (.docx) nelle impostazioni del progetto: Soldirini riconosce da solo mese, anno, competenze, ritenuta d'acconto, ritenuta INPS, netto e data; altri testi si collegano selezionandoli.
+- In Documenti: compilazione per uno o più mesi insieme (periodo, ore e importi sommati), scarica, invia, salva su Drive con PDF.
+- Ritenuta INPS a carico (es. 11,68%) calcolata solo sulla parte oltre la soglia annua delle prestazioni occasionali.
+
+**File:** `word.js` (nuovo), `index.html`, `sw.js`. **Dati:** nuova voce facoltativa `progetti[].docTpl`; nessun dato esistente modificato.
+
 ## v8 – 4/11/2026
 **Modificato**
 - Il calendario occupa tutto lo schermo; tolte le sezioni sotto (riepilogo del giorno ed elenco del mese).

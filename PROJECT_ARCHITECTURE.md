@@ -27,6 +27,7 @@ Progetto Google Cloud “Soldirini”: client OAuth web (origine `https://tankiz
 | `plus.js` | v2: ricorrenze, spese con foto, pagamenti, soglie, grafico, modelli Excel personalizzati, firma, invio, Excel scaricabili, avvio app |
 | `tasse.js` | v5: tipi di compenso, ritenuta sportivi, resoconto commercialista, Tasse, CU, cestino, storico, PIN, promemoria |
 | `ui.js` | v8: calendario a schermo pieno, gesti sul giorno, sottopagine Documenti/Tasse |
+| `word.js` | v9: documento di riferimento Word: lettura, riconoscimento campi, compilazione multi-mese, salvataggio su Drive/PDF |
 | `xlsx.js` | Modifica di file Excel mantenendo l'impaginazione (celle, righe, unioni, più fogli) |
 | `modelli.js` | Riempie i modelli: ricevuta, nota km, ritenuta d'acconto |
 | `docs.js` | Disegna ricevuta e nota per il PDF (generato dagli strumenti di sviluppo) |
@@ -36,15 +37,15 @@ Progetto Google Cloud “Soldirini”: client OAuth web (origine `https://tankiz
 | `tpl/` | Modelli: `ricevuta.xlsx`, `nota.xlsx`, `ore.xlsx`, `esempio-polisportiva.xlsx` |
 | `lib/` | Librerie di terze parti |
 
-**Nota sull'organizzazione:** i file si caricano in ordine (`app.js` → `plus.js` → `tasse.js` → `ui.js`) e i successivi estendono o sostituiscono funzioni dei precedenti. Funziona ed è testato, ma rende il codice più difficile da seguire: riordino in moduli consigliato.
+**Nota sull'organizzazione:** i file si caricano in ordine (`app.js` → `plus.js` → `tasse.js` → `ui.js` → `word.js`) e i successivi estendono o sostituiscono funzioni dei precedenti. Funziona ed è testato, ma rende il codice più difficile da seguire: riordino in moduli consigliato.
 
 ## Dati (`DB.data`, sincronizzato su Drive)
 - `profilo`: dati personali, auto, firma.
-- `progetti{id}`: nome, colore, cartella, `rimborso` (origine, tariffa ACI, luoghi, intestazione, logo), `ore` (tariffa, ritenuta %, fasce, categoria), `pagamento.ritardo`, `modello` (standard/personalizzato + mappatura), email.
+- `progetti{id}`: nome, colore, cartella, `rimborso` (origine, tariffa ACI, luoghi, intestazione, logo), `ore` (tariffa, ritenuta %, fasce, categoria), `pagamento.ritardo`, `modello` (standard/personalizzato + mappatura), `docTpl` (Word: nome, file in base64, collegamenti `{p: paragrafo, da: testo, campo}`, titolo, % INPS), email.
 - `eventi{id}`: data, progetto, tipo, km/luogo, ore/fasce/fisso, spese (foto), `stato` (previsto), `serie`, `deleted/deletedAt`.
 - `mesi{progetto|mese}`: spese extra e dati della ricevuta.
 - `pagamenti{progetto|mese|o/r}`: pagato e data.
-- `files{chiave}`: ID e link di Fogli/PDF su Drive.
+- `files{chiave}`: ID e link di Fogli/PDF su Drive (`doc|progetto|mesi` per i documenti Word).
 - `impost`: soglie, tema, promemoria, dati tasse per anno.
 - `cu{id}`: Certificazioni Uniche. `storico[]`: ultime 400 modifiche. `root`: cartella Soldirini.
 
