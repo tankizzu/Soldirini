@@ -115,3 +115,10 @@ render();
 const _etBreve8=etichettaBreve;
 etichettaBreve=function(e){return innerWidth>=900?etichetta(e):_etBreve8(e);};
 render();
+
+// progetto senza orari tipici: preparo subito una riga orario da compilare
+const _openEv10=openEv;
+openEv=function(dates,e){const r=_openEv10(dates,e);
+  if(md&&md.e?.ore&&!isFisso(md.e)&&!(md.e.fasce||[]).length){md.e.fasce=[{da:'',a:''}];renderFasce();}
+  const p=md&&prog(md.e?.pid);if(p&&!p.ore.fasce.length)$('evPreset').innerHTML='<span class="muted sm">Scrivi gli orari. Per inserirli con un tocco, aggiungi gli “orari tipici” nel progetto.</span>';
+  return r;};

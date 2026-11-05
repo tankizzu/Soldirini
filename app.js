@@ -48,8 +48,8 @@ const exportKeysOf=e=>{if(!e)return [];const y=e.data.slice(0,4),k=[];const cu=p
 function nuovoProgetto(o={}){
   const n=progetti(true).length;const used=new Set(progetti().map(p=>p.colore));
   return Object.assign({id:uid(),nome:'',colore:COLORI.find(c=>!used.has(c))||COLORI[n%COLORI.length],ordine:n,cartella:null,parent:null,
-    rimborso:{attivo:true,origine:'',tariffa:0.3979,tariffaData:'',occasione:'',mansione:'',squadra:'',assoc:{riga1:'Spett.le',nome:'',nomeBig:'',via:'',citta:'',cf:''},luoghi:[],logo:null},
-    ore:{attivo:false,tariffa:13.75,ritenuta:20,fasce:[{id:'m',nome:'Mattina',da:'9:45',a:'14:00'},{id:'p',nome:'Pomeriggio',da:'14:30',a:'19:00'}]},
+    rimborso:{attivo:true,origine:'',tariffa:'',tariffaData:'',occasione:'',mansione:'',squadra:'',assoc:{riga1:'Spett.le',nome:'',nomeBig:'',via:'',citta:'',cf:''},luoghi:[],logo:null},
+    ore:{attivo:false,tariffa:'',ritenuta:20,fasce:[]},
     def:{tipo:'allenamento'},updatedAt:Date.now()},o);
 }
 const BULLDOGS={nome:'Bulldogs Rignano',colore:'#4a5f8a',
@@ -79,7 +79,7 @@ function motivo(e){
 }
 const etichetta=e=>e.tipo==='allenamento'?motivo(e):(e.titolo?`${TIPI[e.tipo]}: ${e.titolo}`:TIPI[e.tipo]);
 const meseKey=(pid,ym)=>`${pid}|${ym}`;
-function meseExtra(pid,ym){const p=prog(pid);return Object.assign({pedaggi:0,altro:0,altroDesc:'Pagamento Parcheggio',pernN:'',pernEur:0,pastiN:'',pastiEur:0,allegati:'',dataFirma:'',tariffa:p.rimborso.tariffa,tariffaData:p.rimborso.tariffaData},D().mesi[meseKey(pid,ym)]||{});}
+function meseExtra(pid,ym){const p=prog(pid);return Object.assign({pedaggi:0,altro:0,altroDesc:'',pernN:'',pernEur:0,pastiN:'',pastiEur:0,allegati:'',dataFirma:'',tariffa:p.rimborso.tariffa,tariffaData:p.rimborso.tariffaData},D().mesi[meseKey(pid,ym)]||{});}
 function docData(pid,ym){
   const p=prog(pid),R=p.rimborso,x=meseExtra(pid,ym),pr=D().profilo;
   const rows=eventiDel(e=>e.pid===pid&&e.rimborso&&e.data.startsWith(ym)&&kmOf(e)>0)
@@ -483,7 +483,7 @@ function fillEv(e){
   const lab={allenamento:'Squadra (se diversa dal solito)',partita:'Avversario',amichevole:'Avversario',lavoro:'Descrizione',altro:'Descrizione'}[e.tipo];
   $('evTitoloL').textContent=lab;
   $('evTitolo').value=e.tipo==='allenamento'?(e.squadra||''):(e.titolo||'');
-  $('evTitolo').placeholder=e.tipo==='allenamento'?(p.rimborso.squadra||'es. Under15'):e.tipo==='lavoro'?'es. Turno museo':'';
+  $('evTitolo').placeholder=e.tipo==='allenamento'?(p.rimborso.squadra||'es. Under15'):e.tipo==='lavoro'?'es. Turno pomeridiano':'';
   $('evRimb').checked=!!e.rimborso;$('evRimbBox').hidden=!e.rimborso;
   $('evLuogo').innerHTML=p.rimborso.luoghi.map(l=>`<option value="${l.id}">${esc(l.nome)} · ${nf(l.km,1)} km</option>`).join('')+'<option value="__new">+ Nuovo luogo…</option>'+(e.luogoId&&!p.rimborso.luoghi.find(l=>l.id===e.luogoId)?`<option value="${e.luogoId}">${esc(e.luogo)}</option>`:'');
   $('evLuogo').value=e.luogoId||(p.rimborso.luoghi.length?p.rimborso.luoghi[0].id:'__new');
@@ -649,10 +649,10 @@ function openProj(id){
   $('pjRimb').checked=p.rimborso.attivo;$('pjOre').checked=p.ore.attivo;
   const R=p.rimborso;
   for(const k of ['origine','occasione','mansione','squadra','tariffaData'])$('pjR-'+k).value=R[k]||'';
-  $('pjR-tariffa').value=R.tariffa;
+  $('pjR-tariffa').value=R.tariffa||'';
   for(const k of ['riga1','nome','nomeBig','via','citta','cf'])$('pjA-'+k).value=R.assoc[k]||'';
   renderLuoghi();renderLogo();
-  $('pjO-tariffa').value=p.ore.tariffa;$('pjO-ritenuta').value=p.ore.ritenuta;
+  $('pjO-tariffa').value=p.ore.tariffa||'';$('pjO-ritenuta').value=p.ore.ritenuta;
   renderPjFasce();
   $('pjTipo').value=p.def?.tipo||'allenamento';
   $('pjDel').hidden=!id;

@@ -44,7 +44,7 @@ function ricevutaCells(d){
     ['O5:T5',`<span style="font-size:${9*SC}pt">${h(d.assoc.nome).replace(/ (\S+)$/,'<br>$1')} </span><span style="font-size:${14*SC}pt">${h(d.assoc.nomeBig)}</span>`,{f:FONT_BCD,s:11,b:1,a:'center',v:'center',w:1}],
     ['O6:T6',h(d.assoc.via),{f:P,s:8,i:1,a:'center'}],
     ['O7:T7',h(d.assoc.citta),{f:P,s:8,i:1,a:'center'}],
-    ['O8:T8','C.F.'+h(d.assoc.cf),{f:P,s:8,i:1,a:'center'}],
+    ['O8:T8',(d.assoc.cf?'C.F.'+h(d.assoc.cf):''),{f:P,s:8,i:1,a:'center'}],
     ['B10','La/Il sottoscritta/o',lab],
     ['G10:N10',h(d.p.cognome),big],
     ['P10','nata/o a',{...lab,a:'right'}],

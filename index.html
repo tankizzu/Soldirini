@@ -409,8 +409,8 @@ nav.tabs button{display:flex;align-items:center;justify-content:center;gap:6px}
 <div class="modal" id="pjModal" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="pjTitle">
     <div class="sheethead"><h2 id="pjTitle">Nuovo progetto</h2><button class="x" id="pjClose" aria-label="Chiudi">×</button></div>
-    <div id="pjPreset" class="sub" style="margin-bottom:10px"><span class="sm">Parti da un modello già pronto:</span><div class="row"><button type="button" class="pchip" data-preset="bulldogs" style="--c:#4a5f8a"><i></i>Bulldogs Rignano (ricevuta + nota km)</button></div></div>
-    <label>Nome (squadra, società, lavoro…)<input id="pjNome" placeholder="es. Bulldogs Under15, Explora"></label>
+    <div id="pjPreset" hidden></div>
+    <label>Nome (squadra, società, lavoro…)<input id="pjNome" placeholder="es. Basket Under15, Lavoro al museo"></label>
     <label style="margin-top:8px">Di solito mi pagano<select id="pjRitardo"><option value="0">nello stesso mese</option><option value="1">il mese dopo</option><option value="2">dopo 2 mesi</option><option value="3">dopo 3 mesi</option></select></label>
     <p class="muted sm" style="margin:4px 0 0">Serve per contare ogni lavoro nell’anno giusto (es. dicembre pagato a gennaio). Se segni la data di pagamento, vale quella.</p>
     <label style="margin-top:8px">Email a cui mandare i documenti<input id="pjEmail" type="email" placeholder="es. segreteria@societa.it"></label>
@@ -420,11 +420,11 @@ nav.tabs button{display:flex;align-items:center;justify-content:center;gap:6px}
       <label class="check"><input type="checkbox" id="pjRimb"> Rimborso spese km (ricevuta a piè di lista + nota)</label>
       <div class="sub" id="pjRimbBox">
         <div class="g2">
-          <label>Parto da<input id="pjR-origine" placeholder="es. Rignano Flaminio"></label>
+          <label>Parto da<input id="pjR-origine" placeholder="es. il tuo comune"></label>
           <label>Squadra (per “Allenamento …”)<input id="pjR-squadra" placeholder="es. Under15"></label>
           <label class="s2">In occasione di<input id="pjR-occasione" placeholder="es. Istruttore Settore Under15"></label>
           <label>Mansione<input id="pjR-mansione" placeholder="es. Coach"></label>
-          <label>Tariffa ACI €/km<input id="pjR-tariffa" inputmode="decimal"></label>
+          <label>Tariffa ACI €/km<input id="pjR-tariffa" inputmode="decimal" placeholder="es. 0,40 (tabelle ACI)"></label>
           <label class="s2">Tariffa calcolata il<input id="pjR-tariffaData" placeholder="es. 11-10-26"></label>
         </div>
         <label>Luoghi (km andata e ritorno)</label>
@@ -444,7 +444,7 @@ nav.tabs button{display:flex;align-items:center;justify-content:center;gap:6px}
     <div class="blk">
       <label class="check"><input type="checkbox" id="pjOre"> Ore e ritenuta d'acconto</label>
       <div class="sub" id="pjOreBox">
-        <div class="g2"><label>€ lordi all'ora<input id="pjO-tariffa" inputmode="decimal"></label><label>Ritenuta %<input id="pjO-ritenuta" inputmode="decimal"></label>
+        <div class="g2"><label>€ lordi all'ora<input id="pjO-tariffa" inputmode="decimal" placeholder="es. 12,00"></label><label>Ritenuta %<input id="pjO-ritenuta" inputmode="decimal"></label>
           <label class="s2">Tipo di compenso<select id="pjCat"><option value="occasionale">Prestazione occasionale</option><option value="sportivo">Compenso sportivo</option><option value="altro">Altro</option></select></label></div>
         <p class="muted sm" id="pjCatInfo" style="margin:0"></p>
         <label>Orari tipici</label><div id="pjFasce" class="stack"></div>
@@ -454,7 +454,7 @@ nav.tabs button{display:flex;align-items:center;justify-content:center;gap:6px}
     <div class="blk"><label>Documenti da compilare</label>
       <label class="check" style="font-weight:600"><input type="radio" name="pjMod" value="standard"> Modello standard (ricevuta a piè di lista + nota km)</label>
       <label class="check" style="font-weight:600"><input type="radio" name="pjMod" value="custom"> Il file Excel della società</label>
-      <div class="sub" id="pjModBox" hidden><div class="row"><label class="btn ghost sm filebtn">Carica file .xlsx<input type="file" id="pjModFile" accept=".xlsx" hidden></label><button type="button" class="btn ghost sm" id="pjModEs">Usa un file di esempio</button></div><span class="muted sm" id="pjModNome"></span><div id="pjMappa"></div></div></div>
+      <div class="sub" id="pjModBox" hidden><div class="row"><label class="btn ghost sm filebtn">Carica file .xlsx<input type="file" id="pjModFile" accept=".xlsx" hidden></label><button type="button" class="btn ghost sm" id="pjModEs" hidden>Usa un file di esempio</button></div><span class="muted sm" id="pjModNome"></span><div id="pjMappa"></div></div></div>
     <div class="blk"><label>Documento di riferimento (Word)</label>
       <div class="row"><label class="btn ghost sm filebtn">Carica file .docx<input type="file" id="pjWordFile" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden></label><button type="button" class="btn ghost sm" id="pjWordRm">Togli documento</button></div>
       <div id="pjWord" class="stack" style="margin-top:8px"></div></div>
@@ -469,7 +469,7 @@ nav.tabs button{display:flex;align-items:center;justify-content:center;gap:6px}
     <div class="sheethead"><h2 id="cuTitle">Certificazione Unica</h2><button class="x" id="cuClose" aria-label="Chiudi">×</button></div>
     <p class="sm" id="cuMsg"></p>
     <div class="g2"><label>Tipo<select id="cuTipo"><option value="autonomo">Lavoro autonomo / occasionale / sportivo</option><option value="dipendente">Lavoro dipendente</option></select></label><label>Anno dei redditi<input id="cuAnno" inputmode="numeric"></label>
-      <label class="s2">Chi l’ha rilasciata<input id="cuComm" placeholder="es. ASD Bulldogs"></label>
+      <label class="s2">Chi l’ha rilasciata<input id="cuComm" placeholder="es. nome della società"></label>
       <label class="s2" id="cuPidRow">Progetto in Soldirini<select id="cuPid"></select></label></div>
     <div id="cuAut" class="g2 blk"><label>Punto 4 · Ammontare lordo<input id="cu-p4" inputmode="decimal"></label><label>Punto 7 · Somme non soggette<input id="cu-p7" inputmode="decimal"></label>
       <label>Punto 8 · Imponibile<input id="cu-p8" inputmode="decimal"></label><label>Punto 9 · Ritenute d’acconto<input id="cu-p9" inputmode="decimal"></label><label class="s2">Causale (punto 1)<input id="cuCaus" placeholder="es. M"></label></div>
