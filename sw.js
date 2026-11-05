@@ -1,9 +1,9 @@
 // Soldirini funziona anche senza rete.
 // Quando cambi i file su GitHub, aumenta il numero di versione qui sotto.
-const VERSIONE = 'soldirini-13';
-const FILE = ['./', 'index.html', 'app.js', 'plus.js', 'tasse.js', 'ui.js', 'word.js', 'xlsx.js', 'modelli.js', 'docs.js', 'fonts.css', 'manifest.json',
+const VERSIONE = 'soldirini-14';
+const FILE = ['./', 'index.html', 'app.js', 'plus.js', 'tasse.js', 'ui.js', 'word.js', 'pdfdoc.js', 'xlsx.js', 'modelli.js', 'docs.js', 'fonts.css', 'manifest.json',
   'soldirini-tonda-192.png', 'soldirini-tonda-512.png', 'soldirini-quadrata-192.png', 'soldirini-quadrata-512.png', 'logo-bulldogs.jpg',
-  'lib/jszip.min.js', 'lib/jspdf.umd.min.js', 'lib/html2canvas.min.js', 'tpl/ricevuta.xlsx', 'tpl/nota.xlsx', 'tpl/ore.xlsx'];
+  'lib/jszip.min.js', 'lib/jspdf.umd.min.js', 'lib/html2canvas.min.js', 'lib/pdf.min.js', 'lib/pdf.worker.min.js', 'lib/pdf-lib.min.js', 'tpl/ricevuta.xlsx', 'tpl/nota.xlsx', 'tpl/ore.xlsx'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSIONE).then(c => c.addAll(FILE)).then(() => self.skipWaiting()));

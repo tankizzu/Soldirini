@@ -31,7 +31,7 @@ async function docxLeggi(b64){const {doc}=await docxApri(b64);return docxParagra
 
 // riconosce da solo i campi più comuni (ricevuta per prestazione occasionale)
 function autoMappa(par){
-  const map=[];const amount=/^\s*(?:Euro|€)?\s*([\d.]+(?:,\d+)?)\s*$/i;let atteso=null;
+  const map=[];const amount=/^\s*(?:Euro|€)?\s*(\d[\d.]*(?:,\d+)?)\s*$/i;let atteso=null;
   par.forEach((t,i)=>{
     const m=/mese di\s*_*\s*([A-Za-zÀ-ú]+)\s*_*\s*anno\s*_*\s*(\d{4})/i.exec(t);
     if(m){map.push({p:i,da:m[1],campo:'mesi'});map.push({p:i,da:m[2],campo:'anno'});}
@@ -90,7 +90,7 @@ const DOCX_MIME='application/vnd.openxmlformats-officedocument.wordprocessingml.
 let wPar=[];
 async function renderWordTpl(){
   const box=$('pjWord');if(!box)return;const T=pe.p.docTpl;
-  if(!T?.file){box.innerHTML='<p class="muted sm">Nessun documento. Carica il file Word della società (es. la ricevuta per prestazione occasionale): Soldirini lo compilerà con i tuoi dati, anche per più mesi insieme.</p>';return;}
+  if(!T?.file){box.innerHTML='<p class="muted sm">Nessun documento. Carica il file della società (Word, Google Documenti, PDF, Excel o Fogli Google) (es. la ricevuta per prestazione occasionale): Soldirini lo compilerà con i tuoi dati, anche per più mesi insieme.</p>';return;}
   try{wPar=await docxLeggi(T.file);}catch(e){box.innerHTML=`<p class="note">Non riesco a leggere il documento: ${esc(errMsg(e))}</p>`;return;}
   const usati=new Set(T.map.map(m=>m.p));
   box.innerHTML=`<p class="sm"><b>${esc(T.nome)}</b> · ${T.map.length} testi collegati</p>

@@ -264,6 +264,7 @@ nav.tabs button{display:flex;align-items:center;justify-content:center;gap:6px}
 .wdoc p{margin:0 0 6px;padding:2px 4px;border-radius:6px}.wdoc p.on{background:#efe9dc}
 .wmap{display:flex;flex-direction:column;gap:6px}.wm{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:6px 8px}.wm span{display:flex;flex-direction:column;flex:1;min-width:0}.wm small{color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .wmesi{margin:4px 0 8px}
+.pdfante{margin-top:8px;max-height:60vh;overflow:auto;background:color-mix(in srgb,var(--mut) 12%,transparent);border-radius:10px;padding:10px 0}.pdfante [data-pg]{cursor:crosshair}
 </style>
 </head>
 <body>
@@ -455,7 +456,7 @@ nav.tabs button{display:flex;align-items:center;justify-content:center;gap:6px}
       <label class="check" style="font-weight:600"><input type="radio" name="pjMod" value="standard"> Modello standard (ricevuta a piè di lista + nota km)</label>
       <label class="check" style="font-weight:600"><input type="radio" name="pjMod" value="custom"> Il file Excel della società</label>
       <div class="sub" id="pjModBox" hidden><div class="row"><label class="btn ghost sm filebtn">Carica dal telefono<input type="file" id="pjModFile" hidden></label><button type="button" class="btn ghost sm" id="pjModDrive">Scegli da Google Drive</button><button type="button" class="btn ghost sm" id="pjModEs" hidden>Usa un file di esempio</button></div><span class="muted sm" id="pjModNome"></span><div id="pjMappa"></div></div></div>
-    <div class="blk"><label>Documento di riferimento (Word)</label>
+    <div class="blk"><label>Documento di riferimento (Word, PDF o Excel)</label>
       <div class="row"><label class="btn ghost sm filebtn">Carica dal telefono<input type="file" id="pjWordFile" hidden></label><button type="button" class="btn ghost sm" id="pjWordDrive">Scegli da Google Drive</button><button type="button" class="btn ghost sm" id="pjWordRm">Togli documento</button></div>
       <div id="pjWord" class="stack" style="margin-top:8px"></div></div>
     <div class="blk"><label>Tipo di attività proposto<select id="pjTipo"><option value="allenamento">Allenamento</option><option value="partita">Partita</option><option value="lavoro">Lavoro</option><option value="altro">Altro</option></select></label></div>
@@ -506,5 +507,6 @@ nav.tabs button{display:flex;align-items:center;justify-content:center;gap:6px}
 <script src="tasse.js"></script>
 <script src="ui.js"></script>
 <script src="word.js"></script>
+<script src="pdfdoc.js"></script>
 </body>
 </html>
