@@ -166,6 +166,61 @@ async function azioneWord(pid,tipo){
   }catch(e){toast(errMsg(e),'err');}finally{busy(false);}
 }
 
+// ---------- caricamento dei file: dal telefono o da Google Drive ----------
+const GDOC='application/vnd.google-apps.document',GSHEET='application/vnd.google-apps.spreadsheet';
+// riconosco il tipo dal contenuto, non dal nome (i file presi da Drive a volte non hanno l'estensione giusta)
+async function tipoFile(buf){
+  const u=new Uint8Array(buf.slice(0,8));
+  if(u[0]===0xD0&&u[1]===0xCF&&u[2]===0x11&&u[3]===0xE0)return 'vecchio'; // .doc / .xls del vecchio Office
+  if(u[0]===0x25&&u[1]===0x50&&u[2]===0x44&&u[3]===0x46)return 'pdf';
+  if(!(u[0]===0x50&&u[1]===0x4B))return 'altro';
+  const z=await JSZip.loadAsync(buf);if(z.file('word/document.xml'))return 'docx';if(z.file('xl/workbook.xml'))return 'xlsx';return 'altro';
+}
+async function caricaWord(nome,buf){
+  const t=await tipoFile(buf);
+  if(t==='vecchio')throw new Error('È un file Word vecchio (.doc). Aprilo con Word o Google Documenti e salvalo come .docx.');
+  if(t==='pdf')throw new Error('È un PDF: serve il file Word (.docx) da cui è stato creato.');
+  if(t!=='docx')throw new Error('Questo file non è un documento Word (.docx).');
+  if(buf.byteLength>3e6)throw new Error('Il file è troppo grande (massimo 3 MB).');
+  if(!/\.docx$/i.test(nome))nome=nome.replace(/\.[a-z0-9]{1,5}$/i,'')+'.docx';
+  const b64=bufToB64(buf);const par=await docxLeggi(b64);const map=autoMappa(par);
+  const tt=/ricevuta[^\n]{0,60}/i.exec(par.find(x=>/ricevuta/i.test(x))||'');
+  pe.p.docTpl={nome,file:b64,map,titolo:tt?cap(tt[0].toLowerCase().replace(/\s+/g,' ').trim()).slice(0,60):'Ricevuta',inpsPct:par.some(x=>/11,68\s*%/.test(x))?11.68:0,updatedAt:Date.now()};
+  await renderWordTpl();salvaDocTpl(map.length?`Ho riconosciuto ${map.length} dati da compilare: controllali.`:'Documento caricato: ora seleziona i testi da sostituire.');
+}
+async function caricaExcel(nome,buf){
+  const t=await tipoFile(buf);
+  if(t==='vecchio')throw new Error('È un file Excel vecchio (.xls). Aprilo con Excel o Fogli Google e salvalo come .xlsx.');
+  if(t!=='xlsx')throw new Error('Questo file non è un foglio Excel (.xlsx).');
+  if(!/\.xlsx$/i.test(nome))nome=nome.replace(/\.[a-z0-9]{1,5}$/i,'')+'.xlsx';
+  pe.p.modello={tipo:'custom',nome,file:bufToB64(buf),map:{campi:{},tab:{row:0,cols:{}}}};$('pjModNome').textContent='File: '+nome;mapSel='nome_completo';await renderMappa();toast('Ora tocca le celle dove scrivere i dati');
+}
+// sceglie un file dal Google Drive (anche un Documento o un Foglio Google, che viene convertito)
+async function scegliDaDrive(tipo){
+  if(DEMO||!DB.meta.account)throw new Error('Per scegliere da Drive accedi prima con Google (Impostazioni → Account).');
+  if(!navigator.onLine)throw new Error('Serve la connessione per aprire Google Drive.');
+  const tok=await getToken(true);
+  await loadScript('https://apis.google.com/js/api.js');
+  await new Promise((res,rej)=>gapi.load('picker',{callback:res,onerror:rej}));
+  const mimes=tipo==='word'?[DOCX_MIME,GDOC]:[XLSX_MIME,GSHEET];
+  const f=await new Promise(res=>{
+    const view=new google.picker.DocsView(google.picker.ViewId.DOCS).setMimeTypes(mimes.join(',')).setIncludeFolders(true);
+    new google.picker.PickerBuilder().addView(view).setOAuthToken(tok).setDeveloperKey(CFG.API_KEY).setAppId(CFG.APP_ID)
+      .setTitle(tipo==='word'?'Scegli il documento Word':'Scegli il foglio Excel').setLocale('it').setOrigin(location.origin)
+      .setCallback(d=>{if(d.action===google.picker.Action.PICKED){const x=d.docs[0];res({id:x.id,nome:x.name,mime:x.mimeType});}else if(d.action===google.picker.Action.CANCEL)res(null);})
+      .build().setVisible(true);
+  });
+  if(!f)return null;
+  busy(true,'Scarico il file da Drive…');
+  try{
+    let r;
+    if(f.mime===GDOC)r=await gfetch('GET',`${DRIVE}/files/${f.id}/export?mimeType=${encodeURIComponent(DOCX_MIME)}`,{raw:true});
+    else if(f.mime===GSHEET)r=await gfetch('GET',`${DRIVE}/files/${f.id}/export?mimeType=${encodeURIComponent(XLSX_MIME)}`,{raw:true});
+    else r=await gfetch('GET',`${DRIVE}/files/${f.id}?alt=media`,{raw:true});
+    return {nome:f.nome,buf:await r.arrayBuffer()};
+  }finally{busy(false);}
+}
+
 // ---------- estensioni ----------
 const _renderDoc9=renderDoc;
 renderDoc=function(){
@@ -183,13 +238,11 @@ readProj=function(){const p=_readProj9();const T=p.docTpl;if(T?.file){if($('wTit
 
 function bind9(){
   $('pjWordFile').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
-    if(!/\.docx$/i.test(f.name)){toast('Serve un file Word .docx (se hai un .doc, salvalo come .docx).','err');return;}
     if(f.size>3e6){toast('Il file è troppo grande (massimo 3 MB).','err');return;}
-    try{const b64=bufToB64(await f.arrayBuffer());const par=await docxLeggi(b64);const map=autoMappa(par);
-      const t=/ricevuta[^\n]{0,60}/i.exec(par.find(x=>/ricevuta/i.test(x))||'');
-      pe.p.docTpl={nome:f.name,file:b64,map,titolo:t?cap(t[0].toLowerCase().replace(/\s+/g,' ').trim()).slice(0,60):'Ricevuta',inpsPct:par.some(x=>/11,68\s*%/.test(x))?11.68:0,updatedAt:Date.now()};
-      await renderWordTpl();salvaDocTpl(map.length?`Ho riconosciuto ${map.length} dati da compilare: controllali.`:'Documento caricato: ora seleziona i testi da sostituire.');
-    }catch(err){toast('Non riesco a leggere il file: '+errMsg(err),'err');}};
+    try{await caricaWord(f.name,await f.arrayBuffer());}catch(err){toast(errMsg(err),'err');}};
+  $('pjWordDrive').onclick=async()=>{try{const f=await scegliDaDrive('word');if(f)await caricaWord(f.nome,f.buf);}catch(err){toast(errMsg(err),'err');}};
+  $('pjModFile').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{await caricaExcel(f.name,await f.arrayBuffer());}catch(err){toast(errMsg(err),'err');}};
+  $('pjModDrive').onclick=async()=>{try{const f=await scegliDaDrive('excel');if(f)await caricaExcel(f.nome,f.buf);}catch(err){toast(errMsg(err),'err');}};
   $('pjWord').addEventListener('click',e=>{if(e.target.id==='wAdd')collegaSelezione();const r=e.target.closest('[data-wrm]');if(r){pe.p.docTpl.map.splice(+r.dataset.wrm,1);renderWordTpl();salvaDocTpl('Collegamento tolto.');}});
   $('pjWordRm').onclick=async()=>{if(pe.p.docTpl&&await conferma('Tolgo il documento di riferimento da questo progetto?','Togli','danger')){delete pe.p.docTpl;renderWordTpl();salvaDocTpl('Documento tolto.');}};
   $('docList').addEventListener('click',e=>{const m=e.target.closest('[data-wmese]');if(m){const [pid,ym]=m.dataset.wmese.split('|');const s=wSel[pid];s.has(ym)?s.delete(ym):s.add(ym);renderDocSoft();return;}
