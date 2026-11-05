@@ -504,7 +504,7 @@ renderDoc=function(){
       const key=`${p.id}|${cur}|o`;
       h+=`<div class="card pc" style="--c:${p.colore}"><h3><i></i>${esc(p.nome)} · ore e ritenuta</h3>
         <div class="kv"><span>Attività</span><b>${ev.length} · ${nf(S.ore)} h</b></div><div class="kv"><span>Lordo</span><b>${eur(S.lordo)}</b></div><div class="kv"><span>Ritenuta</span><b>− ${eur(S.rit)}</b></div><div class="kv big"><span>Netto</span><b>${eur(S.netto)}</b></div>
-        <div class="acts"><button class="btn" data-pdfp="${p.id}" ${ev.length?'':'disabled'}>Scarica PDF</button><button class="btn ghost" data-invo="${p.id}" ${ev.length?'':'disabled'}>Invia</button>${payBtn(key,S.netto)}</div></div>`;
+        ${p.docTpl?.file?'<p class="muted sm" style="margin:6px 0 0">La ricevuta da firmare (Word) è nella scheda qui sotto. Questo è il prospetto delle ore.</p>':''}<div class="acts"><button class="btn${p.docTpl?.file?' ghost':''}" data-pdfp="${p.id}" ${ev.length?'':'disabled'}>${p.docTpl?.file?'Prospetto ore (PDF)':'Scarica PDF'}</button><button class="btn ghost" data-invo="${p.id}" ${ev.length?'':'disabled'}>Invia</button>${payBtn(key,S.netto)}</div></div>`;
     }
   }
   if(progetti().some(p=>p.ore.attivo)){

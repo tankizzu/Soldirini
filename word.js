@@ -107,14 +107,24 @@ function collegaSelezione(){
   if(!txt||!nodo){toast('Prima seleziona nel documento il testo da sostituire.','err');return;}
   const p=+nodo.dataset.wp;if(!wPar[p].includes(txt)){toast('Seleziona il testo dentro una sola riga del documento.','err');return;}
   const T=pe.p.docTpl;T.map=T.map.filter(m=>!(m.p===p&&m.da===txt));T.map.push({p,da:txt,campo:$('wCampo').value});T.updatedAt=Date.now();
-  sel.removeAllRanges();renderWordTpl();toast(`Collegato: ${CAMPI_W[$('wCampo').value]}`);
+  sel.removeAllRanges();renderWordTpl();salvaDocTpl(`Collegato: ${CAMPI_W[$('wCampo').value]}.`);
+}
+
+// salva subito il documento nel progetto (senza aspettare “Salva progetto”), se il progetto esiste già
+function salvaDocTpl(msg){
+  const id=pe?.p?.id;const p=id&&D().progetti[id];
+  if(!p||pe.isNew){if(msg)toast(msg+' Tocca “Salva progetto” per tenerlo.');return;}
+  if(pe.p.docTpl){p.docTpl=clone(pe.p.docTpl);p.docTpl.updatedAt=Date.now();}else delete p.docTpl;
+  p.updatedAt=Date.now();changed();if(msg)toast(msg+' Salvato nel progetto.');
 }
 
 // ---------- Documenti: compila per uno o più mesi ----------
 const wSel={}; // progetto -> mesi scelti
 function mesiConOre(pid){return [...new Set(eventi().filter(e=>e.pid===pid&&e.ore).map(e=>e.data.slice(0,7)))].sort().reverse().slice(0,14);}
 function cardWord(p){
-  const mesi=mesiConOre(p.id);if(!wSel[p.id])wSel[p.id]=new Set(mesi.includes(cur)?[cur]:mesi.slice(0,1));
+  const mesi=mesiConOre(p.id);
+  // la scelta dei mesi vale per il mese che stai guardando: se cambi mese, riparte da quello
+  if(!wSel[p.id]||wSel[p.id].per!==cur){wSel[p.id]=new Set(mesi.includes(cur)?[cur]:[]);wSel[p.id].per=cur;}
   const S=[...wSel[p.id]].filter(m=>mesi.includes(m));const v=S.length?valoriWord(p.id,S):null;
   return `<div class="card pc" style="--c:${p.colore}" data-fid="word-${p.id}" data-sum="${v?eur(v._n.netto):'—'}"><h3><i></i>${esc(p.nome)} · ${esc(p.docTpl.titolo||'Ricevuta')} (Word)</h3>
     <p class="muted sm" style="margin-top:0">Scegli uno o più mesi da mettere nello stesso documento.</p>
@@ -129,10 +139,12 @@ function cardWord(p){
 async function azioneWord(pid,tipo){
   const S=[...(wSel[pid]||[])];if(!S.length){toast('Scegli almeno un mese.','err');return;}
   const data=document.querySelector(`[data-wdata="${pid}"]`)?.value||today();const p=prog(pid);
+  if(!p.docTpl?.map?.length){toast('Il documento non ha dati collegati: apri il progetto e collega almeno importi e periodo, altrimenti scaricheresti il file originale.','err');return;}
   busy(true,'Compilo il documento…');
   try{
     const f=await docxCompila(pid,S,data);
-    if(f.mancano.length)toast(`Attenzione: non ho trovato nel documento ${f.mancano.map(x=>'“'+x+'”').join(', ')}. Controlla i collegamenti nel progetto.`,'err');
+    if(f.mancano.length===p.docTpl.map.length){busy(false);toast('Nessun dato è stato inserito: i testi collegati non si trovano più nel documento. Ricarica il file Word nel progetto.','err');return;}
+    if(f.mancano.length){busy(false);if(!await conferma(`Non ho trovato nel documento: ${f.mancano.map(x=>'“'+x+'”').join(', ')}. Questi punti resteranno come nel file originale. Continuo?`,'Continua'))return;busy(true,'Compilo il documento…');}
     logStorico('Documento',`${p.docTpl.titolo||'Ricevuta'} ${p.nome} · ${f.v.periodo}`);persist();
     if(tipo==='scarica'){busy(false);download(f.bytes,f.nome,DOCX_MIME);if(!f.mancano.length)toast('Documento scaricato');}
     else if(tipo==='invia'){busy(false);const file=new File([f.bytes],f.nome,{type:DOCX_MIME});const ogg=`${p.docTpl.titolo||'Ricevuta'} ${f.v.periodo} – ${f.v.nome}`;
@@ -158,8 +170,10 @@ async function azioneWord(pid,tipo){
 const _renderDoc9=renderDoc;
 renderDoc=function(){
   _renderDoc9();const L=progetti().filter(p=>p.docTpl?.file);if(!L.length)return;
-  const box=$('docList');const nota=box.querySelector(':scope > p.muted');
-  const html=L.map(cardWord).join('');if(nota)nota.insertAdjacentHTML('beforebegin',html);else box.insertAdjacentHTML('beforeend',html);
+  const box=$('docList');
+  for(const p of L){if(foldState()['doc:word-'+p.id]===undefined)foldState()['doc:word-'+p.id]=true;
+    const dopo=[...box.children].filter(c=>c.dataset.fold&&c.dataset.fold.includes(p.nome)).pop();
+    if(dopo)dopo.insertAdjacentHTML('afterend',cardWord(p));else box.insertAdjacentHTML('afterbegin',cardWord(p));}
   foldify(box,'doc');
 };
 const _openProj9=openProj;
@@ -174,10 +188,10 @@ function bind9(){
     try{const b64=bufToB64(await f.arrayBuffer());const par=await docxLeggi(b64);const map=autoMappa(par);
       const t=/ricevuta[^\n]{0,60}/i.exec(par.find(x=>/ricevuta/i.test(x))||'');
       pe.p.docTpl={nome:f.name,file:b64,map,titolo:t?cap(t[0].toLowerCase().replace(/\s+/g,' ').trim()).slice(0,60):'Ricevuta',inpsPct:par.some(x=>/11,68\s*%/.test(x))?11.68:0,updatedAt:Date.now()};
-      await renderWordTpl();toast(map.length?`Ho riconosciuto ${map.length} dati da compilare: controllali.`:'Ora seleziona i testi da sostituire.');
+      await renderWordTpl();salvaDocTpl(map.length?`Ho riconosciuto ${map.length} dati da compilare: controllali.`:'Documento caricato: ora seleziona i testi da sostituire.');
     }catch(err){toast('Non riesco a leggere il file: '+errMsg(err),'err');}};
-  $('pjWord').addEventListener('click',e=>{if(e.target.id==='wAdd')collegaSelezione();const r=e.target.closest('[data-wrm]');if(r){pe.p.docTpl.map.splice(+r.dataset.wrm,1);renderWordTpl();}});
-  $('pjWordRm').onclick=async()=>{if(pe.p.docTpl&&await conferma('Tolgo il documento di riferimento da questo progetto?','Togli','danger')){delete pe.p.docTpl;renderWordTpl();}};
+  $('pjWord').addEventListener('click',e=>{if(e.target.id==='wAdd')collegaSelezione();const r=e.target.closest('[data-wrm]');if(r){pe.p.docTpl.map.splice(+r.dataset.wrm,1);renderWordTpl();salvaDocTpl('Collegamento tolto.');}});
+  $('pjWordRm').onclick=async()=>{if(pe.p.docTpl&&await conferma('Tolgo il documento di riferimento da questo progetto?','Togli','danger')){delete pe.p.docTpl;renderWordTpl();salvaDocTpl('Documento tolto.');}};
   $('docList').addEventListener('click',e=>{const m=e.target.closest('[data-wmese]');if(m){const [pid,ym]=m.dataset.wmese.split('|');const s=wSel[pid];s.has(ym)?s.delete(ym):s.add(ym);renderDocSoft();return;}
     const g=a=>e.target.closest(`[${a}]`)?.getAttribute(a);
     if(g('data-wdoc'))azioneWord(g('data-wdoc'),'scarica');if(g('data-winv'))azioneWord(g('data-winv'),'invia');if(g('data-wdrive'))azioneWord(g('data-wdrive'),'drive');});
