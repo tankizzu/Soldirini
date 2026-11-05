@@ -197,15 +197,24 @@ async function caricaExcel(nome,buf){
 }
 // sceglie un file dal Google Drive (anche un Documento o un Foglio Google, che viene convertito)
 async function scegliDaDrive(tipo){
+  // sul telefono il selettore di Google è scomodo: propongo quello del telefono, che mostra anche Drive
+  if(innerWidth<700){
+    const v=await ask('Sul telefono è più comodo il selettore del telefono: tocca “Apri selettore”, poi nel menu (☰) scegli Drive e il tuo file.',[{t:'Annulla',v:null,cls:'ghost'},{t:'Google Drive',v:'drive',cls:'ghost'},{t:'Apri selettore',v:'tel'}]);
+    if(!v)return null;
+    if(v==='tel'){$(tipo==='word'?'pjWordFile':'pjModFile').click();return null;}
+  }
   if(DEMO||!DB.meta.account)throw new Error('Per scegliere da Drive accedi prima con Google (Impostazioni → Account).');
   if(!navigator.onLine)throw new Error('Serve la connessione per aprire Google Drive.');
   const tok=await getToken(true);
   await loadScript('https://apis.google.com/js/api.js');
   await new Promise((res,rej)=>gapi.load('picker',{callback:res,onerror:rej}));
-  const mimes=tipo==='word'?[DOCX_MIME,GDOC]:[XLSX_MIME,GSHEET];
+  const mimes=tipo==='word'?[DOCX_MIME,GDOC,'application/msword']:[XLSX_MIME,GSHEET,'application/vnd.ms-excel'];
   const f=await new Promise(res=>{
-    const view=new google.picker.DocsView(google.picker.ViewId.DOCS).setMimeTypes(mimes.join(',')).setIncludeFolders(true);
-    new google.picker.PickerBuilder().addView(view).setOAuthToken(tok).setDeveloperKey(CFG.API_KEY).setAppId(CFG.APP_ID)
+    // elenco (non griglia) con tutti i file visibili: si possono scegliere solo quelli del tipo giusto
+    const view=new google.picker.DocsView(google.picker.ViewId.DOCS).setIncludeFolders(true).setMode(google.picker.DocsViewMode.LIST);
+    const recenti=new google.picker.DocsView(google.picker.ViewId.RECENTLY_PICKED);
+    new google.picker.PickerBuilder().addView(view).addView(recenti).setSelectableMimeTypes(mimes.join(',')).enableFeature(google.picker.Feature.SUPPORT_DRIVES)
+      .setOAuthToken(tok).setDeveloperKey(CFG.API_KEY).setAppId(CFG.APP_ID).setSize(Math.min(1051,innerWidth-16),Math.min(650,innerHeight-40))
       .setTitle(tipo==='word'?'Scegli il documento Word':'Scegli il foglio Excel').setLocale('it').setOrigin(location.origin)
       .setCallback(d=>{if(d.action===google.picker.Action.PICKED){const x=d.docs[0];res({id:x.id,nome:x.name,mime:x.mimeType});}else if(d.action===google.picker.Action.CANCEL)res(null);})
       .build().setVisible(true);
@@ -216,6 +225,7 @@ async function scegliDaDrive(tipo){
     let r;
     if(f.mime===GDOC)r=await gfetch('GET',`${DRIVE}/files/${f.id}/export?mimeType=${encodeURIComponent(DOCX_MIME)}`,{raw:true});
     else if(f.mime===GSHEET)r=await gfetch('GET',`${DRIVE}/files/${f.id}/export?mimeType=${encodeURIComponent(XLSX_MIME)}`,{raw:true});
+    else if(/msword|ms-excel/.test(f.mime||''))throw new Error(tipo==='word'?'È un file Word vecchio (.doc). Aprilo con Word o Google Documenti e salvalo come .docx.':'È un file Excel vecchio (.xls): salvalo come .xlsx.');
     else r=await gfetch('GET',`${DRIVE}/files/${f.id}?alt=media`,{raw:true});
     return {nome:f.nome,buf:await r.arrayBuffer()};
   }finally{busy(false);}
