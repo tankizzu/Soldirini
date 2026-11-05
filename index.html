@@ -237,6 +237,28 @@ input:focus,select:focus,textarea:focus{border-color:var(--sez)}
 .xgrid td.mapped{background:color-mix(in srgb,var(--sez) 22%,var(--card))}.xgrid .ml{color:var(--ink)}
 .calc{color:color-mix(in srgb,var(--sez) 80%,var(--ink))}
 details.extra summary{color:color-mix(in srgb,var(--sez) 80%,var(--ink))}
+
+/* v8: calendario a schermo pieno, sottopagine */
+#v-cal .monthbar{margin-bottom:8px}
+body[data-tab="cal"] main{padding-bottom:12px}
+#filtri{margin-bottom:8px}
+.grid .day{height:var(--cellh,74px);min-height:0;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+.day.lp{transform:scale(.94);transition:transform .15s}
+.confbanner{display:flex;align-items:center;gap:8px;width:100%;border:1.5px solid color-mix(in srgb,var(--gold) 60%,transparent);background:color-mix(in srgb,var(--gold) 16%,var(--card));color:var(--ink);border-radius:12px;padding:9px 12px;margin-bottom:8px;font-weight:650;cursor:pointer;text-align:left}
+.confbanner::after{content:'›';margin-left:auto;font-size:20px;color:var(--mut)}
+.multibar{position:fixed;left:max(12px,env(safe-area-inset-left));right:max(12px,env(safe-area-inset-right));bottom:calc(12px + env(safe-area-inset-bottom));z-index:16;margin:0;box-shadow:0 6px 20px rgba(0,0,0,.18);background:var(--card);border:1.5px solid color-mix(in srgb,var(--gold) 60%,transparent)}
+.multibar:not([hidden])~.fab{display:none}
+.daysum{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13.5px;color:var(--mut);margin:-4px 0 6px}.daysum b{color:var(--ink)}
+#listModal .sheethead .badge{background:color-mix(in srgb,var(--sez) 16%,transparent);border-radius:999px;padding:1px 9px;font-weight:700;font-size:13px}
+#listModal #cerca{margin:0 0 6px}
+.subnav{display:grid;gap:10px;margin:12px 0}@media(min-width:760px){.subnav{grid-template-columns:1fr 1fr}}
+.subnav button{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:var(--r);border:1px solid var(--line);background:var(--card);box-shadow:var(--shadow);cursor:pointer;text-align:left;color:var(--ink)}
+.subnav .ico{width:46px;height:46px;border-radius:12px;display:grid;place-items:center;flex:none;color:#fff}
+.subnav button[data-goto="doc"] .ico{background:#776a52}.subnav button[data-goto="tas"] .ico{background:#7d5c52}
+.subnav .tx{display:flex;flex-direction:column;flex:1;min-width:0}.subnav .tx b{font-size:16px}.subnav .tx small{color:var(--mut);font-size:13px}
+.subnav .chev{font-size:24px;color:var(--mut)}
+.back{border:0;background:none;color:var(--mut);font-weight:650;font-size:15px;padding:4px 0 10px;cursor:pointer}
+nav.tabs button{display:flex;align-items:center;justify-content:center;gap:6px}
 </style>
 </head>
 <body>
@@ -249,9 +271,7 @@ details.extra summary{color:color-mix(in srgb,var(--sez) 80%,var(--ink))}
 <nav class="tabs">
   <button data-tab="cal" class="on">Calendario</button>
   <button data-tab="rie">Riepilogo</button>
-  <button data-tab="doc">Documenti</button>
-  <button data-tab="tas">Tasse</button>
-  <button data-tab="pro">Progetti</button>
+  <button data-tab="pro" aria-label="Impostazioni"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Impostazioni</span></button>
 </nav>
 <main>
   <div id="welcome" class="card welcome" hidden>
@@ -266,20 +286,12 @@ details.extra summary{color:color-mix(in srgb,var(--sez) 80%,var(--ink))}
   </div>
 
   <section id="v-cal">
-    <div class="calwrap">
-      <div>
-        <div class="monthbar"><button class="ib" id="prev" aria-label="Mese prima">‹</button><h2 id="mese"></h2><button class="btn ghost sm" id="oggi">Oggi</button><button class="ib" id="next" aria-label="Mese dopo">›</button></div>
-        <div class="card conf-box" id="confBox" hidden><div class="dayhead"><h2>Da confermare</h2><button class="btn sm" id="confAll">Tutte fatte</button></div><p class="muted sm">Attività ripetute già passate: le hai fatte?</p><div id="confList"></div></div>
-        <div id="filtri"></div>
-        <div class="grid" id="grid"></div>
-        <div class="calhead"><button class="btn ghost sm" id="multiBtn">Più giorni</button><span class="muted sm">Tocca un giorno per vederlo, toccalo di nuovo per aggiungere.</span></div>
-        <div class="multibar" id="multiBar" hidden><span id="multiN"></span><button class="btn sm" id="multiAdd">Aggiungi attività</button></div>
-      </div>
-      <div class="side">
-        <div class="card" id="dayBox"><div class="dayhead"><h2 id="dayTitle"></h2><button class="btn sm" id="dayAdd">+ Aggiungi</button></div><div id="dayList"></div></div>
-        <div class="card sec" id="listaSec"><div class="sechead" id="listaHead"><h2>Attività del mese</h2><span class="badge" id="listaN">0</span></div><input id="cerca" type="search" placeholder="Cerca in tutte le attività…" aria-label="Cerca"><div id="lista"></div></div>
-      </div>
-    </div>
+    <div class="monthbar"><button class="ib" id="prev" aria-label="Mese prima">‹</button><h2 id="mese"></h2><button class="ib" id="listBtn" aria-label="Elenco e ricerca attività"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button><button class="btn ghost sm" id="oggi">Oggi</button><button class="ib" id="next" aria-label="Mese dopo">›</button></div>
+    <button class="confbanner" id="confBanner" hidden></button>
+    <div id="filtri"></div>
+    <div class="grid" id="grid"></div>
+    <button id="multiBtn" hidden>Più giorni</button>
+    <div class="multibar" id="multiBar" hidden><span id="multiN"></span><button class="btn ghost sm" id="multiCancel">Annulla</button><button class="btn sm" id="multiAdd">Aggiungi attività</button></div>
     <button class="fab" id="fab" aria-label="Aggiungi attività">+</button>
   </section>
 
@@ -287,17 +299,24 @@ details.extra summary{color:color-mix(in srgb,var(--sez) 80%,var(--ink))}
     <div class="monthbar"><button class="ib" id="rPrev">‹</button><h2 id="rieTitle"></h2><div class="seg" id="rieSeg"><button data-m="mese">Mese</button><button data-m="anno">Anno</button></div><button class="ib" id="rNext">›</button></div>
     <div id="rieTot"></div>
     <div class="cards" id="rieCards"></div>
+    <div class="subnav">
+      <button data-goto="doc"><span class="ico"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg></span><span class="tx"><b>Documenti</b><small>Ricevute, note km, PDF e invio</small></span><span class="chev">›</span></button>
+      <button data-goto="tas"><span class="ico"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M9 17l6-6"/><circle cx="9.5" cy="11.5" r=".9"/><circle cx="14.5" cy="16.5" r=".9"/></svg></span><span class="tx"><b>Tasse</b><small>Quanto mettere da parte, CU, soglie</small></span><span class="chev">›</span></button>
+    </div>
     <div id="rieAnno"></div>
   </section>
 
   <section id="v-doc" hidden>
+    <button class="back" data-goto="rie">‹ Riepilogo</button>
     <div class="monthbar"><button class="ib" id="dPrev">‹</button><h2 id="docTitle"></h2><button class="ib" id="dNext">›</button></div>
     <div class="cards" id="docList"></div>
   </section>
 
   <section id="v-tas" hidden>
+    <button class="back" data-goto="rie">‹ Riepilogo</button>
     <div class="monthbar"><button class="ib" id="tPrev" aria-label="Anno prima">‹</button><h2 id="tasTitle"></h2><button class="ib" id="tNext" aria-label="Anno dopo">›</button></div>
     <div class="cards" id="tasList"></div>
+    <div class="card" style="margin-top:12px"><h3>Soglie annue</h3><p class="muted sm" style="margin-top:0">Limiti da tenere d’occhio (€ lordi). Verificali con il commercialista.</p><div id="soglieEd" class="g2"></div></div>
   </section>
 
   <section id="v-pro" hidden>
@@ -321,12 +340,11 @@ details.extra summary{color:color-mix(in srgb,var(--sez) 80%,var(--ink))}
         </div>
         <div class="card"><h3>La tua firma</h3><p class="muted sm">Firma qui con il dito: la metto sulle ricevute PDF.</p><canvas id="firmaCanvas" class="firma"></canvas>
           <div class="acts"><button class="btn ghost sm" id="firmaClr">Cancella</button><button class="btn sm" id="firmaSave">Salva firma</button><button class="btn ghost sm" id="firmaRm">Togli firma salvata</button></div><div id="firmaPrev" class="firmaprev"></div></div>
-        <div class="card"><h3>Impostazioni</h3><div class="stack">
-          <label>Aspetto<select id="tema"><option value="auto">Come il telefono</option><option value="light">Chiaro</option><option value="dark">Scuro</option></select></label>
-          <label class="check"><input type="checkbox" id="promem"> Promemoria per le attività da confermare</label>
+        <div class="card"><h3>Aspetto</h3><label>Tema<select id="tema"><option value="auto">Come il telefono</option><option value="light">Chiaro</option><option value="dark">Scuro</option></select></label></div>
+        <div class="card"><h3>Promemoria</h3><div class="stack">
+          <label class="check"><input type="checkbox" id="promem"> Avvisami delle attività da confermare</label>
           <div class="g2"><label>Alle ore<select id="oraProm"><option value="17:00">17:00</option><option value="17:30">17:30</option><option value="18:00">18:00</option><option value="18:30">18:30</option><option value="19:00">19:00</option><option value="19:30">19:30</option><option value="20:00">20:00</option><option value="20:30">20:30</option><option value="21:00">21:00</option><option value="21:30">21:30</option><option value="22:00">22:00</option><option value="22:30">22:30</option><option value="23:00">23:00</option><option value="23:30">23:30</option></select></label><div style="align-self:end"><button class="btn ghost sm" id="icsBtn">Aggiungi al calendario del telefono</button></div></div>
-          <p class="muted sm" style="margin:0">Il file del calendario mette un promemoria per ogni attività prevista: funziona anche ad app chiusa.</p>
-          <p class="muted sm" style="margin:0">Soglie annue da tenere d’occhio (€ lordi):</p><div id="soglieEd" class="g2"></div></div></div>
+          <p class="muted sm" style="margin:0">Il file del calendario mette un promemoria per ogni attività prevista: funziona anche ad app chiusa.</p></div></div>
         <div class="card"><h3>Blocco dell’app</h3><div id="sicBox"></div></div>
         <div class="card"><h3>Cestino</h3><p class="muted sm" style="margin-top:0">Le attività e i progetti eliminati restano qui 30 giorni.</p><div id="cestBox"></div></div>
         <div class="card"><h3>Storico modifiche</h3><div id="storBox" class="storbox"></div></div>
@@ -455,6 +473,18 @@ details.extra summary{color:color-mix(in srgb,var(--sez) 80%,var(--ink))}
   <input type="password" inputmode="numeric" id="lockPin" placeholder="PIN" aria-label="PIN" autocomplete="off"><div class="lockerr" id="lockErr"></div>
   <button class="btn" id="lockOk">Sblocca</button><button class="btn ghost" id="lockBio" hidden>Usa impronta o volto</button><button class="btn ghost sm" id="lockForgot">Ho dimenticato il PIN</button></div></div>
 <div class="zoom" id="zoom" hidden><img id="zoomImg" alt="Scontrino"></div>
+<div class="modal" id="dayModal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="dayTitle">
+  <div class="sheethead"><h2 id="dayTitle"></h2><button class="x" id="dayClose" aria-label="Chiudi">×</button></div>
+  <div id="daySum" class="daysum"></div>
+  <div id="dayBox"><div id="dayList"></div></div>
+  <div class="foot"><button class="btn" id="dayAdd">+ Aggiungi attività</button></div></div></div>
+<div class="modal" id="listModal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-label="Attività">
+  <div class="sheethead" id="listaHead"><h2 id="listaTit">Attività del mese</h2><span class="badge" id="listaN">0</span><button class="x" id="listClose" aria-label="Chiudi">×</button></div>
+  <input id="cerca" type="search" placeholder="Cerca in tutte le attività…" aria-label="Cerca"><div id="lista"></div></div></div>
+<div class="modal" id="confModal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-label="Da confermare">
+  <div class="sheethead"><h2>Da confermare</h2><button class="x" id="confClose" aria-label="Chiudi">×</button></div>
+  <div id="confBox"><p class="muted sm">Attività ripetute già passate: le hai fatte?</p><div id="confList"></div></div>
+  <div class="foot"><button class="btn" id="confAll">Tutte fatte</button></div></div></div>
 <div class="toast" id="toast"></div>
 <div class="busyov" id="busy" hidden><div id="busyMsg">Attendi…</div></div>
 <script src="lib/jszip.min.js"></script>
@@ -466,5 +496,6 @@ details.extra summary{color:color-mix(in srgb,var(--sez) 80%,var(--ink))}
 <script src="app.js"></script>
 <script src="plus.js"></script>
 <script src="tasse.js"></script>
+<script src="ui.js"></script>
 </body>
 </html>
