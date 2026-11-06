@@ -118,5 +118,52 @@
     return { mese, lordo, trattenute, netto: netto != null ? netto : (lordo != null && trattenute != null ? Math.round((lordo - trattenute) * 100) / 100 : null), ferie: ferieV, unita, rol: sr.v, exfest: sx.v, unitaPermessi: sr.unita || sx.unita || 'ore', testo };
   }
 
-  g.Buste={testoBusta,analizzaBusta};
+  // ---------- v16: testo di un documento qualsiasi (contratto o busta) diviso in righe ----------
+  async function testoDocumento(file,prog,maxPag=40){
+    const isPdf=/pdf/i.test(file.type)||/\.pdf$/i.test(file.name);
+    let pezzi;
+    if(isPdf){
+      prog&&prog(0.1,'Apro il PDF…');
+      const lib=await pdfJs(),doc=await lib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;pezzi=[];
+      for(let n=1;n<=Math.min(doc.numPages,maxPag);n++){const pag=await doc.getPage(n),vp=pag.getViewport({scale:1}),tc=await pag.getTextContent();
+        prog&&prog(0.1+0.6*n/Math.min(doc.numPages,maxPag),'Leggo la pagina '+n+'…');
+        tc.items.forEach(it=>{if(!it.str||!it.str.trim())return;const hh=Math.abs(it.transform[3])||8;pezzi.push({t:it.str,x0:it.transform[4],x1:it.transform[4]+(it.width||0),y0:vp.height-it.transform[5]-hh+(n-1)*10000,y1:vp.height-it.transform[5]+(n-1)*10000});});}
+      if(pezzi.length<15)pezzi=await testoBusta(file,prog); // scansione: OCR delle prime pagine
+    } else pezzi=await testoBusta(file,prog);
+    const hs=pezzi.map(p=>p.y1-p.y0).sort((a,b)=>a-b),H=hs[Math.floor(hs.length/2)]||10;const righe=[];
+    pezzi.map(p=>Object.assign({yc:(p.y0+p.y1)/2},p)).sort((a,b)=>a.yc-b.yc).forEach(p=>{const r=righe.find(r=>Math.abs(r.yc-p.yc)<H*0.55);if(r)r.el.push(p);else righe.push({yc:p.yc,el:[p]});});
+    return righe.map(r=>r.el.sort((a,b)=>a.x0-b.x0).map(p=>p.t).join(' ').replace(/\s+/g,' ').trim()).filter(Boolean);
+  }
+  // numeri all'italiana: 1.680,00 · 1680,5 · 25
+  const numIt=t=>{t=String(t).replace(/[€\s]/g,'');if(!/^\d{1,3}(\.\d{3})*(,\d{1,4})?$|^\d+([.,]\d{1,4})?$/.test(t))return null;
+    if(/,\d+$/.test(t))t=t.replace(/\./g,'').replace(',','.');else if(/^\d{1,3}(\.\d{3})+$/.test(t))t=t.replace(/\./g,'');return parseFloat(t);};
+  const numeriIn=s=>(s.match(/\d{1,3}(?:\.\d{3})*(?:,\d{1,4})?|\d+(?:[.,]\d{1,4})?/g)||[]).map(numIt).filter(v=>v!=null);
+  /** Valori utili per impostare un lavoro, trovati nel testo di un contratto o di una busta paga.
+   *  Restituisce {chiave:{v, testo}} con il pezzo di testo da cui viene il valore (da mostrare all'utente). */
+  function suggerisci(righe){
+    const N=s=>String(s).toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+    // anche frasi lunghe dei contratti: unisco le righe e divido per frase
+    const frasi=[...righe.join(' ').replace(/\s+/g,' ').split(/(?<=[a-zà-ù0-9%)][.;])\s+(?=[A-ZÀ-Ú])/),...righe].map(x=>x.trim()).filter(Boolean); // frasi intere (testi a capo) e righe (tabelle)
+    const out={};const metti=(k,v,t)=>{if(v==null||out[k])return;out[k]={v,testo:t.length>160?t.slice(0,157)+'…':t};};
+    const NO=/INPS|IRPEF|CONTRIBUT|ADDIZIONAL|RITENUT|IMPOSTA|DETRAZ|TFR|FONDO|ALIQUOT/;
+    const perc=(re,k,escludi)=>{for(const f of frasi){const u=N(f);if(!re.test(u)||NO.test(u)||(escludi&&escludi.test(u)))continue;const m=f.match(/(\d{1,3}(?:[.,]\d{1,2})?)\s*%/);if(m){const v=numIt(m[1]);if(v>0&&v<=200){metti(k,v,f);return;}}}};
+    perc(/STRAORDINAR/,'stra');perc(/NOTTURN/,'nott');perc(/FESTIV/,'fest',/EX[\s.\-]*FEST|SOPPRESS|NON GODUT/);perc(/DOMENIC/,'dom');
+    // busta paga: paga base e voci fisse del mese, paga oraria, divisore
+    const ultimo=(re)=>{for(const r of righe){const u=N(r);if(re.test(u)){const n=numeriIn(r.replace(/\d{1,3}(?:[.,]\d{1,2})?\s*%/g,''));if(n.length)return {v:n[n.length-1],t:r};}}return null;};
+    const tot=ultimo(/^(TOT(ALE|\.)? ?)?(RETRIBUZIONE (MENSILE|CONTRATTUALE|LORDA MENSILE)|ELEMENTI (FISSI|RETRIBUTIVI))\b/);
+    if(tot&&tot.v>100)metti('pagaMensile',tot.v,tot.t);
+    else{let somma=0,testo=[];for(const re of [/^PAGA BASE|^RETRIBUZIONE BASE|^STIPENDIO BASE|^MINIMO (TABELLARE|CONTRATTUALE|CONGLOBATO)/,/^CONTINGENZA/,/^SUPERMINIMO/,/^SCATTI/,/^E\.?D\.?R\.?\b|ELEMENTO DISTINTO/,/^TERZO ELEMENTO/]){const x=ultimo(re);if(x&&x.v>0&&x.v<10000){somma+=x.v;testo.push(x.t);}}
+      if(somma>100)metti('pagaMensile',Math.round(somma*100)/100,testo.join(' · '));}
+    const or=ultimo(/(PAGA|RETRIBUZIONE|QUOTA) ORARIA/);if(or&&or.v>0&&or.v<200)metti('pagaOraria',or.v,or.t);
+    const dv=ultimo(/DIVISORE/);if(dv&&dv.v>=20&&dv.v<=200)metti('divisore',dv.v,dv.t);
+    // contratto: ferie, permessi, nome del CCNL
+    for(const f of frasi){const u=N(f);
+      if(!out.ferieGiorni&&/FERIE/.test(u)){const m=u.match(/(\d{1,2})\s*GIORNI[^.]{0,40}FERIE|FERIE[^.]{0,80}?(\d{1,3})\s*(GIORNI|GG)/);if(m)metti('ferieGiorni',+(m[1]||m[2]),f);
+        else{const o=u.match(/FERIE[^.]{0,80}?(\d{2,3})\s*ORE/);if(o)metti('ferieOre',+o[1],f);}}
+      if(!out.rolOre&&/PERMESS|R\.?O\.?L|RIDUZIONE (DELL')?ORARIO/.test(u)){const m=u.match(/(\d{1,3})\s*ORE[^;]{0,80}(PERMESS|R\.?O\.?L|RIDUZIONE)|(PERMESS|R\.?O\.?L|RIDUZIONE)[^;]{0,80}?(\d{1,3})\s*ORE/);if(m&&+(m[1]||m[4])>=4)metti('rolOre',+(m[1]||m[4]),f);}
+      if(!out.ccnl){const m=f.match(/C\.?\s?C\.?\s?N\.?\s?L\.?\s*(?:PER\s+(?:I\s+)?(?:DIPENDENTI\s+)?(?:DA\s+)?|DEL\s+|DEI\s+)?([A-Za-zÀ-ÿ'][A-Za-zÀ-ÿ'\s\-,]{3,70})/i);if(m)metti('ccnl',m[1].replace(/\s+/g,' ').trim().replace(/[,\-\s]+$/,''),f);}
+    }
+    return out;
+  }
+  g.Buste={testoBusta,analizzaBusta,testoDocumento,suggerisci};
 })(typeof window!=='undefined'?window:globalThis);

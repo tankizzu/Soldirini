@@ -281,6 +281,16 @@ nav.tabs button{display:flex;align-items:center;justify-content:center;gap:6px}
 input.manca{border-color:var(--err)}
 .bpbar{height:8px;border-radius:8px;background:var(--line);overflow:hidden;margin:12px 0 6px}.bpbar span{display:block;height:100%;width:0;background:var(--pri);transition:width .3s}
 .bay{margin:16px 0 4px}.bai{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px dashed var(--line)}.bai .tx{flex:1;display:flex;flex-direction:column;min-width:0}.bai small{color:var(--mut)}
+/* v16 */
+.sez{margin-bottom:10px}.sez>summary .sum{font-weight:600;color:var(--mut);font-size:13px}
+.spsub{margin-top:10px;padding-top:8px;border-top:1px dashed var(--line)}
+.docv{align-items:flex-start}.docv input,.check input{flex:none}.docv span{display:flex;flex-direction:column;gap:2px;font-weight:600}.docv small{font-weight:400}
+.pchip.add{font-weight:800;min-width:40px;justify-content:center}
+.tsel{display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--line);border-radius:10px}.tsel b{flex:1}
+.tpick{border:1px solid var(--line);border-radius:12px;padding:8px;margin-top:8px}.tpr{display:flex;gap:6px;align-items:center;padding:4px 0}.tpr .nm{flex:1;min-width:0}.tpr input{padding:6px 8px}
+.sprow{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px dashed var(--line)}.sprow .tx{flex:1;min-width:0;display:flex;flex-direction:column}.sprow small{color:var(--mut)}
+.spcats{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+#v-pro .stack>details.fold{margin-bottom:0}
 </style>
 </head>
 <body>
@@ -344,10 +354,10 @@ input.manca{border-color:var(--err)}
   <section id="v-pro" hidden>
     <div class="two">
       <div class="stack">
-        <div class="monthbar"><h2>Progetti</h2><button class="btn sm" id="projNew">+ Nuovo progetto</button></div>
-        <div id="projList"></div>
-        <div class="monthbar"><h2>Lavoro dipendente</h2><button class="btn sm" id="lavNew">+ Nuovo lavoro</button></div>
-        <div id="lavList"></div>
+        <details class="card fold" id="foldLav"><summary><span class="st">💼 Lavoro dipendente</span><span class="sum" id="foldLavSum"></span></summary><div class="fbody">
+          <div id="lavList"></div><div class="acts"><button class="btn sm" id="lavNew">+ Nuovo lavoro</button></div></div></details>
+        <details class="card fold" id="foldProj"><summary><span class="st">📁 Progetti</span><span class="sum" id="foldProjSum"></span></summary><div class="fbody">
+          <div id="projList"></div><div class="acts"><button class="btn sm" id="projNew">+ Nuovo progetto</button></div></div></details>
         <div class="card" id="stfBox" hidden><h3>Dati di Strafobico</h3><p class="muted sm">Su questo telefono c’è Strafobico con turni e buste paga. Puoi copiarli qui come nuovo lavoro (Strafobico non viene toccato).</p><button class="btn" id="stfBtn">Importa da Strafobico</button></div>
         <div class="card" id="importBox" hidden><h3>Dati della vecchia app Rimborsi</h3><p class="muted sm">Su questo dispositivo ci sono le trasferte della app Rimborsi Km. Le porto in Soldirini nel progetto Bulldogs.</p><button class="btn" id="importBtn">Importa trasferte</button></div>
       </div>
@@ -386,20 +396,32 @@ input.manca{border-color:var(--err)}
     <p class="muted sm" id="evSub"></p>
     <label id="evDateRow">Giorno<input type="date" id="evDate"></label>
     <div class="note" id="evStatoBox" hidden><label class="check"><input type="checkbox" id="evFatta"> Fatta (la confermo)</label></div>
+    <p class="muted sm" style="margin:0 0 6px">Apri le sezioni che ti servono: si salvano solo quelle aperte.</p>
+    <details class="card fold sez" id="secLav"><summary><span class="st">💼 Lavoro dipendente</span><span class="sum" id="secLavSum"></span></summary><div class="fbody" id="evLav"></div></details>
+    <details class="card fold sez" id="secProg"><summary><span class="st">📁 Progetti</span><span class="sum" id="secProgSum"></span></summary><div class="fbody">
+    <div id="evProgNo" hidden><p class="muted sm">Non hai ancora progetti (squadre, collaborazioni…).</p><button type="button" class="btn sm" id="evProgNew">+ Nuovo progetto</button></div>
+    <div id="evProgBody">
     <div class="blk"><label>Progetto</label><div class="row" id="evProj"></div></div>
     <div class="blk"><label>Tipo</label>
       <div class="row" id="evTipo"><button type="button" class="pchip" data-t="allenamento">Allenamento</button><button type="button" class="pchip" data-t="partita">Partita</button><button type="button" class="pchip" data-t="amichevole">Amichevole</button><button type="button" class="pchip" data-t="lavoro">Lavoro</button><button type="button" class="pchip" data-t="altro">Altro</button></div>
       <label style="margin-top:8px"><span id="evTitoloL">Descrizione</span><input id="evTitolo"></label>
+      <label class="check sm" style="margin-top:6px"><input type="checkbox" id="evTurniOn"> Turni (orari già impostati)</label>
+      <div id="evTurniBox" class="sub" hidden><div id="evTurniSel" class="stack"></div><button type="button" class="btn ghost sm" id="evTurniPiu">+ Turno</button><div id="evTurniPick" hidden></div></div>
     </div>
     <div class="blk" id="evRipBox"><label class="check"><input type="checkbox" id="evRip"> Si ripete ogni settimana</label>
-      <div class="sub" id="evRipOpt" hidden><div class="row" id="evRipGiorni"></div><label>Fino al<input type="date" id="evRipFino"></label><p class="muted sm">Le date future restano “previste”: quando passano, confermi con un tocco se l’hai fatta.</p></div></div>
+      <div class="sub" id="evRipOpt" hidden><div class="row" id="evRipGiorni"></div><div class="g2"><label>Dal<input type="date" id="evRipDal"></label><label>Durata<select id="evRipDur"><option value="data">fino a una data</option><option value="mesi">numero di mesi</option></select></label><label id="evRipMesiL" hidden>Mesi<input type="number" inputmode="numeric" min="1" id="evRipMesi" value="12"></label><label id="evRipFinoL">Fino al<input type="date" id="evRipFino"></label></div><p class="muted sm">Le date future restano “previste”: quando passano, confermi con un tocco. Se il contratto è iniziato prima di oggi, le date passate vengono segnate come fatte.</p></div></div>
     <div class="blk">
-      <label class="check"><input type="checkbox" id="evRimb"> Rimborso km</label>
+      <label class="check"><input type="checkbox" id="evRimb"> Rimborsi spesa (km e scontrini)</label>
       <div class="sub" id="evRimbBox">
         <label>Luogo<select id="evLuogo"></select></label>
         <label id="evNewLuogo" hidden>Nome del nuovo luogo<input id="evNewLuogoN" placeholder="es. Palestra Formello"></label>
         <label><span id="evOrig">Km andata e ritorno</span><input id="evKm" inputmode="decimal"></label>
         <div><button type="button" class="btn ghost sm" id="evCalcKm">Calcola km con la mappa</button></div>
+
+    <div class="spsub"><label>Spese con scontrino</label><div id="evSpese" class="stack"></div>
+      <div class="sub"><div class="g2"><label>Tipo<select id="spTipo"><option value="parcheggio">Parcheggio</option><option value="pedaggio">Pedaggio</option><option value="pasto">Pasto</option><option value="pernottamento">Pernottamento</option><option value="altro">Altro</option></select></label><label>Importo €<input id="spImp" inputmode="decimal"></label><label class="s2">Nota<input id="spNota" placeholder="facoltativa"></label></div>
+      <div class="row"><label class="btn ghost sm filebtn"><span id="spFotoLab">📷 Foto scontrino</span><input type="file" id="spFoto" accept="image/*" capture="environment" hidden></label><button type="button" class="btn sm" id="spAdd">+ Aggiungi spesa</button></div></div>
+      <div class="calc" id="evSpeseTot"></div></div>
       </div>
     </div>
     <div class="blk">
@@ -416,11 +438,9 @@ input.manca{border-color:var(--err)}
         <div class="calc" id="evCalc"></div>
       </div>
     </div>
-    <div class="blk"><label>Spese con scontrino</label><div id="evSpese" class="stack"></div>
-      <div class="sub"><div class="g2"><label>Tipo<select id="spTipo"><option value="parcheggio">Parcheggio</option><option value="pedaggio">Pedaggio</option><option value="pasto">Pasto</option><option value="pernottamento">Pernottamento</option><option value="altro">Altro</option></select></label><label>Importo €<input id="spImp" inputmode="decimal"></label><label class="s2">Nota<input id="spNota" placeholder="facoltativa"></label></div>
-      <div class="row"><label class="btn ghost sm filebtn"><span id="spFotoLab">📷 Foto scontrino</span><input type="file" id="spFoto" accept="image/*" capture="environment" hidden></label><button type="button" class="btn sm" id="spAdd">+ Aggiungi spesa</button></div></div>
-      <div class="calc" id="evSpeseTot"></div></div>
     <div class="blk"><label>Note<input id="evNote" placeholder="facoltative"></label></div>
+    </div></div></details>
+    <details class="card fold sez" id="secSpese"><summary><span class="st">🛒 Spese del giorno</span><span class="sum" id="secSpeseSum"></span></summary><div class="fbody" id="evSpP"></div></details>
     <div class="foot"><button class="btn danger" id="evDel">Elimina</button><button class="btn ghost" id="evDup">Copia</button><button class="btn" id="evSave">Salva</button></div>
   </div>
 </div>
@@ -437,7 +457,7 @@ input.manca{border-color:var(--err)}
     <div class="blk"><label>Colore</label><div class="row" id="pjColori"></div></div>
     <div class="blk"><label>Cartella su Drive</label><div id="pjDove"></div></div>
     <div class="blk">
-      <label class="check"><input type="checkbox" id="pjRimb"> Rimborso spese km (ricevuta a piè di lista + nota)</label>
+      <label class="check"><input type="checkbox" id="pjRimb"> Rimborsi spesa: km e scontrini (ricevuta a piè di lista + nota)</label>
       <div class="sub" id="pjRimbBox">
         <div class="g2">
           <label>Parto da<input id="pjR-origine" placeholder="es. il tuo comune"></label>
@@ -488,24 +508,29 @@ input.manca{border-color:var(--err)}
   <div class="stack">
     <div class="g2"><label class="s2">Nome (es. il datore di lavoro)<input id="lvNome"></label></div>
     <div class="row"><label class="check"><input type="radio" name="lvModo" value="fisso"> Orario fisso</label><label class="check"><input type="radio" name="lvModo" value="turni"> A turni</label><label style="width:64px">Colore<input type="color" id="lvColore"></label></div>
-    <div class="card"><h3>Paga</h3><div class="g2"><label>Tipo<select id="lvPagaTipo"><option value="mensile">Mensile (lorda)</option><option value="oraria">Oraria (lorda)</option></select></label><label>Importo lordo €<input id="lvPaga" type="number" inputmode="decimal" step="0.01" placeholder="vuoto = solo ore"></label>
+    <details class="card fold" id="lvDocBox"><summary><span class="st">📄 Compila dai documenti</span></summary><div class="fbody">
+      <p class="muted sm" style="margin-top:0">Carica il contratto o una busta paga (PDF o foto): cerco paga, maggiorazioni, ferie e permessi e te li propongo. Controlli tu prima di applicarli.</p>
+      <div class="acts"><label class="btn sm filebtn">Busta paga<input type="file" id="lvDocBusta" accept="application/pdf,image/*" hidden></label><label class="btn ghost sm filebtn">Contratto<input type="file" id="lvDocContr" accept="application/pdf,image/*" hidden></label></div>
+      <div id="lvDocProg" hidden><div class="bpbar"><span id="lvDocBar"></span></div><p class="muted sm" id="lvDocFase"></p></div>
+      <div id="lvDocRis"></div><p class="muted sm" id="lvDocFile"></p></div></details>
+    <details class="card fold" id="lvPagaBox" open><summary><span class="st">💶 Paga</span><span class="sum" id="lvPagaSum"></span></summary><div class="fbody"><div class="g2"><label>Tipo<select id="lvPagaTipo"><option value="mensile">Mensile (lorda)</option><option value="oraria">Oraria (lorda)</option></select></label><label>Importo lordo €<input id="lvPaga" type="number" inputmode="decimal" step="0.01" placeholder="vuoto = solo ore"></label>
       <label class="s2" id="lvDivBox">Ore al mese per la paga oraria (divisore del contratto)<input id="lvDiv" type="number" inputmode="numeric" placeholder="168"></label></div>
-      <p class="muted sm">Lo trovi in busta paga o nel contratto. Se lo lasci vuoto, Soldirini conta solo le ore.</p></div>
-    <div class="card" id="lvFissoBox"><h3>Orario settimanale</h3><p class="muted sm" style="margin-top:0">Il mese si riempie da solo con questo orario: nel calendario segni solo le eccezioni.</p>
+      <p class="muted sm">Lo trovi in busta paga o nel contratto. Se lo lasci vuoto, Soldirini conta solo le ore.</p></div></details>
+    <details class="card fold" id="lvFissoBox" open><summary><span class="st">🗓️ Orario settimanale</span></summary><div class="fbody"><p class="muted sm" style="margin-top:0">Il mese si riempie da solo con questo orario: nel calendario segni solo le eccezioni.</p>
       <div id="lvSett"></div><div class="acts"><button type="button" class="btn ghost sm" id="lvCopia">Copia il lunedì su mar–ven</button></div>
-      <label>Dal giorno (inizio del conteggio)<input type="date" id="lvDal"></label></div>
-    <div class="card" id="lvTurniBox"><h3>Straordinario</h3><label>Ore al mese oltre le quali è straordinario<input id="lvOreMese" type="number" inputmode="decimal" placeholder="vuoto = nessuno straordinario automatico"></label></div>
-    <div class="card"><h3 id="lvTipiTit">Tipi di turno</h3><div id="lvTipi"></div><button type="button" class="btn ghost sm" id="lvTipiAdd">+ Aggiungi tipo</button></div>
-    <div class="card"><h3>Maggiorazioni (%)</h3><p class="muted sm" style="margin-top:0">Lasciale vuote se non le conosci: le trovi nel contratto o in busta paga. Vuote = ore pagate come normali.</p>
+      <label>Dal giorno (inizio del conteggio)<input type="date" id="lvDal"></label></div></details>
+    <details class="card fold" id="lvTurniBox"><summary><span class="st">⏱️ Straordinario</span></summary><div class="fbody"><label>Ore al mese oltre le quali è straordinario<input id="lvOreMese" type="number" inputmode="decimal" placeholder="vuoto = nessuno straordinario automatico"></label></div></details>
+    <details class="card fold"><summary><span class="st" id="lvTipiTit">Tipi di turno</span></summary><div class="fbody"><div id="lvTipi"></div><button type="button" class="btn ghost sm" id="lvTipiAdd">+ Aggiungi tipo</button></div></details>
+    <details class="card fold"><summary><span class="st">📈 Maggiorazioni (%)</span></summary><div class="fbody"><p class="muted sm" style="margin-top:0">Lasciale vuote se non le conosci: le trovi nel contratto o in busta paga. Vuote = ore pagate come normali.</p>
       <div class="g2"><label>Straordinario<input id="lvM-stra" type="number" inputmode="decimal"></label><label>Notturno<input id="lvM-nott" type="number" inputmode="decimal"></label>
       <label>Festivo<input id="lvM-fest" type="number" inputmode="decimal"></label><label>Domenica<input id="lvM-dom" type="number" inputmode="decimal"></label>
       <label>Notte dalle<input type="time" id="lvNottDa"></label><label>alle<input type="time" id="lvNottA"></label>
-      <label class="s2">Feste locali (es. santo patrono 29/06)<input id="lvLocali" placeholder="gg/mm, gg/mm"></label></div></div>
-    <div class="card"><h3>Ferie e permessi</h3><div class="g2"><label>Ferie in<select id="lvFerieU"><option value="giorni">giorni</option><option value="ore">ore</option></select></label><label>Ferie all’anno<input id="lvFerieA" type="number" inputmode="decimal"></label>
+      <label class="s2">Feste locali (es. santo patrono 29/06)<input id="lvLocali" placeholder="gg/mm, gg/mm"></label></div></div></details>
+    <details class="card fold"><summary><span class="st">🏖️ Ferie e permessi</span></summary><div class="fbody"><div class="g2"><label>Ferie in<select id="lvFerieU"><option value="giorni">giorni</option><option value="ore">ore</option></select></label><label>Ferie all’anno<input id="lvFerieA" type="number" inputmode="decimal"></label>
       <label>Ferie residue anno prima<input id="lvFerieR" type="number" inputmode="decimal"></label><label>Permessi in<select id="lvPermU"><option value="ore">ore</option><option value="giorni">giorni</option></select></label>
-      <label class="s2">Permessi (ROL) all’anno<input id="lvPermA" type="number" inputmode="decimal"></label></div><p class="muted sm">Quando carichi una busta paga, i saldi si prendono da lì.</p></div>
-    <div class="card"><h3>Netto e contratto</h3><label>Trattenute % (facoltativo)<input id="lvTratt" type="number" inputmode="decimal" placeholder="vuoto = le calcolo dalle buste paga"></label>
-      <label>Contratto (facoltativo)<input id="lvContratto" placeholder="es. Commercio, livello 4"></label></div>
+      <label class="s2">Permessi (ROL) all’anno<input id="lvPermA" type="number" inputmode="decimal"></label></div><p class="muted sm">Quando carichi una busta paga, i saldi si prendono da lì.</p></div></details>
+    <details class="card fold"><summary><span class="st">🧾 Netto e contratto</span></summary><div class="fbody"><label>Trattenute % (facoltativo)<input id="lvTratt" type="number" inputmode="decimal" placeholder="vuoto = le calcolo dalle buste paga"></label>
+      <label>Contratto (facoltativo)<input id="lvContratto" placeholder="es. Commercio, livello 4"></label><p class="muted sm" id="lvContrFile"></p></div></details>
   </div>
   <div class="foot"><button class="btn ghost" id="lvDel">Elimina</button><button class="btn" id="lvSave">Salva lavoro</button></div></div></div>
 <div class="modal" id="tuModal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="tuTitle">
@@ -577,5 +602,6 @@ input.manca{border-color:var(--err)}
 <script src="stipcalc.js"></script>
 <script src="buste.js"></script>
 <script src="stipendio.js"></script>
+<script src="attivita.js"></script>
 </body>
 </html>

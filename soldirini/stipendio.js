@@ -72,6 +72,8 @@ function apriLavoro(l,isNew){
   $('lvNottDa').value=x.nott?.da||'';$('lvNottA').value=x.nott?.a||'';
   $('lvLocali').value=x.locali||'';$('lvFerieU').value=x.ferie.unita;$('lvFerieA').value=x.ferie.anno;$('lvFerieR').value=x.ferie.residuo;
   $('lvPermU').value=x.perm.unita;$('lvPermA').value=x.perm.anno;$('lvTratt').value=x.tratt;$('lvContratto').value=x.contratto||'';
+  docRis=null;lv.pendBusta=null;lv.pendContr=null;$('lvDocRis').innerHTML='';$('lvDocProg').hidden=true;$('lvDocBox').open=!!isNew;
+  $('lvContrFile').innerHTML=x.contrattoFile?(x.contrattoFile.file?.link?`Contratto su Drive: <a href="${esc(x.contrattoFile.file.link)}" target="_blank" rel="noopener">${esc(x.contrattoFile.nome)} ↗</a>`:`Contratto “${esc(x.contrattoFile.nome)}” da caricare su Drive`):'';
   renderSett();renderTipi();aggiornaModo();apri('lvModal');
 }
 function aggiornaModo(){const m=document.querySelector('[name=lvModo]:checked')?.value||lv.l.modo;lv.l.modo=m;
@@ -106,6 +108,7 @@ function salvaLavoro(){
   const x=leggiLavoro();if(!x.nome){toast('Scrivi il nome del lavoro (es. il datore di lavoro).','err');$('lvNome').focus();return;}
   if(x.modo==='fisso'&&!Object.keys(x.settimana).length){toast('Scrivi l’orario di almeno un giorno della settimana.','err');return;}
   x.updatedAt=Date.now();LAV()[x.id]=x;changed();chiudi('lvModal');render();toast('Lavoro salvato.');
+  salvaDocInAttesa(x.id).catch(e=>toast(errMsg(e),'err'));
 }
 async function eliminaLavoro(){
   if(!await conferma(`Eliminare “${lv.l.nome}”? Spariscono anche i suoi turni e le buste dall’app (i file su Drive restano).`,'Elimina','danger'))return;
@@ -234,7 +237,15 @@ async function caricaSuDrive(key){
   else r=await uploadNew({name,parents:[parent]},f.blob,f.tipo||'application/pdf');
   b.file={id:r.id,link:r.webViewLink,name};b.daCaricare=false;b.updatedAt=Date.now();await fset(key,undefined);changed();return true;
 }
+async function caricaContratto(lid){
+  const x=LAV()[lid];const f=await fget('contr|'+lid);if(!x||!f)return false;const dr=x.drive=x.drive||{};
+  await cartellaBuste(x,new Date().getFullYear()); // crea la cartella del lavoro se manca
+  if(!(dr.contratto?.id&&await exists(dr.contratto.id))){const c=await createFolder('Contratto',dr.cartella.id,{soldirini:'contratto'});dr.contratto={id:c.id,link:c.webViewLink};}
+  const r=await uploadNew({name:f.nome,parents:[dr.contratto.id]},f.blob,f.tipo||'application/pdf');
+  x.contrattoFile={nome:f.nome,file:{id:r.id,link:r.webViewLink},daCaricare:false};x.updatedAt=Date.now();await fset('contr|'+lid,undefined);changed();return true;
+}
 async function caricaPendenti(silenzioso){
+  for(const l of lavori())if(l.contrattoFile?.daCaricare&&DB.meta.account&&navigator.onLine){try{await caricaContratto(l.id);}catch(e){console.warn(e);}}
   const keys=Object.keys(BUS()).filter(k=>BUS()[k].daCaricare&&!BUS()[k].deleted);if(!keys.length){if(!silenzioso)toast('Tutte le buste sono già su Drive.');return 0;}
   if(!DB.meta.account||!navigator.onLine){if(!silenzioso)toast('Serve la connessione e l’accesso con Google.','err');return 0;}
   let n=0;if(!silenzioso)busy(true,'Salvo le buste su Drive…');
@@ -333,6 +344,61 @@ async function importaStrafobico(){
   apriLavoro(l,false);
 }
 
+// ================= v16: compila il lavoro dai documenti (contratto o busta) =================
+let docRis=null;
+const DOC_VOCI={pagaMensile:['Paga mensile lorda','€'],pagaOraria:['Paga oraria lorda','€'],divisore:['Divisore orario',''],stra:['Straordinario','%'],nott:['Notturno','%'],fest:['Festivi','%'],dom:['Domenica','%'],
+  ferieGiorni:['Ferie all’anno','giorni'],ferieOre:['Ferie all’anno','ore'],rolOre:['Permessi (ROL) all’anno','ore'],ccnl:['Contratto','']};
+async function leggiDoc(file,tipo){
+  $('lvDocProg').hidden=false;$('lvDocRis').innerHTML='';
+  const prog=(p,t)=>{$('lvDocBar').style.width=Math.round(p*100)+'%';if(t)$('lvDocFase').textContent=t;};
+  try{
+    let righe,bres=null;
+    if(tipo==='busta'){const pezzi=await Buste.testoBusta(file,prog);bres=Buste.analizzaBusta(pezzi);righe=(bres.testo||'').split('\n');}
+    else righe=await Buste.testoDocumento(file,prog);
+    prog(.97,'Cerco i valori…');docRis={tipo,file,S:Buste.suggerisci(righe),bres};
+  }catch(e){docRis={tipo,file,S:{},bres:null,err:errMsg(e)};}
+  $('lvDocProg').hidden=true;renderDocRis();
+}
+function renderDocRis(){
+  const R=docRis;if(!R){$('lvDocRis').innerHTML='';return;}const S=R.S;const keys=Object.keys(DOC_VOCI).filter(k=>S[k]);
+  const fmt=(k)=>{const [,u]=DOC_VOCI[k];const v=S[k].v;return u==='€'?eur(v):u==='%'?nf(v,v%1?1:0)+'%':u?`${nf(v,v%1?1:0)} ${u}`:esc(String(v));};
+  const off=k=>k==='pagaOraria'&&S.pagaMensile; // se c'è la paga mensile, quella oraria resta solo informativa
+  $('lvDocRis').innerHTML=(R.err?`<p class="warn sm">Non sono riuscito a leggerlo (${esc(R.err)}).</p>`:'')+
+    (keys.length?`<p class="sm"><b>Ho trovato:</b></p>`+keys.map(k=>`<label class="check docv"><input type="checkbox" data-dv="${k}" ${off(k)?'':'checked'}><span><b>${DOC_VOCI[k][0]}: ${fmt(k)}</b><small class="muted">“${esc(S[k].testo)}”</small></span></label>`).join('')
+      :`<p class="muted sm">Non ho trovato valori da proporre${R.tipo==='busta'?' (la busta può comunque essere archiviata)':''}: compila a mano le sezioni qui sotto.</p>`)+
+    (R.tipo==='busta'&&R.bres?.mese?`<label class="check sm"><input type="checkbox" id="lvDocArch" checked> Archivia anche come busta paga di ${esc(monthName(R.bres.mese))}</label>`:'')+
+    (R.tipo==='contratto'?`<label class="check sm"><input type="checkbox" id="lvDocArch" checked> Salva il contratto nella cartella del lavoro su Drive</label>`:'')+
+    `<div class="acts"><button type="button" class="btn sm" id="lvDocApplica">${keys.length?'Applica i valori scelti':'Ok'}</button></div>`;
+}
+function applicaDoc(){
+  const R=docRis;if(!R)return;const S=R.S;const scelti=[...document.querySelectorAll('#lvDocRis [data-dv]:checked')].map(c=>c.dataset.dv);
+  for(const k of scelti){const v=S[k].v;
+    if(k==='pagaMensile'){$('lvPagaTipo').value='mensile';$('lvPaga').value=v;}
+    if(k==='pagaOraria'){$('lvPagaTipo').value='oraria';$('lvPaga').value=v;}
+    if(k==='divisore')$('lvDiv').value=v;
+    if(['stra','nott','fest','dom'].includes(k))$('lvM-'+k).value=v;
+    if(k==='ferieGiorni'){$('lvFerieU').value='giorni';$('lvFerieA').value=v;}if(k==='ferieOre'){$('lvFerieU').value='ore';$('lvFerieA').value=v;}
+    if(k==='rolOre'){$('lvPermU').value='ore';$('lvPermA').value=v;}
+    if(k==='ccnl'&&!$('lvContratto').value.trim())$('lvContratto').value=v;}
+  const arch=$('lvDocArch')?.checked;
+  if(arch&&R.tipo==='busta')lv.pendBusta={file:R.file,bres:R.bres};
+  if(arch&&R.tipo==='contratto')lv.pendContr={file:R.file};
+  aggiornaModo();
+  if(scelti.some(k=>['stra','nott','fest','dom'].includes(k)))document.querySelectorAll('#lvModal details').forEach(d=>{if(d.querySelector('#lvM-stra'))d.open=true;});
+  $('lvDocRis').innerHTML=`<p class="sm">✓ ${scelti.length?`Inseriti ${scelti.length} valori: controllali qui sotto`:'Fatto'}${arch?(R.tipo==='busta'?'; la busta viene archiviata quando salvi il lavoro':'; il contratto viene salvato su Drive quando salvi il lavoro'):''}.</p>`;
+  docRis=null;
+}
+async function salvaDocInAttesa(lid){
+  const P=lv?.pendBusta,Q=lv?.pendContr;if(lv){lv.pendBusta=null;lv.pendContr=null;}
+  if(P&&P.bres?.mese){const r=P.bres,key=`${lid}|${r.mese}`;const s=v=>v==null?'':String(v);
+    BUS()[key]=Object.assign({},BUS()[key]?.deleted?{}:BUS()[key]||{},{lid,mese:r.mese,lordo:s(r.lordo),trattenute:s(r.trattenute),netto:s(r.netto),ferie:s(r.ferie),rol:s(r.rol),exfest:s(r.exfest),
+      unitaFerie:r.unita||lav(lid).ferie.unita,unitaPerm:r.unitaPermessi||lav(lid).perm.unita,daCaricare:true,nomeFile:P.file.name,deleted:false,updatedAt:Date.now()});
+    await fset(key,{nome:P.file.name,tipo:P.file.type||'application/pdf',blob:P.file});}
+  if(Q){const x=LAV()[lid];x.contrattoFile={nome:Q.file.name,daCaricare:true};x.updatedAt=Date.now();await fset('contr|'+lid,{nome:Q.file.name,tipo:Q.file.type||'application/pdf',blob:Q.file});}
+  if(P||Q){changed();render();if(DB.meta.account&&navigator.onLine){busy(true,'Salvo i documenti su Drive…');try{await caricaPendenti(true);toast('Documenti salvati su Drive.');}finally{busy(false);render();}}
+    else toast('Documenti salvati nell’app: li carico su Drive appena ti colleghi.');}
+}
+
 // ================= collegamenti =================
 const _renderProg15=renderProgetti;
 renderProgetti=function(){_renderProg15();renderLavori();};
@@ -341,6 +407,9 @@ function bind15(){
   $('lavList').addEventListener('click',e=>{const b=e.target.closest('[data-lav]');if(b)apriLavoro(lav(b.dataset.lav),false);});
   $('lvClose').onclick=()=>chiudi('lvModal');$('lvSave').onclick=salvaLavoro;$('lvDel').onclick=eliminaLavoro;
   $('lvModal').addEventListener('change',e=>{if(e.target.name==='lvModo'||e.target.id==='lvPagaTipo'){leggiTipi();aggiornaModo();renderTipi();}if(['cat','aggiunta'].includes(e.target.dataset?.k)){leggiTipi();renderTipi();}});
+  $('lvDocBusta').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)leggiDoc(f,'busta');};
+  $('lvDocContr').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)leggiDoc(f,'contratto');};
+  $('lvDocRis').addEventListener('click',e=>{if(e.target.id==='lvDocApplica')applicaDoc();});
   $('lvTipiAdd').onclick=()=>{leggiTipi();lv.l.tipi.push({id:uid(),nome:'',sigla:'',icona:'',cat:'lavoro',da:'',a:'',pausa:'',ore:'',colore:lv.l.colore});renderTipi();};
   $('lvTipi').addEventListener('click',e=>{const b=e.target.closest('[data-trm]');if(!b)return;leggiTipi();lv.l.tipi.splice(+b.dataset.trm,1);renderTipi();});
   $('lvCopia').onclick=()=>{const r=document.querySelector('#lvSett .srow[data-d="1"]');const v=k=>r.querySelector(`[data-k=${k}]`).value;

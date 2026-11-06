@@ -627,7 +627,7 @@ function saveExtra(pid,k,v){
 // ---- progetti ----
 function renderProgetti(){
   const ps=progetti();
-  $('projList').innerHTML=ps.map(p=>`<button class="card prow" data-proj="${p.id}" style="--c:${p.colore}"><i></i><span><b>${esc(p.nome)}</b><small>${[p.rimborso.attivo?'rimborso km':'',p.ore.attivo?'ore / ritenuta':''].filter(Boolean).join(' · ')}${p.cartella?.nome?' · cartella “'+esc(p.cartella.nome)+'”':' · cartella da creare'}</small></span><span class="chev">›</span></button>`).join('')||'<p class="muted">Nessun progetto. Crea la tua prima squadra o il tuo primo lavoro.</p>';
+  $('projList').innerHTML=ps.map(p=>`<button class="card prow" data-proj="${p.id}" style="--c:${p.colore}"><i></i><span><b>${esc(p.nome)}</b><small>${[p.rimborso.attivo?'rimborsi spesa':'',p.ore.attivo?'ore / ritenuta':''].filter(Boolean).join(' · ')}${p.cartella?.nome?' · cartella “'+esc(p.cartella.nome)+'”':' · cartella da creare'}</small></span><span class="chev">›</span></button>`).join('')||'<p class="muted">Nessun progetto. Crea la tua prima squadra o il tuo primo lavoro.</p>';
   const pr=D().profilo;
   for(const k of ['cognome','nome','natoA','dataNascita','residenza','via','cf'])if(document.activeElement!==$('pf-'+k))$('pf-'+k).value=pr[k]||'';
   if(document.activeElement!==$('pf-modello'))$('pf-modello').value=pr.auto?.modello||'';

@@ -100,7 +100,7 @@ saveEv=async function(){
     if(!(+e.km>0)){toast('Mancano i km.','err');return;}
   }
   if(e.ore&&!isFisso(e)&&!(oreFasce(e.fasce)>0)){toast('Indica almeno un orario (es. 9:45 → 14:00).','err');return;}
-  if(!e.rimborso&&!e.ore&&!(e.spese||[]).length&&!await conferma('Non hai scelto né rimborso km né ore: la salvo solo come promemoria?','Salva'))return;
+  if(!e.rimborso&&!e.ore&&!(e.spese||[]).length&&!await conferma('Non hai scelto né rimborsi né ore: la salvo solo come promemoria?','Salva'))return;
   const now=Date.now();const old=md.ev;let n=0;
   if(md.id){
     const x=Object.assign({},D().eventi[md.id],e,{data:$('evDate').value||old.data,updatedAt:now});
