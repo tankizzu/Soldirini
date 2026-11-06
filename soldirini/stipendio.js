@@ -67,7 +67,7 @@ function apriLavoro(l,isNew){
   $('lvNome').value=x.nome;$('lvColore').value=x.colore;
   document.querySelectorAll('[name=lvModo]').forEach(r=>r.checked=r.value===x.modo);
   $('lvPagaTipo').value=x.paga.tipo;$('lvPaga').value=x.paga.importo;$('lvDiv').value=x.paga.divisore||168;
-  $('lvOreMese').value=x.oreMese;$('lvDal').value=x.dal||'';
+  $('lvOreMese').value=x.oreMese;$('lvDal').value=x.dal||'';$('lvAl').value=x.al||'';
   for(const k of ['stra','nott','fest','dom'])$('lvM-'+k).value=x.magg[k]??'';
   $('lvNottDa').value=x.nott?.da||'';$('lvNottA').value=x.nott?.a||'';
   $('lvLocali').value=x.locali||'';$('lvFerieU').value=x.ferie.unita;$('lvFerieA').value=x.ferie.anno;$('lvFerieR').value=x.ferie.residuo;
@@ -77,7 +77,7 @@ function apriLavoro(l,isNew){
   renderSett();renderTipi();aggiornaModo();apri('lvModal');
 }
 function aggiornaModo(){const m=document.querySelector('[name=lvModo]:checked')?.value||lv.l.modo;lv.l.modo=m;
-  $('lvFissoBox').hidden=m!=='fisso';$('lvTurniBox').hidden=m!=='turni';$('lvDivBox').hidden=$('lvPagaTipo').value!=='mensile';
+  $('lvFissoBox').hidden=m!=='fisso';$('lvTurniBox').hidden=m!=='turni';const pt=$('lvPagaTipo').value;$('lvDivBox').hidden=pt==='oraria';$('lvDivBox').firstChild.nodeValue=pt==='giornaliera'?'Ore di una giornata (per calcolare straordinari e maggiorazioni)':'Ore al mese per la paga oraria (divisore del contratto)';$('lvDiv').placeholder=pt==='giornaliera'?'8':'168';
   $('lvTipiTit').textContent=m==='fisso'?'Eccezioni (straordinari, ferie, permessi…)':'Tipi di turno';}
 function renderSett(){const S=lv.l.settimana||{};
   $('lvSett').innerHTML=[1,2,3,4,5,6,7].map(d=>{const s=S[d]||{};return `<div class="srow" data-d="${d}"><b>${SETT[d].slice(0,3)}</b><input type="time" data-k="da" value="${esc(s.da||'')}" aria-label="${SETT[d]} dalle"><input type="time" data-k="a" value="${esc(s.a||'')}" aria-label="${SETT[d]} alle"><input type="number" inputmode="numeric" min="0" step="5" data-k="pausa" value="${esc(s.pausa??'')}" placeholder="pausa" aria-label="${SETT[d]} pausa in minuti"></div>`;}).join('');}
@@ -96,7 +96,7 @@ function leggiLavoro(){
   const x=lv.l;leggiTipi();
   x.nome=$('lvNome').value.trim();x.colore=$('lvColore').value;x.modo=document.querySelector('[name=lvModo]:checked').value;
   x.paga={tipo:$('lvPagaTipo').value,importo:$('lvPaga').value.trim(),divisore:$('lvDiv').value.trim()||168};
-  x.oreMese=$('lvOreMese').value.trim();x.dal=$('lvDal').value;x.settimana=leggiSett();
+  x.oreMese=$('lvOreMese').value.trim();x.dal=$('lvDal').value;x.al=$('lvAl').value;x.settimana=leggiSett();
   x.magg={};for(const k of ['stra','nott','fest','dom'])x.magg[k]=$('lvM-'+k).value.trim();
   x.nott={da:$('lvNottDa').value,a:$('lvNottA').value};x.locali=$('lvLocali').value.trim();
   x.ferie={unita:$('lvFerieU').value,anno:$('lvFerieA').value.trim(),residuo:$('lvFerieR').value.trim()};
@@ -122,10 +122,13 @@ async function eliminaLavoro(){
 const _renderCal15=renderCal;
 renderCal=function(){
   _renderCal15();const L=lavori();if(!L.length)return;
-  const ym=cur;const per={};for(const l of L){const ts=turniDi(l.id).filter(t=>t.data.startsWith(ym));for(const t of ts)(per[t.data]=per[t.data]||[]).push([l,t]);}
-  document.querySelectorAll('#grid [data-day]').forEach(b=>{const d=b.dataset.day;const x=per[d];if(!x)return;
-    const ev=b.querySelector('.evs');ev.insertAdjacentHTML('afterbegin',x.map(([l,t])=>{const tp=C.tipoDi(l,t.tipo);const lab=tp?((tp.icona?tp.icona+' ':'')+(tp.sigla||tp.nome)):`${t.da||''}–${t.a||''}`;
-      return `<span class="ev tu" style="--c:${tp?.colore||l.colore}">${esc(lab)}</span>`;}).join(''));});
+  const per={};for(const l of L){const ts=turniDi(l.id).filter(t=>t.data.startsWith(cur));const byD={};for(const t of ts)(byD[t.data]=byD[t.data]||[]).push(t);
+    for(let d=1;d<=new Date(+cur.slice(0,4),+cur.slice(5),0).getDate();d++){const iso=`${cur}-${pad(d)}`;const G=C.vociGiorno(l,byD[iso]||[],iso);
+      for(const v of G.voci){let lab;
+        if(v.implicito){const o=(v.a<=v.da?v.a+1440:v.a)-v.da-(v.pausa||0);lab='💼 '+nOre(Math.round(o/60*100)/100)+'h';}
+        else lab=v.tipo?((v.tipo.icona?v.tipo.icona+' ':'')+(v.tipo.sigla||v.tipo.nome)):`${v.daS||''}–${v.aS||''}`;
+        (per[iso]=per[iso]||[]).push(`<span class="ev tu${v.implicito?' imp':''}" style="--c:${v.colore||l.colore}" title="${esc(l.nome)}">${esc(lab)}</span>`);}}}
+  document.querySelectorAll('#grid [data-day]').forEach(b=>{const x=per[b.dataset.day];if(x)b.querySelector('.evs').insertAdjacentHTML('afterbegin',x.join(''));});
 };
 // riepilogo del giorno: turni e scelta veloce
 const _apriGiorno15=apriGiorno;
@@ -136,7 +139,7 @@ function renderTurniGiorno(d){
   box.innerHTML=L.map(l=>{const G=C.vociGiorno(l,turniDi(l.id).filter(t=>t.data===d),d);
     const voci=G.voci.map(v=>`<div class="tuv" style="--c:${v.colore||l.colore}"><span class="bar"></span><span class="tx"><b>${esc((v.tipo?.icona?v.tipo.icona+' ':'')+v.nome)}</b><small>${v.daS&&v.aS?esc(v.daS+'–'+v.aS):''}${v.ore!=null?` · ${nOre(v.ore)} ore`:''}${v.implicito?' · orario abituale':''}${v.nota?' · '+esc(v.nota):''}</small></span>${v.id?`<button class="btn ghost sm" data-tued="${l.id}|${v.id}">Modifica</button>`:''}</div>`).join('');
     return `<div class="tubox"><div class="tuh" style="--c:${l.colore}"><i></i><b>${esc(l.nome)}</b>${G.fest?`<small class="muted">${esc(G.fest)}</small>`:''}</div>${voci||'<p class="muted sm">Niente in questo giorno.</p>'}
-      <div class="tuchips">${l.tipi.map(t=>`<button class="chip" style="--c:${t.colore||l.colore}" data-tuq="${l.id}|${t.id}">${esc((t.icona?t.icona+' ':'')+t.nome)}</button>`).join('')}<button class="chip" data-tuq="${l.id}|">Altro…</button></div></div>`;}).join('');
+      <div class="tuchips">${l.tipi.map(t=>`<button class="chip" style="--c:${t.colore||l.colore}" data-tuq="${l.id}|${t.id}">${esc((t.icona?t.icona+' ':'')+t.nome)}</button>`).join('')}<button class="chip" data-tuq="${l.id}|">Altro…</button>${l.modo==='turni'?`<button class="chip" data-ftopen="${l.id}">📷 Da foto</button>`:''}</div></div>`;}).join('');
 }
 // un tocco su un tipo: lo metto nel giorno (se servono le ore, apro la finestra)
 function serveOre(t){return !t||((t.cat==='variabile'||t.cat==='permesso'||t.aggiunta||t.cat==='nonretr')&&!(t.da&&t.a)&&t.ore==='');}
@@ -199,7 +202,7 @@ function cardMese(l,ym){
     ${busta?`<div class="kv"><span>Busta paga</span><b>${busta.netto!==''?'netto '+eur(+busta.netto):''}${busta.lordo!==''?' · lordo '+eur(+busta.lordo):''}</b></div>${diff!=null&&Math.abs(diff)>=1?`<p class="sm ${diff<0?'warn':'muted'}">${diff<0?'In busta ci sono '+eur(-diff)+' in meno della stima: controlla straordinari e ore.':'In busta ci sono '+eur(diff)+' in più della stima.'}</p>`:''}`:''}
     ${sal.length?`<p class="muted sm">Saldi: ${sal.join(' · ')}</p>`:''}
     <p class="muted sm">Stima: per i valori esatti fa fede la busta paga.</p>
-    <div class="acts"><button class="btn sm" data-bpnew="${l.id}">${busta?'Sostituisci busta':'Carica busta paga'}</button><button class="btn ghost sm" data-bparch="${l.id}">Archivio buste</button></div></div>`;
+    <div class="acts"><button class="btn sm" data-bpnew="${l.id}">${busta?'Sostituisci busta':'Carica busta paga'}</button><button class="btn ghost sm" data-bparch="${l.id}">Archivio buste</button>${l.modo==='turni'?`<button class="btn ghost sm" data-ftopen="${l.id}">📷 Turni da foto</button>`:''}</div></div>`;
 }
 function cardAnno(l,y){
   const righe=[];let tl=0,to=0,tb=0;const B=busteDi(l.id);
@@ -210,10 +213,25 @@ function cardAnno(l,y){
     <div class="kv big"><span>Totale</span><b>${nOre(r2(to))} ore${tl?' · lordo stimato '+eur(r2(tl)):''}</b></div>${tb?`<div class="kv"><span>Netto dalle buste</span><b>${eur(r2(tb))}</b></div>`:''}
     <div class="acts"><button class="btn ghost sm" data-bparch="${l.id}">Archivio buste</button></div></div>`;
 }
+// netto del mese di un lavoro: dalla busta se c'è, altrimenti la stima (netto, o lordo se manca il netto)
+function nettoMese(l,ym){const {M,netto,busta}=datiMese(l,ym);if(busta&&busta.netto!=='')return {v:+busta.netto,fonte:'busta'};if(netto!=null)return {v:netto,fonte:'stima'};if(M.lordo)return {v:M.lordo,fonte:'lordo'};return {v:0,fonte:null};}
+function totaleLavoro(periodo){const L=lavori();let v=0,stima=false;
+  for(const l of L){const mesi=periodo.length===4?Array.from({length:12},(_,i)=>`${periodo}-${pad(i+1)}`):[periodo];
+    for(const ym of mesi){const n=nettoMese(l,ym);v+=n.v;if(n.fonte&&n.fonte!=='busta')stima=true;}}return {v:r2(v),stima};}
+window.totaleLavoro=totaleLavoro;
 const _renderRie15=renderRiepilogo;
-renderRiepilogo=function(){_renderRie15();const L=lavori();if(!L.length)return;
-  const h=L.map(l=>rieMode==='anno'?cardAnno(l,cur.slice(0,4)):cardMese(l,cur)).join('');
-  const box=rieMode==='anno'?$('rieAnno'):$('rieCards');box.insertAdjacentHTML('afterbegin',h);};
+renderRiepilogo=function(){_renderRie15();const L=lavori();let box=$('rieLav');
+  if(!box){box=document.createElement('div');box.id='rieLav';box.className='cards';$('rieTot').after(box);}
+  if(!L.length){box.innerHTML='';return;}
+  const anno=rieMode==='anno',y=cur.slice(0,4);
+  box.innerHTML=L.map(l=>{const h=anno?cardAnno(l,y):cardMese(l,cur);const n=anno?null:nettoMese(l,cur);
+    return h.replace('<div class="card lavcard"',`<div class="card lavcard" data-fid="lav-${l.id}" data-sum="${n&&n.v?eur(n.v):''}"`);}).join('');
+  foldify(box,'lav');
+  // totali generali: progetti + lavoro dipendente
+  const T=totaleLavoro(anno?y:cur);if(!T.v)return;
+  const hero=$('rieTot').querySelector('.hero');if(!hero)return;const prima=hero.firstElementChild?.querySelector('b');
+  if(prima){const base=+(prima.textContent.replace(/[^\d,-]/g,'').replace(',','.'))||0;prima.textContent=eur(r2(base+T.v));}
+  hero.insertAdjacentHTML('beforeend',`<div><small>Lavoro dipendente${T.stima?' (stima)':''}</small><b>${eur(T.v)}</b></div>`);};
 
 // ================= buste paga =================
 // file in attesa di caricamento su Drive (restano sul telefono finché non vanno su Drive)
@@ -258,7 +276,7 @@ processQueue=async function(){const r=await _processQueue15();try{await caricaPe
 
 let bp=null;
 function apriBusta(lid,mese,esistente){
-  bp={lid,file:null,key:esistente?`${lid}|${mese}`:null};
+  bp={lid,file:null,key:esistente?`${lid}|${mese}`:null};$('bpRis').hidden=true;
   $('bpTit').textContent='Busta paga · '+lav(lid).nome;$('bpStep1').hidden=!!esistente;$('bpStep2').hidden=!esistente;$('bpProg').hidden=true;$('bpErr').hidden=true;
   const b=esistente?BUS()[bp.key]:{};
   $('bpMese').value=mese||cur;for(const k of ['lordo','trattenute','netto','ferie','rol','exfest'])$('bp-'+k).value=b?.[k]??'';
@@ -275,8 +293,8 @@ async function leggiBusta(file){
   const metti=(k,v)=>{const el=$('bp-'+k);el.value=v==null?'':v;el.classList.toggle('manca',v==null);};
   metti('lordo',r.lordo);metti('trattenute',r.trattenute);metti('netto',r.netto);metti('ferie',r.ferie);metti('rol',r.rol);metti('exfest',r.exfest);
   if(r.unita)$('bpUF').value=r.unita;if(r.unitaPermessi)$('bpUP').value=r.unitaPermessi;
-  const trovati=[r.mese,r.lordo,r.netto].filter(v=>v!=null).length;
-  $('bpNote').textContent=trovati===3?'Ho trovato le voci principali: controllale prima di salvare.':'Controlla i valori: quelli col bordo rosso non li ho trovati, scrivili tu (o lasciali vuoti).';
+  bp.letti=letteVoci(r);
+  $('bpNote').innerHTML=`<b>${bp.letti.ok.length?'Busta letta':'Non ho trovato le voci'}</b><br>${bp.letti.html}<br>${bp.letti.manca.length?'Quelle mancanti (bordo rosso) scrivile tu o lasciale vuote.':'Controlla e salva.'}`;
 }
 async function salvaBusta(){
   const mese=$('bpMese').value;if(!/^\d{4}-\d{2}$/.test(mese)){toast('Indica il mese della busta.','err');return;}
@@ -286,6 +304,7 @@ async function salvaBusta(){
   const b=Object.assign({},vecchia&&!vecchia.deleted?vecchia:{},bp.key?BUS()[bp.key]:{},{lid:bp.lid,mese,deleted:false,updatedAt:Date.now()});
   for(const k of ['lordo','trattenute','netto','ferie','rol','exfest'])b[k]=val(k);b.unitaFerie=$('bpUF').value;b.unitaPerm=$('bpUP').value;
   if(bp.file){await fset(key,{nome:bp.file.name,tipo:bp.file.type||'application/pdf',blob:bp.file});b.daCaricare=true;b.nomeFile=bp.file.name;}
+  if(bp.letti)b.lettura={auto:bp.letti.ok,manca:bp.letti.manca.filter(k=>!b[k==='mese'?'mese':k])};else if(!bp.key)b.lettura={manuale:true};
   BUS()[key]=b;changed();chiudi('bpModal');render();
   if(b.daCaricare&&DB.meta.account&&navigator.onLine){busy(true,'Salvo la busta su Drive…');try{await caricaSuDrive(key);toast('Busta salvata e archiviata su Drive.');}catch(e){toast('Busta salvata nell’app. Su Drive la carico appena possibile ('+errMsg(e)+').','err');}finally{busy(false);render();}}
   else toast(b.daCaricare?'Busta salvata. La carico su Drive appena ti colleghi.':'Busta salvata.');
@@ -298,11 +317,45 @@ function renderArchivio(){
   $('baTit').textContent='Buste paga · '+l.nome;
   const anni=[...new Set(B.map(b=>b.mese.slice(0,4)))];const pend=B.filter(b=>b.daCaricare).length;
   $('baBody').innerHTML=`<div class="acts"><button class="btn sm" data-bpnew="${l.id}">+ Carica busta paga</button><button class="btn ghost sm" id="baTutte">Salva tutto su Drive${pend?` (${pend})`:''}</button>${l.drive?.buste?.link?`<a class="btn ghost sm" href="${esc(l.drive.buste.link)}" target="_blank" rel="noopener">Cartella su Drive ↗</a>`:''}</div>`+
-    (anni.map(y=>`<h3 class="bay">${y}</h3>`+B.filter(b=>b.mese.startsWith(y)).map(b=>`<div class="bai"><span class="tx"><b>${(m=>m[0].toUpperCase()+m.slice(1))(MESI[+b.mese.slice(5)-1])}</b><small>${b.netto!==''?'netto '+eur(+b.netto):''}${b.lordo!==''?' · lordo '+eur(+b.lordo):''}${b.daCaricare?' · ⏳ da caricare su Drive':b.file?' · su Drive':' · senza file'}</small></span>
+    (anni.map(y=>`<h3 class="bay">${y}</h3>`+B.filter(b=>b.mese.startsWith(y)).map(b=>`<div class="bai"><span class="tx"><b>${(m=>m[0].toUpperCase()+m.slice(1))(MESI[+b.mese.slice(5)-1])}</b><small>${b.netto!==''?'netto '+eur(+b.netto):''}${b.lordo!==''?' · lordo '+eur(+b.lordo):''}${b.daCaricare?' · ⏳ da caricare su Drive':b.file?' · su Drive':' · senza file'}</small>${statoLettura(b)}</span>
       ${b.file?.link?`<a class="btn ghost sm" href="${esc(b.file.link)}" target="_blank" rel="noopener">Apri</a>`:''}<button class="btn ghost sm" data-bped="${esc(b.lid+'|'+b.mese)}">Modifica</button></div>`).join('')).join('')||'<p class="muted" style="margin-top:12px">Ancora nessuna busta paga.</p>');
 }
 async function eliminaBusta(){const b=BUS()[bp.key];if(!b)return;if(!await conferma(`Togliere la busta di ${monthName(b.mese)} dall’app? Il file su Drive resta.`,'Togli','danger'))return;
   b.deleted=true;b.updatedAt=Date.now();await fset(bp.key,undefined);changed();chiudi('bpModal');render();if(!$('bpArch').hidden)renderArchivio();}
+
+// ---------- v17: cosa è stato letto, più buste insieme ----------
+const VOCI_B=[['mese','mese'],['lordo','lordo'],['trattenute','trattenute'],['netto','netto'],['ferie','ferie'],['rol','permessi'],['exfest','ex festività']];
+function letteVoci(r){const ok=VOCI_B.filter(([k])=>r[k]!=null).map(([k])=>k),manca=VOCI_B.filter(([k])=>r[k]==null&&['mese','lordo','netto'].includes(k)).map(([k])=>k);
+  return {ok,manca,html:VOCI_B.filter(([k])=>r[k]!=null||['mese','lordo','netto'].includes(k)).map(([k,t])=>r[k]!=null?`✓ ${t}`:`✗ ${t}`).join(' · ')};}
+function statoLettura(b){const L=b.lettura;if(!L)return '';if(L.manuale)return '<small class="bdg">✍️ scritta a mano</small>';
+  return L.manca&&L.manca.length?`<small class="bdg warn">⚠ letta in parte: manca ${L.manca.join(', ')}</small>`:'<small class="bdg ok">✓ letta</small>';}
+let molte=[];
+async function leggiMolte(files){
+  $('bpStep1').hidden=true;$('bpStep2').hidden=true;$('bpProg').hidden=false;$('bpErr').hidden=true;$('bpRis').hidden=true;molte=[];
+  const righe=[];const valori=r=>{const s=v=>v==null?'':String(v);return {lordo:s(r.lordo),trattenute:s(r.trattenute),netto:s(r.netto),ferie:s(r.ferie),rol:s(r.rol),exfest:s(r.exfest)};};
+  for(let i=0;i<files.length;i++){const f=files[i];
+    const prog=(p,t)=>{$('bpBar').style.width=Math.round((i+p)/files.length*100)+'%';$('bpFase').textContent=`Busta ${i+1} di ${files.length} · ${t||''}`;};
+    let r=null,err=null;try{r=Buste.analizzaBusta(await Buste.testoBusta(f,prog));}catch(e){err=errMsg(e);}
+    const lt=r?letteVoci(r):null;
+    if(r&&r.mese){const key=`${bp.lid}|${r.mese}`;const vecchia=BUS()[key];
+      BUS()[key]=Object.assign({},vecchia&&!vecchia.deleted?vecchia:{},valori(r),{lid:bp.lid,mese:r.mese,unitaFerie:r.unita||lav(bp.lid).ferie.unita,unitaPerm:r.unitaPermessi||lav(bp.lid).perm.unita,
+        nomeFile:f.name,daCaricare:true,deleted:false,lettura:{auto:lt.ok,manca:lt.manca},updatedAt:Date.now()});
+      await fset(key,{nome:f.name,tipo:f.type||'application/pdf',blob:f});
+      righe.push(`<div class="bai"><span class="tx"><b>${esc(f.name)}</b><small>${esc(monthName(r.mese))} · ${lt.html}${vecchia&&!vecchia.deleted?' · sostituisce quella già presente':''}</small></span>${lt.manca.length?'<small class="bdg warn">⚠ da completare</small>':'<small class="bdg ok">✓ salvata</small>'}</div>`);}
+    else{molte.push({f,r:r||{},valori:valori(r||{})});const j=molte.length-1;
+      righe.push(`<div class="bai"><span class="tx"><b>${esc(f.name)}</b><small>${err?'Non sono riuscito a leggerla ('+esc(err)+')':'Non trovo il mese'}${lt?' · '+lt.html:''}</small><span class="row"><input type="month" id="bpFixM${j}" aria-label="Mese della busta"><button class="btn sm" data-bpfix="${j}">Salva</button></span></span><small class="bdg warn">⚠ indica il mese</small></div>`);}
+  }
+  changed();render();$('bpProg').hidden=true;$('bpRis').hidden=false;
+  const salvate=righe.length-molte.length;
+  $('bpRis').innerHTML=`<p><b>${salvate} ${salvate===1?'busta salvata':'buste salvate'} su ${files.length}.</b> ${molte.length?'Per quelle senza mese scegli il mese e tocca Salva.':''} Quelle “da completare” le puoi correggere dall’archivio (Modifica).</p>${righe.join('')}<div class="foot"><button class="btn" id="bpFine">Fatto</button></div>`;
+  $('bpFine').onclick=()=>{chiudi('bpModal');if(!$('bpArch').hidden)renderArchivio();};
+  if(DB.meta.account&&navigator.onLine)caricaPendenti(true).then(()=>{if(!$('bpArch').hidden)renderArchivio();toast('Buste salvate anche su Drive.');}).catch(()=>{});
+}
+async function salvaSenzaMese(j){const x=molte[j];const m=$('bpFixM'+j).value;if(!x||!/^\d{4}-\d{2}$/.test(m)){toast('Scegli il mese.','err');return;}
+  const key=`${bp.lid}|${m}`;BUS()[key]=Object.assign({},x.valori,{lid:bp.lid,mese:m,unitaFerie:lav(bp.lid).ferie.unita,unitaPerm:lav(bp.lid).perm.unita,nomeFile:x.f.name,daCaricare:true,deleted:false,lettura:{auto:[],manca:['mese']},updatedAt:Date.now()});
+  await fset(key,{nome:x.f.name,tipo:x.f.type||'application/pdf',blob:x.f});changed();render();
+  const btn=document.querySelector(`[data-bpfix="${j}"]`);btn.closest('.bai').querySelector('.bdg').outerHTML='<small class="bdg ok">✓ salvata</small>';btn.parentElement.remove();
+  if(DB.meta.account&&navigator.onLine)caricaPendenti(true).catch(()=>{});}
 
 // ================= importazione da Strafobico (stesso sito: i dati sono leggibili da qui) =================
 const STF_COL={1:'#7986CB',2:'#33B679',3:'#8E24AA',4:'#E67C73',5:'#F6BF26',6:'#F4511E',7:'#039BE5',8:'#616161',9:'#3F51B5',10:'#0B8043',11:'#D50000'};
@@ -346,7 +399,7 @@ async function importaStrafobico(){
 
 // ================= v16: compila il lavoro dai documenti (contratto o busta) =================
 let docRis=null;
-const DOC_VOCI={pagaMensile:['Paga mensile lorda','€'],pagaOraria:['Paga oraria lorda','€'],divisore:['Divisore orario',''],stra:['Straordinario','%'],nott:['Notturno','%'],fest:['Festivi','%'],dom:['Domenica','%'],
+const DOC_VOCI={pagaMensile:['Paga mensile lorda','€'],pagaGiornaliera:['Paga giornaliera lorda','€'],pagaOraria:['Paga oraria lorda','€'],dal:['Inizio del contratto','data'],al:['Fine del contratto','data'],divisore:['Divisore orario',''],stra:['Straordinario','%'],nott:['Notturno','%'],fest:['Festivi','%'],dom:['Domenica','%'],
   ferieGiorni:['Ferie all’anno','giorni'],ferieOre:['Ferie all’anno','ore'],rolOre:['Permessi (ROL) all’anno','ore'],ccnl:['Contratto','']};
 async function leggiDoc(file,tipo){
   $('lvDocProg').hidden=false;$('lvDocRis').innerHTML='';
@@ -361,8 +414,8 @@ async function leggiDoc(file,tipo){
 }
 function renderDocRis(){
   const R=docRis;if(!R){$('lvDocRis').innerHTML='';return;}const S=R.S;const keys=Object.keys(DOC_VOCI).filter(k=>S[k]);
-  const fmt=(k)=>{const [,u]=DOC_VOCI[k];const v=S[k].v;return u==='€'?eur(v):u==='%'?nf(v,v%1?1:0)+'%':u?`${nf(v,v%1?1:0)} ${u}`:esc(String(v));};
-  const off=k=>k==='pagaOraria'&&S.pagaMensile; // se c'è la paga mensile, quella oraria resta solo informativa
+  const fmt=(k)=>{const [,u]=DOC_VOCI[k];const v=S[k].v;return u==='data'?parseYmd(v).toLocaleDateString('it-IT'):u==='€'?eur(v):u==='%'?nf(v,v%1?1:0)+'%':u?`${nf(v,v%1?1:0)} ${u}`:esc(String(v));};
+  const off=k=>k==='pagaOraria'&&(S.pagaMensile||S.pagaGiornaliera); // se c'è la paga mensile, quella oraria resta solo informativa
   $('lvDocRis').innerHTML=(R.err?`<p class="warn sm">Non sono riuscito a leggerlo (${esc(R.err)}).</p>`:'')+
     (keys.length?`<p class="sm"><b>Ho trovato:</b></p>`+keys.map(k=>`<label class="check docv"><input type="checkbox" data-dv="${k}" ${off(k)?'':'checked'}><span><b>${DOC_VOCI[k][0]}: ${fmt(k)}</b><small class="muted">“${esc(S[k].testo)}”</small></span></label>`).join('')
       :`<p class="muted sm">Non ho trovato valori da proporre${R.tipo==='busta'?' (la busta può comunque essere archiviata)':''}: compila a mano le sezioni qui sotto.</p>`)+
@@ -375,6 +428,8 @@ function applicaDoc(){
   for(const k of scelti){const v=S[k].v;
     if(k==='pagaMensile'){$('lvPagaTipo').value='mensile';$('lvPaga').value=v;}
     if(k==='pagaOraria'){$('lvPagaTipo').value='oraria';$('lvPaga').value=v;}
+    if(k==='pagaGiornaliera'){$('lvPagaTipo').value='giornaliera';$('lvPaga').value=v;if(!$('lvDiv').value||$('lvDiv').value==='168')$('lvDiv').value=8;}
+    if(k==='dal')$('lvDal').value=v;if(k==='al')$('lvAl').value=v;
     if(k==='divisore')$('lvDiv').value=v;
     if(['stra','nott','fest','dom'].includes(k))$('lvM-'+k).value=v;
     if(k==='ferieGiorni'){$('lvFerieU').value='giorni';$('lvFerieA').value=v;}if(k==='ferieOre'){$('lvFerieU').value='ore';$('lvFerieA').value=v;}
@@ -432,7 +487,8 @@ function bind15(){
     const a=e.target.closest('[data-bparch]');if(a){apriArchivio(a.dataset.bparch);return;}
     const ed=e.target.closest('[data-bped]');if(ed){const [lid,m]=ed.dataset.bped.split('|');apriBusta(lid,m,true);$('bpDel').hidden=false;return;}
     if(e.target.id==='baTutte')caricaPendenti(false).then(()=>renderArchivio());});
-  $('bpFile').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)leggiBusta(f);};
+  $('bpFile').onchange=e=>{const F=[...e.target.files];e.target.value='';if(F.length>1)leggiMolte(F);else if(F[0])leggiBusta(F[0]);};
+  $('bpRis').addEventListener('click',e=>{const b=e.target.closest('[data-bpfix]');if(b)salvaSenzaMese(+b.dataset.bpfix);});
   $('bpManuale').onclick=()=>{$('bpStep1').hidden=true;$('bpStep2').hidden=false;$('bpNote').textContent='Scrivi i valori della busta. Senza file la busta resta solo nell’app.';};
   $('bpClose').onclick=()=>chiudi('bpModal');$('bpSave').onclick=salvaBusta;$('bpDel').onclick=eliminaBusta;$('baClose').onclick=()=>chiudi('bpArch');
   for(const id of MODALI)$(id).addEventListener('click',e=>{if(e.target.id===id)chiudi(id);});

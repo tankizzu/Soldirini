@@ -291,6 +291,15 @@ input.manca{border-color:var(--err)}
 .sprow{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px dashed var(--line)}.sprow .tx{flex:1;min-width:0;display:flex;flex-direction:column}.sprow small{color:var(--mut)}
 .spcats{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
 #v-pro .stack>details.fold{margin-bottom:0}
+/* v17 */
+.ev.tu.imp{font-weight:600;opacity:.85}
+.bdg{display:inline-block;margin-top:3px;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:700;background:var(--line);color:var(--ink)}.bdg.ok{background:color-mix(in srgb,#2f9e44 18%,var(--card));color:#2f9e44}.bdg.warn{background:color-mix(in srgb,#e8590c 18%,var(--card));color:#c2410c}
+#rieLav{margin-bottom:12px}
+.ic{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:9px;margin-right:10px;font-size:16px;flex:none;background:color-mix(in srgb,var(--ic) 22%,var(--card));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ic) 35%,transparent)}
+#v-pro details.fold>summary .st{display:inline-flex;align-items:center}
+#ftModal{z-index:60}.ftg{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px dashed var(--line)}.ftg.dub{background:color-mix(in srgb,#e8590c 10%,transparent);border-radius:8px;padding-left:6px}
+.ftd{width:64px;flex:none;font-weight:700;font-size:14px}.ftc{display:flex;flex-wrap:wrap;gap:4px}.ftc .chip{min-width:38px;padding:4px 8px}
+.lettoTesto{white-space:pre-wrap;font-size:11px;max-height:200px;overflow:auto}
 </style>
 </head>
 <body>
@@ -354,9 +363,9 @@ input.manca{border-color:var(--err)}
   <section id="v-pro" hidden>
     <div class="two">
       <div class="stack">
-        <details class="card fold" id="foldLav"><summary><span class="st">💼 Lavoro dipendente</span><span class="sum" id="foldLavSum"></span></summary><div class="fbody">
+        <details class="card fold" id="foldLav"><summary><span class="st">Lavoro dipendente</span><span class="sum" id="foldLavSum"></span></summary><div class="fbody">
           <div id="lavList"></div><div class="acts"><button class="btn sm" id="lavNew">+ Nuovo lavoro</button></div></div></details>
-        <details class="card fold" id="foldProj"><summary><span class="st">📁 Progetti</span><span class="sum" id="foldProjSum"></span></summary><div class="fbody">
+        <details class="card fold" id="foldProj"><summary><span class="st">Progetti</span><span class="sum" id="foldProjSum"></span></summary><div class="fbody">
           <div id="projList"></div><div class="acts"><button class="btn sm" id="projNew">+ Nuovo progetto</button></div></div></details>
         <div class="card" id="stfBox" hidden><h3>Dati di Strafobico</h3><p class="muted sm">Su questo telefono c’è Strafobico con turni e buste paga. Puoi copiarli qui come nuovo lavoro (Strafobico non viene toccato).</p><button class="btn" id="stfBtn">Importa da Strafobico</button></div>
         <div class="card" id="importBox" hidden><h3>Dati della vecchia app Rimborsi</h3><p class="muted sm">Su questo dispositivo ci sono le trasferte della app Rimborsi Km. Le porto in Soldirini nel progetto Bulldogs.</p><button class="btn" id="importBtn">Importa trasferte</button></div>
@@ -376,6 +385,7 @@ input.manca{border-color:var(--err)}
         <div class="card"><h3>La tua firma</h3><p class="muted sm">Firma qui con il dito: la metto sulle ricevute PDF.</p><canvas id="firmaCanvas" class="firma"></canvas>
           <div class="acts"><button class="btn ghost sm" id="firmaClr">Cancella</button><button class="btn sm" id="firmaSave">Salva firma</button><button class="btn ghost sm" id="firmaRm">Togli firma salvata</button></div><div id="firmaPrev" class="firmaprev"></div></div>
         <div class="card"><h3>Aspetto</h3><label>Tema<select id="tema"><option value="auto">Come il telefono</option><option value="light">Chiaro</option><option value="dark">Scuro</option></select></label></div>
+        <div class="card"><h3>Google Calendar</h3><div id="gcalBody"></div></div>
         <div class="card"><h3>Promemoria</h3><div class="stack">
           <label class="check"><input type="checkbox" id="promem"> Avvisami delle attività da confermare</label>
           <div class="g2"><label>Alle ore<select id="oraProm"><option value="17:00">17:00</option><option value="17:30">17:30</option><option value="18:00">18:00</option><option value="18:30">18:30</option><option value="19:00">19:00</option><option value="19:30">19:30</option><option value="20:00">20:00</option><option value="20:30">20:30</option><option value="21:00">21:00</option><option value="21:30">21:30</option><option value="22:00">22:00</option><option value="22:30">22:30</option><option value="23:00">23:00</option><option value="23:30">23:30</option></select></label><div style="align-self:end"><button class="btn ghost sm" id="icsBtn">Aggiungi al calendario del telefono</button></div></div>
@@ -513,12 +523,12 @@ input.manca{border-color:var(--err)}
       <div class="acts"><label class="btn sm filebtn">Busta paga<input type="file" id="lvDocBusta" accept="application/pdf,image/*" hidden></label><label class="btn ghost sm filebtn">Contratto<input type="file" id="lvDocContr" accept="application/pdf,image/*" hidden></label></div>
       <div id="lvDocProg" hidden><div class="bpbar"><span id="lvDocBar"></span></div><p class="muted sm" id="lvDocFase"></p></div>
       <div id="lvDocRis"></div><p class="muted sm" id="lvDocFile"></p></div></details>
-    <details class="card fold" id="lvPagaBox" open><summary><span class="st">💶 Paga</span><span class="sum" id="lvPagaSum"></span></summary><div class="fbody"><div class="g2"><label>Tipo<select id="lvPagaTipo"><option value="mensile">Mensile (lorda)</option><option value="oraria">Oraria (lorda)</option></select></label><label>Importo lordo €<input id="lvPaga" type="number" inputmode="decimal" step="0.01" placeholder="vuoto = solo ore"></label>
+    <details class="card fold" id="lvPagaBox" open><summary><span class="st">💶 Paga</span><span class="sum" id="lvPagaSum"></span></summary><div class="fbody"><div class="g2"><label>Tipo<select id="lvPagaTipo"><option value="mensile">Mensile (lorda)</option><option value="giornaliera">Giornaliera (lorda)</option><option value="oraria">Oraria (lorda)</option></select></label><label>Importo lordo €<input id="lvPaga" type="number" inputmode="decimal" step="0.01" placeholder="vuoto = solo ore"></label>
       <label class="s2" id="lvDivBox">Ore al mese per la paga oraria (divisore del contratto)<input id="lvDiv" type="number" inputmode="numeric" placeholder="168"></label></div>
       <p class="muted sm">Lo trovi in busta paga o nel contratto. Se lo lasci vuoto, Soldirini conta solo le ore.</p></div></details>
     <details class="card fold" id="lvFissoBox" open><summary><span class="st">🗓️ Orario settimanale</span></summary><div class="fbody"><p class="muted sm" style="margin-top:0">Il mese si riempie da solo con questo orario: nel calendario segni solo le eccezioni.</p>
       <div id="lvSett"></div><div class="acts"><button type="button" class="btn ghost sm" id="lvCopia">Copia il lunedì su mar–ven</button></div>
-      <label>Dal giorno (inizio del conteggio)<input type="date" id="lvDal"></label></div></details>
+      <div class="g2"><label>Dal giorno (inizio)<input type="date" id="lvDal"></label><label>Fino al (fine contratto)<input type="date" id="lvAl"></label></div></div></details>
     <details class="card fold" id="lvTurniBox"><summary><span class="st">⏱️ Straordinario</span></summary><div class="fbody"><label>Ore al mese oltre le quali è straordinario<input id="lvOreMese" type="number" inputmode="decimal" placeholder="vuoto = nessuno straordinario automatico"></label></div></details>
     <details class="card fold"><summary><span class="st" id="lvTipiTit">Tipi di turno</span></summary><div class="fbody"><div id="lvTipi"></div><button type="button" class="btn ghost sm" id="lvTipiAdd">+ Aggiungi tipo</button></div></details>
     <details class="card fold"><summary><span class="st">📈 Maggiorazioni (%)</span></summary><div class="fbody"><p class="muted sm" style="margin-top:0">Lasciale vuote se non le conosci: le trovi nel contratto o in busta paga. Vuote = ore pagate come normali.</p>
@@ -543,11 +553,12 @@ input.manca{border-color:var(--err)}
   <div class="foot"><button class="btn ghost" id="tuDel">Togli</button><button class="btn ghost" id="tuClear">Togli turni</button><button class="btn" id="tuSave">Salva</button></div></div></div>
 <div class="modal" id="bpModal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="bpTit">
   <div class="sheethead"><h2 id="bpTit">Busta paga</h2><button class="x" id="bpClose" aria-label="Chiudi">×</button></div>
-  <div id="bpStep1"><p>Carica il PDF della busta paga (o una foto): leggo io le voci principali.</p>
-    <div class="acts"><label class="btn filebtn">Scegli il file<input type="file" id="bpFile" accept="application/pdf,image/*" hidden></label><button class="btn ghost" id="bpManuale">Scrivo i valori a mano</button></div>
+  <div id="bpStep1"><p>Carica il PDF della busta paga (o una foto): leggo io le voci principali. Puoi sceglierne anche più di una insieme.</p>
+    <div class="acts"><label class="btn filebtn">Scegli il file<input type="file" id="bpFile" accept="application/pdf,image/*" multiple hidden></label><button class="btn ghost" id="bpManuale">Scrivo i valori a mano</button></div>
     <p class="muted sm">La busta viene letta sul telefono e salvata nella cartella del lavoro su Drive, divisa per anno.</p></div>
   <div id="bpProg" hidden><div class="bpbar"><span id="bpBar"></span></div><p class="muted sm" id="bpFase"></p></div>
   <p class="warn sm" id="bpErr" hidden></p>
+  <div id="bpRis" hidden></div>
   <div id="bpStep2" hidden><p class="muted sm" id="bpNote"></p>
     <div class="g2"><label class="s2">Mese<input type="month" id="bpMese"></label><label>Lordo (competenze)<input id="bp-lordo" inputmode="decimal"></label><label>Trattenute<input id="bp-trattenute" inputmode="decimal"></label>
     <label class="s2">Netto<input id="bp-netto" inputmode="decimal"></label><label>Saldo ferie<input id="bp-ferie" inputmode="decimal"></label><label>in<select id="bpUF"><option value="giorni">giorni</option><option value="ore">ore</option></select></label>
@@ -555,6 +566,23 @@ input.manca{border-color:var(--err)}
     <div class="foot"><button class="btn ghost" id="bpDel" hidden>Togli</button><button class="btn" id="bpSave">Salva busta</button></div></div></div></div>
 <div class="modal" id="bpArch" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="baTit">
   <div class="sheethead"><h2 id="baTit">Buste paga</h2><button class="x" id="baClose" aria-label="Chiudi">×</button></div><div id="baBody"></div></div></div>
+<div class="modal" id="ftModal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="ftTit">
+  <div class="sheethead"><h2 id="ftTit">Turni da foto</h2><button class="x" id="ftClose" aria-label="Chiudi">×</button></div>
+  <div id="ft1"><p class="muted sm" style="margin-top:0">Carica la foto o lo screenshot della tabella dei turni (nomi sulle righe, giorni sulle colonne). La leggo sul telefono, poi controlli giorno per giorno prima di salvare.</p>
+    <label id="ftLavBox">Lavoro<select id="ftLav"></select></label>
+    <div class="g2"><label>Mese della tabella<input type="month" id="ftMese"></label><label>Il tuo nome com’è nella tabella<input id="ftNome" placeholder="es. Bianchi Chiara" autocomplete="off"></label></div>
+    <div class="acts"><label class="btn filebtn" id="ftScegli">Scegli immagine<input type="file" id="ftFile" accept="image/*" hidden></label></div>
+    <p class="muted sm">Va bene uno screenshot o una foto dritta e nitida. La prima volta scarica il lettore di testo (qualche MB). Le sigle lette sono quelle dei tuoi tipi di turno: controlla che coincidano con quelle della tabella.</p></div>
+  <div id="ft2" hidden><div class="bpbar"><span id="ftBar"></span></div><p class="muted sm" id="ftFase">Preparazione…</p></div>
+  <div id="ft3" hidden><p class="warn" id="ftErr"></p><div id="ftNomiBox" hidden><p class="sm">Nomi che ho letto nella tabella: tocca il tuo</p><div class="tuchips" id="ftNomi"></div></div>
+    <details class="extra"><summary>Mostra cosa ho letto</summary><pre class="lettoTesto"></pre></details>
+    <div class="acts"><label class="btn filebtn" for="ftFile">Scegli un’altra immagine</label></div></div>
+  <div id="ft4" hidden><p class="sm" id="ftRiass"></p><p class="muted sm">Controlla: tocca un simbolo per aggiungerlo o toglierlo da quel giorno. I giorni con ⚠ sono incerti.</p>
+    <p class="muted sm" id="ftLegenda"></p><div id="ftLista"></div>
+    <label id="ftOreBox" hidden>Ore<input type="number" inputmode="decimal" step="0.5" id="ftOre"></label>
+    <details class="extra"><summary>Mostra cosa ho letto</summary><pre class="lettoTesto"></pre></details>
+    <div class="foot"><button class="btn ghost" id="ftAnnulla">Annulla</button><button class="btn" id="ftSalva">Conferma e salva</button></div></div>
+</div></div>
 <div class="modal" id="dlg" hidden><div class="sheet dlg" role="alertdialog" aria-modal="true"><p id="dlgMsg"></p><div class="acts" id="dlgBtns"></div></div></div>
 <div class="modal" id="cuModal" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="cuTitle">
@@ -603,5 +631,7 @@ input.manca{border-color:var(--err)}
 <script src="buste.js"></script>
 <script src="stipendio.js"></script>
 <script src="attivita.js"></script>
+<script src="fototurni.js"></script>
+<script src="gcal.js"></script>
 </body>
 </html>

@@ -38,10 +38,10 @@
   const LAVORO=['lavoro','variabile'];
 
   const pct=v=>{const n=num(v);return n==null?null:n/100;};
-  function oraria(lv){const P=lv.paga||{};const imp=num(P.importo);if(imp==null)return null;if(P.tipo==='mensile'){const dv=num(P.divisore)||168;return imp/dv;}return imp;}
+  function oraria(lv){const P=lv.paga||{};const imp=num(P.importo);if(imp==null)return null;if(P.tipo==='mensile'){const dv=num(P.divisore)||168;return imp/dv;}if(P.tipo==='giornaliera'){const dv=num(P.divisore)||8;return imp/dv;}return imp;}
   // orario previsto dall'orario settimanale (solo "orario fisso"), in minuti
   function previsto(lv,iso){
-    if(lv.modo!=='fisso')return null;if(lv.dal&&iso<lv.dal)return null;
+    if(lv.modo!=='fisso')return null;if(lv.dal&&iso<lv.dal)return null;if(lv.al&&iso>lv.al)return null;
     const s=(lv.settimana||{})[giornoSett(iso)];if(!s)return null;
     const a=toMin(s.da),b=toMin(s.a);if(a==null||b==null)return null;
     let e=b;if(e<=a)e+=1440;return {da:a,a:e,pausa:num(s.pausa)||0,min:Math.max(0,e-a-(num(s.pausa)||0))};
@@ -76,11 +76,11 @@
   function calcolaMese(lv,turni,ym){
     const h=oraria(lv),P=lv.magg||{};const pS=pct(P.stra),pN=pct(P.nott),pF=pct(P.fest),pD=pct(P.dom);
     const perData={};for(const t of turni)if(t.data&&t.data.startsWith(ym))(perData[t.data]=perData[t.data]||[]).push(t);
-    const T={giorniLav:0,lav:0,ord:0,stra:0,nott:0,fest:0,dom:0,pagate:0,ferie:0,ferieOre:0,perm:0,mal:0,nonretr:0,variab:0};
+    const T={giorniPag:0,giorniLav:0,lav:0,ord:0,stra:0,nott:0,fest:0,dom:0,pagate:0,ferie:0,ferieOre:0,perm:0,mal:0,nonretr:0,variab:0};
     const giorni=[];let cum=0;const soglia=lv.modo==='turni'?num(lv.oreMese):null;
     for(let d=1;d<=giorniDelMese(ym);d++){
       const iso=`${ym}-${pad(d)}`;const G=vociGiorno(lv,(perData[iso]||[]).filter(t=>!t.deleted),iso);
-      let W=0,N=0;const pvMin=G.previsto?G.previsto.min:0;
+      let W=0,N=0,PG=0;const pvMin=G.previsto?G.previsto.min:0;
       const assParz=G.voci.filter(v=>!v.implicito&&!LAVORO.includes(v.cat)&&v.ore!=null).reduce((a,v)=>a+v.ore*60,0);
       for(const v of G.voci){
         if(v.implicito){const m=Math.max(0,pvMin-assParz);N+=Math.min(m,minNotte(lv,v.da,v.a));v.min=m;W+=m;continue;}
@@ -93,7 +93,7 @@
         } else if(PAGATE.includes(v.cat)||v.cat==='nonretr'){
           // ore dell'assenza: scritte nel turno, altrimenti quelle del tipo, altrimenti l'orario previsto del giorno
           const prev=previsto(lv,iso);const o=v.ore!=null?v.ore:(prev?prev.min/60:0);v.min=o*60;
-          if(v.cat==='nonretr')T.nonretr+=o;else T.pagate+=o;
+          if(v.cat==='nonretr')T.nonretr+=o;else{T.pagate+=o;PG++;}
           if(v.cat==='ferie'){T.ferie+=1;T.ferieOre+=o;}if(v.cat==='permesso')T.perm+=o;if(v.cat==='malattia')T.mal+=o;
         }
       }
@@ -101,7 +101,7 @@
       if(lv.modo==='fisso')S=Math.max(0,W-pvMin);
       else if(soglia!=null){const resto=Math.max(0,soglia*60-cum);S=Math.max(0,W-resto);}
       cum+=W;
-      if(W>0)T.giorniLav++;
+      if(W>0)T.giorniLav++;else if(PG)T.giorniPag++;
       T.lav+=W/60;T.stra+=S/60;T.ord+=(W-S)/60;T.nott+=N/60;
       if(G.fest&&W)T.fest+=W/60;else if(giornoSett(iso)===7&&W)T.dom+=W/60;
       giorni.push({data:iso,fest:G.fest,voci:G.voci,min:W,stra:S});
@@ -110,6 +110,7 @@
     const E={base:0,stra:0,nott:0,fest:0,dom:0};let lordo=null;
     if(h!=null){
       if(lv.paga.tipo==='mensile')E.base=Math.max(0,num(lv.paga.importo)-T.nonretr*h);
+      else if(lv.paga.tipo==='giornaliera')E.base=(T.giorniLav+T.giorniPag)*num(lv.paga.importo); // a giornata: ogni giorno lavorato o pagato vale la paga giornaliera
       else E.base=(T.ord+T.pagate)*h;
       E.stra=T.stra*h*(1+(pS||0));E.nott=T.nott*h*(pN||0);E.fest=T.fest*h*(pF||0);E.dom=T.dom*h*(pD||0);
       for(const k in E)E[k]=r2(E[k]);lordo=r2(E.base+E.stra+E.nott+E.fest+E.dom);

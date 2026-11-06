@@ -77,8 +77,15 @@
     };
     const primo = (...re) => { for (const r of re) for (const e of trova(r)) { const v = valoreDi(e); if (v != null && v > 0) return v; } return null; };
     const netto = primo(/^NETTO (DEL MESE|A PAGARE|IN BUSTA|BUSTA|DA PAGARE|IN PAGAMENTO)$/, /^NETTO$/);
-    const lordo = primo(/^TOT(ALE|\.)? ?COMPETENZE$/, /^COMPETENZE LORDE$/, /^(RETRIBUZIONE|TOTALE) LORD[AO]$/, /^IMPONIBILE PREVIDENZIALE$/);
-    const trattenute = primo(/^TOT(ALE|\.)? ?TRATTENUTE$/, /^TOTALE RITENUTE$/);
+    let lordo = primo(/^TOT(ALE|\.)? ?COMPETENZE$/, /^COMPETENZE LORDE$/, /^(RETRIBUZIONE|TOTALE) LORD[AO]$/, /^IMPONIBILE PREVIDENZIALE$/);
+    let trattenute = primo(/^TOT(ALE|\.)? ?TRATTENUTE$/, /^TOTALE RITENUTE$/);
+    // v17: totali senza etichetta (es. sotto le colonne COMPETENZE e TRATTENUTE): due importi sulla stessa riga con competenze − trattenute = netto
+    if (netto != null && (lordo == null || trattenute == null)) {
+      cerca: for (const r of righe) { const nn = r.el.filter(p => p.v != null && p.v > 0);
+        for (let i = 0; i < nn.length; i++) for (let j = i + 1; j < nn.length; j++) if (Math.abs(nn[i].v - nn[j].v - netto) < 0.6) {
+          if (lordo == null) lordo = nn[i].v; if (trattenute == null) trattenute = nn[j].v; break cerca; } }
+    }
+    if (netto != null && lordo != null && trattenute == null && lordo > netto) trattenute = Math.round((lordo - netto) * 100) / 100;
     // mese: "OTTOBRE 2026" oppure "10/2026"
     const MM = ['GENNAIO','FEBBRAIO','MARZO','APRILE','MAGGIO','GIUGNO','LUGLIO','AGOSTO','SETTEMBRE','OTTOBRE','NOVEMBRE','DICEMBRE'];
     let mese = null; const T = N(testo);
@@ -154,6 +161,16 @@
     if(tot&&tot.v>100)metti('pagaMensile',tot.v,tot.t);
     else{let somma=0,testo=[];for(const re of [/^PAGA BASE|^RETRIBUZIONE BASE|^STIPENDIO BASE|^MINIMO (TABELLARE|CONTRATTUALE|CONGLOBATO)/,/^CONTINGENZA/,/^SUPERMINIMO/,/^SCATTI/,/^E\.?D\.?R\.?\b|ELEMENTO DISTINTO/,/^TERZO ELEMENTO/]){const x=ultimo(re);if(x&&x.v>0&&x.v<10000){somma+=x.v;testo.push(x.t);}}
       if(somma>100)metti('pagaMensile',Math.round(somma*100)/100,testo.join(' · '));}
+    // v17: righe "quantità × compenso unitario = importo" (es. GIORNI PRESTAZIONE 22 × 110,00 = 2.420,00; ORE ORDINARIE 168 × 11,50)
+    for(const r of righe){const u=N(r);const n=numeriIn(r.replace(/\d{1,3}(?:[.,]\d{1,2})?\s*%/g,'')).filter(v=>v>0);
+      for(let i=0;i+2<n.length;i++){const [q,p,t]=[n[i],n[i+1],n[i+2]];if(Math.abs(q*p-t)>0.6||q>400)continue;
+        if(/GIORN|\bGG\b/.test(u)&&q<=31&&p>=20)metti('pagaGiornaliera',p,r);
+        else if(/\bORE\b|\bHH\b|ORARI/.test(u)&&!/STRAORD|NOTT|FESTIV|DOMENIC|MAGG/.test(u)&&p<200)metti('pagaOraria',p,r);break;}}
+    // date di inizio e fine del rapporto (intestazione su una riga, valori sotto)
+    for(let i=0;i+1<righe.length;i++){const u=N(righe[i]);if(!/ASSUNZIONE/.test(u))continue;
+      const dd=(righe[i+1].match(/\b\d{2}\/\d{2}\/\d{4}\b/g)||[]).map(x=>x.split('/').reverse().join('-'));
+      if(dd[0])metti('dal',dd[0],righe[i]+' → '+righe[i+1]);if(dd[1]&&/CESSAZIONE|SCADENZA|FINE/.test(u))metti('al',dd[1],righe[i]+' → '+righe[i+1]);break;}
+    for(let i=0;i+1<righe.length;i++)if(/CONTRATTO APPLICATO|C\.?C\.?N\.?L/.test(N(righe[i]))){const m=righe[i+1].match(/\b([A-Z]\d{2,3}\s?-\s?[A-Z][A-Z .'\-]{3,40})/);if(m){metti('ccnl',m[1].trim(),righe[i+1]);break;}}
     const or=ultimo(/(PAGA|RETRIBUZIONE|QUOTA) ORARIA/);if(or&&or.v>0&&or.v<200)metti('pagaOraria',or.v,or.t);
     const dv=ultimo(/DIVISORE/);if(dv&&dv.v>=20&&dv.v<=200)metti('divisore',dv.v,dv.t);
     // contratto: ferie, permessi, nome del CCNL

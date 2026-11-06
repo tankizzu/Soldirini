@@ -127,7 +127,7 @@ function initTokenClient(){
   if(tokenClient||!gisReady())return;
   tokenClient=google.accounts.oauth2.initTokenClient({client_id:CFG.CLIENT_ID,scope:CFG.SCOPE,
     callback:r=>{if(r.error){tokWait?.rej(new Error(r.error_description||r.error));tokWait=null;return;}
-      TOK={access:r.access_token,exp:Date.now()+(+r.expires_in||3600)*1000};try{localStorage.setItem('soldirini-tok',JSON.stringify(TOK));}catch(e){}
+      TOK={access:r.access_token,exp:Date.now()+(+r.expires_in||3600)*1000,scope:r.scope};try{localStorage.setItem('soldirini-tok',JSON.stringify(TOK));}catch(e){}
       tokWait?.res(TOK.access);tokWait=null;},
     error_callback:err=>{tokWait?.rej(new Error(err.type==='popup_closed'?'Accesso annullato.':err.type==='popup_failed_to_open'?'Il browser ha bloccato la finestra di accesso.':(err.message||err.type)));tokWait=null;}});
 }

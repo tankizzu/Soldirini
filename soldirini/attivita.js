@@ -161,12 +161,19 @@ renderRiepilogo=function(){_renderRie16();
   const h=`<div class="card"><h3>🛒 Spese personali${anno?' '+y:''}</h3>${righe}<div class="kv big"><span>Totale</span><b>${eur(r2(tot))}</b></div>${mesi}</div>`;
   (anno?$('rieAnno'):$('rieCards')).insertAdjacentHTML('beforeend',h);};
 
+// ================= impostazioni: icone colorate per ogni sezione (v17) =================
+const ICONE=[[/^lavoro dipendente/i,'💼','#1c7ed6'],[/^progetti/i,'📁','#e8590c'],[/^google calendar/i,'📅','#2f9e44'],[/^dati di strafobico/i,'🔄','#7048e8'],[/vecchia app/i,'📦','#868e96'],
+  [/^account/i,'👤','#0ca678'],[/^i tuoi dati/i,'🪪','#7048e8'],[/^la tua firma/i,'✍️','#c2255c'],[/^aspetto/i,'🎨','#f59f00'],[/^promemoria/i,'🔔','#e8590c'],[/^blocco/i,'🔒','#495057'],
+  [/^cestino/i,'🗑️','#c92a2a'],[/^storico/i,'🕘','#1098ad'],[/^copia di sicurezza/i,'💾','#1c7ed6']];
+function icone(){document.querySelectorAll('#v-pro details.fold>summary>.st').forEach(st=>{if(st.querySelector('.ic'))return;const t=st.textContent.trim();const m=ICONE.find(x=>x[0].test(t));
+  if(m)st.insertAdjacentHTML('afterbegin',`<span class="ic" style="--ic:${m[2]}" aria-hidden="true">${m[1]}</span>`);});}
+
 // ================= impostazioni: sezioni a comparsa, lavoro per primo =================
 const _renderProg16=renderProgetti;
 renderProgetti=function(){_renderProg16();
   $('foldLavSum').textContent=lavori().length||'';$('foldProjSum').textContent=progetti().length||'';
   try{const f=JSON.parse(localStorage.getItem('soldirini-foldpro')||'{}');if(f.lav!=null&&!$('foldLav').dataset.init)$('foldLav').open=f.lav;if(f.proj!=null&&!$('foldProj').dataset.init)$('foldProj').open=f.proj;}catch(e){}
-  $('foldLav').dataset.init=$('foldProj').dataset.init='1';};
+  $('foldLav').dataset.init=$('foldProj').dataset.init='1';icone();};
 // dopo un nuovo progetto creato dalla finestra attività, torno lì con il progetto scelto
 const _saveProj16=saveProj;
 saveProj=function(){const nuovo=pe?.isNew,id=pe?.p?.id;const r=_saveProj16();
