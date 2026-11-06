@@ -265,6 +265,22 @@ nav.tabs button{display:flex;align-items:center;justify-content:center;gap:6px}
 .wmap{display:flex;flex-direction:column;gap:6px}.wm{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:6px 8px}.wm span{display:flex;flex-direction:column;flex:1;min-width:0}.wm small{color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .wmesi{margin:4px 0 8px}
 .pdfante{margin-top:8px;max-height:60vh;overflow:auto;background:color-mix(in srgb,var(--mut) 12%,transparent);border-radius:10px;padding:10px 0}.pdfante [data-pg]{cursor:crosshair}
+/* v15 lavoro dipendente */
+#lvModal,#bpArch{z-index:55}#tuModal,#bpModal{z-index:60}
+.ev.tu{font-weight:700}
+.tubox{border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:10px}
+.tuh{display:flex;align-items:center;gap:8px;margin-bottom:6px}.tuh i{width:10px;height:10px;border-radius:50%;background:var(--c)}.tuh small{margin-left:auto}
+.tuv{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px dashed var(--line)}.tuv .bar{width:4px;align-self:stretch;border-radius:4px;background:var(--c)}.tuv .tx{flex:1;display:flex;flex-direction:column;min-width:0}.tuv small{color:var(--mut)}
+.tuchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chip{background:color-mix(in srgb,var(--c,var(--pri)) 16%,var(--card));color:var(--ink);border:1.5px solid transparent}.chip.on{border-color:var(--c,var(--pri));background:color-mix(in srgb,var(--c,var(--pri)) 30%,var(--card))}
+.srow{display:grid;grid-template-columns:42px 1fr 1fr 78px;gap:6px;align-items:center;margin-bottom:6px}
+.trow{border:1px solid var(--line);border-radius:12px;padding:8px;margin-bottom:8px}.trh,.trb{display:flex;gap:6px;align-items:center}.trb{margin-top:6px;flex-wrap:wrap}.trb>*{flex:1 1 90px}
+.trh .ico{width:52px;flex:none;text-align:center}.trh .sig{width:62px;flex:none}.trh input[type=color]{width:44px;flex:none;padding:2px;height:40px}.trh .x{flex:none}
+.lavcard h3 i{width:10px;height:10px;border-radius:50%;background:var(--c);display:inline-block;margin-right:6px}
+.warn{color:var(--err)}
+input.manca{border-color:var(--err)}
+.bpbar{height:8px;border-radius:8px;background:var(--line);overflow:hidden;margin:12px 0 6px}.bpbar span{display:block;height:100%;width:0;background:var(--pri);transition:width .3s}
+.bay{margin:16px 0 4px}.bai{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px dashed var(--line)}.bai .tx{flex:1;display:flex;flex-direction:column;min-width:0}.bai small{color:var(--mut)}
 </style>
 </head>
 <body>
@@ -330,6 +346,9 @@ nav.tabs button{display:flex;align-items:center;justify-content:center;gap:6px}
       <div class="stack">
         <div class="monthbar"><h2>Progetti</h2><button class="btn sm" id="projNew">+ Nuovo progetto</button></div>
         <div id="projList"></div>
+        <div class="monthbar"><h2>Lavoro dipendente</h2><button class="btn sm" id="lavNew">+ Nuovo lavoro</button></div>
+        <div id="lavList"></div>
+        <div class="card" id="stfBox" hidden><h3>Dati di Strafobico</h3><p class="muted sm">Su questo telefono c’è Strafobico con turni e buste paga. Puoi copiarli qui come nuovo lavoro (Strafobico non viene toccato).</p><button class="btn" id="stfBtn">Importa da Strafobico</button></div>
         <div class="card" id="importBox" hidden><h3>Dati della vecchia app Rimborsi</h3><p class="muted sm">Su questo dispositivo ci sono le trasferte della app Rimborsi Km. Le porto in Soldirini nel progetto Bulldogs.</p><button class="btn" id="importBtn">Importa trasferte</button></div>
       </div>
       <div class="stack">
@@ -464,6 +483,53 @@ nav.tabs button{display:flex;align-items:center;justify-content:center;gap:6px}
   </div>
 </div>
 
+<div class="modal" id="lvModal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="lvTitle">
+  <div class="sheethead"><h2 id="lvTitle">Lavoro</h2><button class="x" id="lvClose" aria-label="Chiudi">×</button></div>
+  <div class="stack">
+    <div class="g2"><label class="s2">Nome (es. il datore di lavoro)<input id="lvNome"></label></div>
+    <div class="row"><label class="check"><input type="radio" name="lvModo" value="fisso"> Orario fisso</label><label class="check"><input type="radio" name="lvModo" value="turni"> A turni</label><label style="width:64px">Colore<input type="color" id="lvColore"></label></div>
+    <div class="card"><h3>Paga</h3><div class="g2"><label>Tipo<select id="lvPagaTipo"><option value="mensile">Mensile (lorda)</option><option value="oraria">Oraria (lorda)</option></select></label><label>Importo lordo €<input id="lvPaga" type="number" inputmode="decimal" step="0.01" placeholder="vuoto = solo ore"></label>
+      <label class="s2" id="lvDivBox">Ore al mese per la paga oraria (divisore del contratto)<input id="lvDiv" type="number" inputmode="numeric" placeholder="168"></label></div>
+      <p class="muted sm">Lo trovi in busta paga o nel contratto. Se lo lasci vuoto, Soldirini conta solo le ore.</p></div>
+    <div class="card" id="lvFissoBox"><h3>Orario settimanale</h3><p class="muted sm" style="margin-top:0">Il mese si riempie da solo con questo orario: nel calendario segni solo le eccezioni.</p>
+      <div id="lvSett"></div><div class="acts"><button type="button" class="btn ghost sm" id="lvCopia">Copia il lunedì su mar–ven</button></div>
+      <label>Dal giorno (inizio del conteggio)<input type="date" id="lvDal"></label></div>
+    <div class="card" id="lvTurniBox"><h3>Straordinario</h3><label>Ore al mese oltre le quali è straordinario<input id="lvOreMese" type="number" inputmode="decimal" placeholder="vuoto = nessuno straordinario automatico"></label></div>
+    <div class="card"><h3 id="lvTipiTit">Tipi di turno</h3><div id="lvTipi"></div><button type="button" class="btn ghost sm" id="lvTipiAdd">+ Aggiungi tipo</button></div>
+    <div class="card"><h3>Maggiorazioni (%)</h3><p class="muted sm" style="margin-top:0">Lasciale vuote se non le conosci: le trovi nel contratto o in busta paga. Vuote = ore pagate come normali.</p>
+      <div class="g2"><label>Straordinario<input id="lvM-stra" type="number" inputmode="decimal"></label><label>Notturno<input id="lvM-nott" type="number" inputmode="decimal"></label>
+      <label>Festivo<input id="lvM-fest" type="number" inputmode="decimal"></label><label>Domenica<input id="lvM-dom" type="number" inputmode="decimal"></label>
+      <label>Notte dalle<input type="time" id="lvNottDa"></label><label>alle<input type="time" id="lvNottA"></label>
+      <label class="s2">Feste locali (es. santo patrono 29/06)<input id="lvLocali" placeholder="gg/mm, gg/mm"></label></div></div>
+    <div class="card"><h3>Ferie e permessi</h3><div class="g2"><label>Ferie in<select id="lvFerieU"><option value="giorni">giorni</option><option value="ore">ore</option></select></label><label>Ferie all’anno<input id="lvFerieA" type="number" inputmode="decimal"></label>
+      <label>Ferie residue anno prima<input id="lvFerieR" type="number" inputmode="decimal"></label><label>Permessi in<select id="lvPermU"><option value="ore">ore</option><option value="giorni">giorni</option></select></label>
+      <label class="s2">Permessi (ROL) all’anno<input id="lvPermA" type="number" inputmode="decimal"></label></div><p class="muted sm">Quando carichi una busta paga, i saldi si prendono da lì.</p></div>
+    <div class="card"><h3>Netto e contratto</h3><label>Trattenute % (facoltativo)<input id="lvTratt" type="number" inputmode="decimal" placeholder="vuoto = le calcolo dalle buste paga"></label>
+      <label>Contratto (facoltativo)<input id="lvContratto" placeholder="es. Commercio, livello 4"></label></div>
+  </div>
+  <div class="foot"><button class="btn ghost" id="lvDel">Elimina</button><button class="btn" id="lvSave">Salva lavoro</button></div></div></div>
+<div class="modal" id="tuModal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="tuTitle">
+  <div class="sheethead"><h2 id="tuTitle">Turno</h2><button class="x" id="tuClose" aria-label="Chiudi">×</button></div>
+  <label id="tuLavBox">Lavoro<select id="tuLav"></select></label>
+  <div class="tuchips" id="tuTipi"></div>
+  <p class="muted sm" id="tuHint"></p>
+  <div id="tuOrari" class="g2"><label>Dalle<input type="time" id="tuDa"></label><label>Alle<input type="time" id="tuA"></label><label>Pausa (minuti)<input type="number" inputmode="numeric" id="tuPausa"></label><label>Ore<input type="number" inputmode="decimal" step="0.25" id="tuOre"></label></div>
+  <label>Nota<input id="tuNota"></label>
+  <div class="foot"><button class="btn ghost" id="tuDel">Togli</button><button class="btn ghost" id="tuClear">Togli turni</button><button class="btn" id="tuSave">Salva</button></div></div></div>
+<div class="modal" id="bpModal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="bpTit">
+  <div class="sheethead"><h2 id="bpTit">Busta paga</h2><button class="x" id="bpClose" aria-label="Chiudi">×</button></div>
+  <div id="bpStep1"><p>Carica il PDF della busta paga (o una foto): leggo io le voci principali.</p>
+    <div class="acts"><label class="btn filebtn">Scegli il file<input type="file" id="bpFile" accept="application/pdf,image/*" hidden></label><button class="btn ghost" id="bpManuale">Scrivo i valori a mano</button></div>
+    <p class="muted sm">La busta viene letta sul telefono e salvata nella cartella del lavoro su Drive, divisa per anno.</p></div>
+  <div id="bpProg" hidden><div class="bpbar"><span id="bpBar"></span></div><p class="muted sm" id="bpFase"></p></div>
+  <p class="warn sm" id="bpErr" hidden></p>
+  <div id="bpStep2" hidden><p class="muted sm" id="bpNote"></p>
+    <div class="g2"><label class="s2">Mese<input type="month" id="bpMese"></label><label>Lordo (competenze)<input id="bp-lordo" inputmode="decimal"></label><label>Trattenute<input id="bp-trattenute" inputmode="decimal"></label>
+    <label class="s2">Netto<input id="bp-netto" inputmode="decimal"></label><label>Saldo ferie<input id="bp-ferie" inputmode="decimal"></label><label>in<select id="bpUF"><option value="giorni">giorni</option><option value="ore">ore</option></select></label>
+    <label>Saldo permessi (ROL)<input id="bp-rol" inputmode="decimal"></label><label>Ex festività<input id="bp-exfest" inputmode="decimal"></label><label class="s2">Permessi in<select id="bpUP"><option value="ore">ore</option><option value="giorni">giorni</option></select></label></div>
+    <div class="foot"><button class="btn ghost" id="bpDel" hidden>Togli</button><button class="btn" id="bpSave">Salva busta</button></div></div></div></div>
+<div class="modal" id="bpArch" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="baTit">
+  <div class="sheethead"><h2 id="baTit">Buste paga</h2><button class="x" id="baClose" aria-label="Chiudi">×</button></div><div id="baBody"></div></div></div>
 <div class="modal" id="dlg" hidden><div class="sheet dlg" role="alertdialog" aria-modal="true"><p id="dlgMsg"></p><div class="acts" id="dlgBtns"></div></div></div>
 <div class="modal" id="cuModal" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="cuTitle">
@@ -508,5 +574,8 @@ nav.tabs button{display:flex;align-items:center;justify-content:center;gap:6px}
 <script src="ui.js"></script>
 <script src="word.js"></script>
 <script src="pdfdoc.js"></script>
+<script src="stipcalc.js"></script>
+<script src="buste.js"></script>
+<script src="stipendio.js"></script>
 </body>
 </html>

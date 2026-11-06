@@ -3,7 +3,7 @@
 // Calendario a schermo pieno: tocco = riepilogo del giorno, doppio tocco = nuova attività,
 // pressione lunga = selezione di più giorni. Documenti e Tasse sono sottopagine di Riepilogo.
 
-const APP_VERSIONE='14';
+const APP_VERSIONE='15';
 const SUB={doc:'rie',tas:'rie'}; // sottopagina -> scheda madre
 const sheets=['dayModal','listModal','confModal'];
 function chiudiSheets(){for(const id of sheets)$(id).hidden=true;if($('evModal').hidden&&$('pjModal').hidden&&$('cuModal').hidden)document.body.classList.remove('noscroll');}
