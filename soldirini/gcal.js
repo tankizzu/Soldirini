@@ -66,7 +66,10 @@ function desiderati(){
         out[evId(`l|${l.id}|${d}|${v.id||'abituale'}|${i}`)]=Object.assign({cal:'l:'+l.id,calNome:l.nome,summary:nome+(v.ore!=null&&v.da==null?` (${nf(v.ore)} h)`:''),description:v.nota||''},tempi);});}}
   return out;
 }
-const firma=x=>JSON.stringify([x.summary,x.description,x.start,x.end]);
+// promemoria di Google Calendar: avviso sul telefono prima di ogni evento (anche ad app chiusa)
+function avvisi(x){const a=+(cfg()?.avviso||0);if(!a)return {useDefault:false,overrides:[]};
+  return {useDefault:false,overrides:[{method:'popup',minutes:x.start.date?(a>=1440?a-540:360):a}]};} // eventi di tutto il giorno: la sera prima (18:00) o alle 9 del giorno prima
+const firma=x=>JSON.stringify([x.summary,x.description,x.start,x.end,avvisi(x)]);
 
 // ---------- calendari ----------
 async function calendario(key,nome){
@@ -87,7 +90,7 @@ async function sincronizza(manuale){
       if(!calId[x.cal])calId[x.cal]=await calendario(x.cal,x.calNome);const cal=calId[x.cal];
       // se l'evento era in un altro calendario (attività spostata di progetto) lo tolgo da lì
       if(have[id]&&have[id].cal&&have[id].cal!==cal){try{await cfetch('DELETE',`/calendars/${encodeURIComponent(have[id].cal)}/events/${id}`);}catch(e){}}
-      const body={id,summary:x.summary,description:x.description,start:x.start,end:x.end,status:'confirmed',extendedProperties:{private:{soldirini:'1'}}};
+      const body={id,summary:x.summary,description:x.description,start:x.start,end:x.end,status:'confirmed',reminders:avvisi(x),extendedProperties:{private:{soldirini:'1'}}};
       try{await cfetch('PUT',`/calendars/${encodeURIComponent(cal)}/events/${id}`,body);}
       catch(e){if(e.status===404)await cfetch('POST',`/calendars/${encodeURIComponent(cal)}/events`,body);else throw e;}
       GC()['ev:'+id]={h,cal,updatedAt:Date.now()};fatti++;mod=true;
@@ -131,10 +134,13 @@ function renderGcal(){
     ${errore?`<p class="warn sm">${esc(errore)}</p>`:''}
     ${!DB.meta.gcalOk?'<p class="muted sm">Su questo telefono non è ancora collegato: tocca “Collega questo telefono”.</p>':''}
     <div class="acts">${!DB.meta.gcalOk?'<button class="btn sm" id="gcalLink">Collega questo telefono</button>':'<button class="btn ghost sm" id="gcalNow">Aggiorna ora</button>'}<button class="btn ghost sm" id="gcalOff">Disattiva</button></div>
+    <label>Avvisami prima di ogni attività<select id="gcalAvv">${[[0,'nessun avviso'],[15,'15 minuti prima'],[30,'30 minuti prima'],[60,'1 ora prima'],[120,'2 ore prima'],[1440,'il giorno prima']].map(([v,t])=>`<option value="${v}" ${+(c.avviso||0)===v?'selected':''}>${t}</option>`).join('')}</select></label>
+    <p class="muted sm">L’avviso arriva da Google Calendar sul telefono, anche con Soldirini chiusa. Gli eventi di tutto il giorno avvisano la sera prima.</p>
     <p class="muted sm">Le modifiche si fanno in Soldirini: quelle fatte direttamente in Google Calendar vengono sovrascritte.</p>`;
 }
 const _renderProg17=renderProgetti;
 renderProgetti=function(){_renderProg17();renderGcal();};
+document.addEventListener('change',e=>{if(e.target.id==='gcalAvv'){const c=GC().cfg;c.avviso=+e.target.value;c.updatedAt=Date.now();changed();renderGcal();toast('Avvisi aggiornati: li applico agli eventi alla prossima sincronizzazione.');}});
 document.addEventListener('click',e=>{const id=e.target.id;if(id==='gcalOn')attiva();else if(id==='gcalOff')disattiva();else if(id==='gcalLink'||id==='gcalNow')collega();});
 window.GCal={desiderati,sincronizza,evId,CAL_SCOPE};
 render();

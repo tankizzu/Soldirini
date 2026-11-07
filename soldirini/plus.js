@@ -177,11 +177,11 @@ function dovuti(prefix){
 }
 async function chiediPagamento(key){
   const g=pagamenti()[key];const [pid,ym,t]=key.split('|');const p=prog(pid);
-  const btns=[{t:'Annulla',v:null,cls:'ghost'}];if(g?.pagato)btns.push({t:'Non pagato',v:'no',cls:'danger'});btns.push({t:'Salva',v:'ok'});
+  const btns=[{t:'Annulla',v:null,cls:'ghost'}];if(g?.pagato)btns.push({t:'Non entrati',v:'no',cls:'danger'});btns.push({t:'Salva',v:'ok'});
   const v=await ask(`<b>${esc(p?.nome||'')}</b> · ${t==='r'?'rimborso spese':'compensi'} di ${esc(monthName(ym))}<br><span class="muted sm">Quando hai ricevuto i soldi? Decide l’anno per le tasse.</span><input type="date" id="dlgDate" value="${g?.pagato&&g.data?g.data:today()}" style="margin-top:10px">`,btns,true);
   if(v==='ok')setPagato(key,true,$('dlgDate').value||today());else if(v==='no')setPagato(key,false);
 }
-function setPagato(key,on,data){pagamenti()[key]={pagato:!!on,data:on?(data||today()):'',updatedAt:Date.now()};changed();render();toast(on?'Pagato il '+parseYmd(data||today()).toLocaleDateString('it-IT'):'Tolto “pagato”');return;pagamenti()[key]={pagato:!!on,data:on?today():'',updatedAt:Date.now()};changed();render();toast(on?'Segnato come pagato':'Tolto “pagato”');}
+function setPagato(key,on,data){pagamenti()[key]={pagato:!!on,data:on?(data||today()):'',updatedAt:Date.now()};changed();render();toast(on?'Entrati il '+parseYmd(data||today()).toLocaleDateString('it-IT'):'Tolto “entrati”');return;pagamenti()[key]={pagato:!!on,data:on?today():'',updatedAt:Date.now()};changed();render();toast(on?'Segnato come pagato':'Tolto “pagato”');}
 const giorniDa=ym=>Math.max(0,Math.round((new Date()-new Date(+ym.slice(0,4),+ym.slice(5,7),0))/864e5));
 
 // ---------- soglie ----------
@@ -251,7 +251,7 @@ renderRiepilogo=function(){
     ${t.km||t.rimb||p.rimborso.attivo?`<div class="kv"><span>Rimborsi spese</span><b>${nf(t.km,1)} km · ${eur(t.rimb)}</b></div>`:''}
     ${t.lordo||p.ore.attivo?`<div class="kv"><span>Ore</span><b>${nf(t.ore)}</b></div><div class="kv"><span>Lordo</span><b>${eur(t.lordo)}</b></div><div class="kv"><span>Ritenuta</span><b>− ${eur(t.rit)}</b></div><div class="kv"><span>Netto</span><b>${eur(t.netto)}</b></div>`:''}
     <div class="kv big"><span>Totale</span><b>${eur(r2(t.netto+t.rimb))}</b></div></div>`;
-  $('rieTot').innerHTML=(rieMode==='anno'?`<p class="muted sm annonote">Ogni lavoro conta nell’anno in cui ti pagano: con la data segnata in “Pagato”, altrimenti con quella prevista nel progetto (“Di solito mi pagano…”). Così dicembre ${+y-1} pagato a gennaio entra nel ${y}.</p>`:'')+`<div class="hero"><div><small>${rieMode==='mese'?'Lavorato nel mese':'Incassato nel '+y}</small><b>${eur(r2(tot.netto+tot.rimb))}</b></div><div><small>Ancora da incassare</small><b>${eur(daInc)}</b></div><div><small>Ritenuta d'acconto</small><b>${eur(tot.rit)}</b></div><div><small>Rimborsi spese</small><b>${eur(tot.rimb)}</b></div></div>`;
+  $('rieTot').innerHTML=(rieMode==='anno'?`<p class="muted sm annonote">Ogni lavoro conta nell’anno in cui ti pagano: con la data segnata in “Entrati”, altrimenti con quella prevista nel progetto (“Di solito mi pagano…”). Così dicembre ${+y-1} pagato a gennaio entra nel ${y}.</p>`:'')+`<div class="hero"><div><small>${rieMode==='mese'?'Lavorato nel mese':'Incassato nel '+y}</small><b>${eur(r2(tot.netto+tot.rimb))}</b></div><div><small>Ancora da incassare</small><b>${eur(daInc)}</b></div><div><small>Ritenuta d'acconto</small><b>${eur(tot.rit)}</b></div><div><small>Rimborsi spese</small><b>${eur(tot.rimb)}</b></div></div>`;
   let h=Object.values(per).filter(t=>t.n).map(t=>card(t,t.p)).join('')||'<p class="muted">Nessuna attività in questo periodo.</p>';
   $('rieCards').innerHTML=h;
   const nonPag=dv.filter(d=>!d.pag);
@@ -517,7 +517,7 @@ renderDoc=function(){
   $('docList').innerHTML=h;
   foldify($('docList'),'doc');
 };
-function payBtn(key,imp){if(!(imp>0))return '';const pg=pagamenti()[key];return pg?.pagato?`<button class="btn paid sm" data-unpag="${key}" title="Tocca per cambiare la data">✓ Pagato il ${parseYmd(pg.data||today()).toLocaleDateString('it-IT',{day:'numeric',month:'short'})}</button>`:`<button class="btn ghost sm" data-pag="${key}">Segna pagato</button>`;}
+function payBtn(key,imp){if(!(imp>0))return '';const pg=pagamenti()[key];return pg?.pagato?`<button class="btn paid sm" data-unpag="${key}" title="Tocca per cambiare la data">✓ Entrati il ${parseYmd(pg.data||today()).toLocaleDateString('it-IT',{day:'numeric',month:'short'})}</button>`:`<button class="btn ghost sm" data-pag="${key}">Segna entrati</button>`;}
 function annoTariffa(r){if(r.tariffaAnno)return r.tariffaAnno;const m=/(\d{2,4})\s*$/.exec(r.tariffaData||'');if(m){const y=+m[1];return y<100?2000+y:y;}return nowY();}
 function acaBanner(p){if(!p.rimborso.attivo)return '';const a=annoTariffa(p.rimborso);if(a>=nowY())return '';
   return `<div class="note">La tariffa ACI di questo progetto è del ${a||'anno scorso'}. Controlla quella del ${nowY()} sul sito <a href="https://www.aci.it" target="_blank" rel="noopener">ACI (costi chilometrici)</a> e aggiornala nel progetto.</div>`;}

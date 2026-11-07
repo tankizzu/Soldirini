@@ -192,7 +192,7 @@ function confrontoCU(c){
     r('Imponibile (punto 8)',sportivo?Math.max(0,t.lordo-soglia('sport15')):t.lordo,c.p8)+
     r('Ritenute d’acconto (punto 9)',t.rit,c.p9);
   const bad=[['p4',t.lordo],['p9',t.rit]].some(([k,v])=>c[k]!==''&&!ok(v,c[k]))&&!note4;
-  h+=bad?`<div class="note">I numeri non tornano. Controlla l’elenco qui sotto: forse un mese è stato pagato in un altro anno (cambia la data in “Pagato”), manca un’attività o la percentuale è diversa.</div>`:'';
+  h+=bad?`<div class="note">I numeri non tornano. Controlla l’elenco qui sotto: forse un mese è stato pagato in un altro anno (cambia la data in “Entrati”), manca un’attività o la percentuale è diversa.</div>`:'';
   const L=elencoPagamenti(String(c.anno)).filter(i=>i.pid===c.pid);
   h+=`<details class="extra"><summary>Pagamenti ${c.anno} di ${esc(t.p.nome)} (${L.length})</summary>${L.map(i=>`<div class="due" style="--c:${t.p.colore}"><span class="bar"></span><span class="tx"><b>${i.tp==='o'?'Compensi':'Rimborso'} ${esc(monthName(i.ym))}</b><small>${quandoPag(i)}</small></span><b class="amt">${eur(i.tp==='o'?i.lordo:i.rimb)}</b><button class="btn ghost sm" data-unpag="${i.pid}|${i.ym}|${i.tp}">Data</button></div>`).join('')}</details>`;
   return h;

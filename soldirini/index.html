@@ -300,6 +300,51 @@ input.manca{border-color:var(--err)}
 #ftModal{z-index:60}.ftg{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px dashed var(--line)}.ftg.dub{background:color-mix(in srgb,#e8590c 10%,transparent);border-radius:8px;padding-left:6px}
 .ftd{width:64px;flex:none;font-weight:700;font-size:14px}.ftc{display:flex;flex-wrap:wrap;gap:4px}.ftc .chip{min-width:38px;padding:4px 8px}
 .lettoTesto{white-space:pre-wrap;font-size:11px;max-height:200px;overflow:auto}
+/* v18 */
+.eye{margin-left:auto;background:transparent;border:0;color:inherit;width:40px;height:40px;display:grid;place-items:center;border-radius:12px;cursor:pointer}.eye .sbarra{display:none}body.nascondi .eye .sbarra{display:inline}
+#acc+.eye{margin-left:4px}
+body.nascondi :is(.hero b,.hero .rim b,.kv b,details.fold>summary .sum,#daySum b,.sprow b,.due b,.bai small,.ev.sp,.ev.fx,.rbar small,.obp b,.mnt){filter:blur(7px);user-select:none}
+.subfold{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}.subfold>summary{cursor:pointer;font-weight:700;list-style:none;padding:6px 0}.subfold>summary::-webkit-details-marker{display:none}.subfold>summary::after{content:'›';float:right;transition:transform .2s}.subfold[open]>summary::after{transform:rotate(90deg)}
+.subnav button[data-goto="ris"] .ico{background:#5c7d52}
+.hero .rim{grid-column:1/-1;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,.14);margin-bottom:4px}.hero .rim b{font-size:34px}.hero .rim small.det{display:block;opacity:.8;margin-top:2px}
+.hero .neg b{color:#ffb4a8}
+.calpanel{display:flex;gap:8px;align-items:center;margin:4px 0 8px}.calbtn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:999px;border:1px solid var(--line);background:var(--card);font-weight:700;cursor:pointer;color:var(--ink)}
+.calpop{border:1px solid var(--line);background:var(--card);border-radius:16px;padding:12px;margin-bottom:10px;box-shadow:var(--shadow);animation:pop .18s ease-out}.calpop h4{margin:8px 0 4px;font-size:13px;color:var(--mut);text-transform:uppercase;letter-spacing:.04em}
+.calpop .crow{display:flex;align-items:center;gap:10px;padding:7px 2px;cursor:pointer}.calpop .crow i{width:12px;height:12px;border-radius:4px;background:var(--c)}
+@keyframes pop{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.grid.swl{animation:swl .26s ease-out}.grid.swr{animation:swr .26s ease-out}
+@keyframes swl{from{opacity:.2;transform:translateX(40px)}to{opacity:1;transform:none}}@keyframes swr{from{opacity:.2;transform:translateX(-40px)}to{opacity:1;transform:none}}
+.ev.fx{opacity:.9}
+#fxModal,#obModal,#mvModal{z-index:60}
+.fxr{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px dashed var(--line)}.fxr .tx{flex:1;display:flex;flex-direction:column;min-width:0}.fxr small{color:var(--mut)}
+.obp{margin:10px 0}.obp .bar{height:10px;border-radius:10px;background:var(--line);overflow:hidden;margin:6px 0}.obp .bar span{display:block;height:100%;background:#2f9e44;border-radius:10px;transition:width .5s ease}
+.rbars{display:grid;grid-template-columns:repeat(12,1fr);gap:4px;align-items:end;height:140px;margin:10px 0 4px}.rbar{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:3px}.rbar span{width:100%;border-radius:6px 6px 2px 2px;background:#2f9e44;min-height:2px;transition:height .5s ease}.rbar span.neg{background:#e8590c}.rbar small{font-size:10px;color:var(--mut)}
+#filtri{display:block;position:relative}.calpop{position:absolute;z-index:20;left:0;top:46px;width:min(320px,100%);max-height:60vh;overflow:auto}.calpop .crow{flex-direction:row;font-size:15px;color:var(--ink);font-weight:600;margin:0}.calpop .crow input{width:auto;margin:0;flex:none;accent-color:var(--pri)}
+body.nascondi .hero small.det{filter:blur(6px)}
+/* v19 animazioni (varianti A, velocità veloce) */
+:root{--t:.7}
+@keyframes inR{from{transform:translateX(60%);opacity:0}to{transform:none;opacity:1}}@keyframes inL{from{transform:translateX(-60%);opacity:0}to{transform:none;opacity:1}}
+.mA-r{animation:inR calc(320ms*var(--t)) cubic-bezier(.2,.8,.2,1)}.mA-l{animation:inL calc(320ms*var(--t)) cubic-bezier(.2,.8,.2,1)}
+#v-cal,#v-rie{overflow-x:clip}
+@keyframes scrimIn{from{background:rgba(10,20,18,0)}to{background:rgba(10,20,18,.5)}}
+@keyframes sheetUp{from{transform:translateY(100%)}70%{transform:translateY(-2%)}to{transform:none}}
+@keyframes sheetPop{from{transform:scale(.94);opacity:0}70%{transform:scale(1.01)}to{transform:none;opacity:1}}
+.modal:not([hidden]){animation:scrimIn calc(240ms*var(--t)) ease-out}
+.modal:not([hidden])>.sheet,.modal:not([hidden])>div{animation:sheetUp calc(420ms*var(--t)) cubic-bezier(.2,.9,.3,1)}
+@media(min-width:700px){.modal:not([hidden])>.sheet,.modal:not([hidden])>div{animation-name:sheetPop}}
+@keyframes apri{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+details[open]>.fbody,details[open]>:not(summary){animation:apri calc(280ms*var(--t)) cubic-bezier(.2,.8,.2,1)}
+details>summary .chev,details.fold>summary::after{transition:transform calc(220ms*var(--t)) ease}
+@supports (interpolate-size:allow-keywords){:root{interpolate-size:allow-keywords}details::details-content{transition:block-size calc(280ms*var(--t)) cubic-bezier(.2,.8,.2,1),content-visibility calc(280ms*var(--t)) allow-discrete;block-size:0;overflow:clip}details[open]::details-content{block-size:auto}}
+button,.btn,.chip,.pchip,.fchip,.ib,.fab,.calbtn,.subnav button,.prow{transition:transform calc(120ms*var(--t)) ease,filter calc(120ms*var(--t)) ease,background-color .15s}
+button:active:not(:disabled),.btn:active,.chip:active,.prow:active,.subnav button:active{transform:scale(.95);filter:brightness(.96)}
+.grid .day:active{transform:scale(.96)}
+@keyframes up{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.cascata :is(.cards,#rieTot,.stack,#docList,#tasList,#risBody)>*{animation:up calc(340ms*var(--t)) cubic-bezier(.2,.8,.2,1) both}
+.cascata :is(.cards,.stack,#docList,#tasList,#risBody)>*:nth-child(2){animation-delay:calc(50ms*var(--t))}.cascata :is(.cards,.stack,#docList,#tasList,#risBody)>*:nth-child(3){animation-delay:calc(100ms*var(--t))}
+.cascata :is(.cards,.stack,#docList,#tasList,#risBody)>*:nth-child(4){animation-delay:calc(150ms*var(--t))}.cascata :is(.cards,.stack,#docList,#tasList,#risBody)>*:nth-child(n+5){animation-delay:calc(200ms*var(--t))}
+.toast{transition:opacity calc(250ms*var(--t)) ease,transform calc(320ms*var(--t)) cubic-bezier(.2,.9,.3,1.2)}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after,::details-content{animation-duration:1ms!important;animation-delay:0s!important;transition-duration:1ms!important}}
 </style>
 </head>
 <body>
@@ -307,6 +352,7 @@ input.manca{border-color:var(--err)}
   <img src="soldirini-tonda-192.png" alt="">
   <h1>Soldirini</h1>
   <span id="acc"></span>
+  <button id="occhio" class="ib eye" aria-label="Nascondi gli importi" aria-pressed="false"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path class="sbarra" d="M3 3l18 18"/></svg></button>
   <button id="sync" class="chip sync">…</button>
 </header>
 <nav class="tabs">
@@ -343,8 +389,15 @@ input.manca{border-color:var(--err)}
     <div class="subnav">
       <button data-goto="doc"><span class="ico"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg></span><span class="tx"><b>Documenti</b><small>Ricevute, note km, PDF e invio</small></span><span class="chev">›</span></button>
       <button data-goto="tas"><span class="ico"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M9 17l6-6"/><circle cx="9.5" cy="11.5" r=".9"/><circle cx="14.5" cy="16.5" r=".9"/></svg></span><span class="tx"><b>Tasse</b><small>Quanto mettere da parte, CU, soglie</small></span><span class="chev">›</span></button>
+      <button data-goto="ris"><span class="ico"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 9c1.2.3 2 1.3 2 2.5V13h-2l-1 3h-3v2h-3v-2H8l-1-2c-1.7-.7-3-2.5-3-4.5C4 6.5 7.6 5 11 5c2 0 3.6.5 4.8 1.3L18 5v3.2"/><circle cx="15.5" cy="10.5" r=".8" fill="currentColor"/></svg></span><span class="tx"><b>Risparmi</b><small>Obiettivi, salvadanaio, andamento</small></span><span class="chev">›</span></button>
     </div>
     <div id="rieAnno"></div>
+  </section>
+
+  <section id="v-ris" hidden>
+    <button class="back" data-goto="rie">‹ Riepilogo</button>
+    <div class="monthbar"><h2>Risparmi</h2></div>
+    <div id="risBody"></div>
   </section>
 
   <section id="v-doc" hidden>
@@ -367,12 +420,15 @@ input.manca{border-color:var(--err)}
           <div id="lavList"></div><div class="acts"><button class="btn sm" id="lavNew">+ Nuovo lavoro</button></div></div></details>
         <details class="card fold" id="foldProj"><summary><span class="st">Progetti</span><span class="sum" id="foldProjSum"></span></summary><div class="fbody">
           <div id="projList"></div><div class="acts"><button class="btn sm" id="projNew">+ Nuovo progetto</button></div></div></details>
+        <details class="card fold" id="foldFix"><summary><span class="st">Pagamenti fissi</span><span class="sum" id="foldFixSum"></span></summary><div class="fbody">
+          <p class="muted sm" style="margin-top:0">Mutuo, rate, abbonamenti (Netflix, Disney+…): si tolgono dai soldi rimanenti nel giorno di addebito.</p>
+          <div id="fixList"></div><div class="acts"><button class="btn sm" id="fixNew">+ Nuovo pagamento fisso</button></div></div></details>
         <div class="card" id="stfBox" hidden><h3>Dati di Strafobico</h3><p class="muted sm">Su questo telefono c’è Strafobico con turni e buste paga. Puoi copiarli qui come nuovo lavoro (Strafobico non viene toccato).</p><button class="btn" id="stfBtn">Importa da Strafobico</button></div>
         <div class="card" id="importBox" hidden><h3>Dati della vecchia app Rimborsi</h3><p class="muted sm">Su questo dispositivo ci sono le trasferte della app Rimborsi Km. Le porto in Soldirini nel progetto Bulldogs.</p><button class="btn" id="importBtn">Importa trasferte</button></div>
       </div>
       <div class="stack">
-        <div class="card"><h3>Account</h3><div id="accBox"></div></div>
-        <div class="card"><h3>I tuoi dati (per le ricevute)</h3>
+        <div class="card"><h3>Account</h3><div id="accBox"></div>
+        <details class="subfold" id="accDati"><summary>🪪 I tuoi dati (per le ricevute)</summary>
           <div class="g2">
             <label>Cognome<input id="pf-cognome" autocomplete="family-name"></label><label>Nome<input id="pf-nome" autocomplete="given-name"></label>
             <label>Nato/a a<input id="pf-natoA"></label><label>Il<input type="date" id="pf-dataNascita"></label>
@@ -381,15 +437,16 @@ input.manca{border-color:var(--err)}
             <label>Auto: modello<input id="pf-modello"></label><label>Targa<input id="pf-targa" autocapitalize="characters"></label>
           </div>
           <div class="acts"><button class="btn" id="pfSave">Salva dati</button></div>
+        </details>
+        <details class="subfold" id="accFirma"><summary>✍️ La tua firma</summary><p class="muted sm">Firma qui con il dito: la metto sulle ricevute PDF.</p><canvas id="firmaCanvas" class="firma"></canvas>
+          <div class="acts"><button class="btn ghost sm" id="firmaClr">Cancella</button><button class="btn sm" id="firmaSave">Salva firma</button><button class="btn ghost sm" id="firmaRm">Togli firma salvata</button></div><div id="firmaPrev" class="firmaprev"></div></details>
         </div>
-        <div class="card"><h3>La tua firma</h3><p class="muted sm">Firma qui con il dito: la metto sulle ricevute PDF.</p><canvas id="firmaCanvas" class="firma"></canvas>
-          <div class="acts"><button class="btn ghost sm" id="firmaClr">Cancella</button><button class="btn sm" id="firmaSave">Salva firma</button><button class="btn ghost sm" id="firmaRm">Togli firma salvata</button></div><div id="firmaPrev" class="firmaprev"></div></div>
         <div class="card"><h3>Aspetto</h3><label>Tema<select id="tema"><option value="auto">Come il telefono</option><option value="light">Chiaro</option><option value="dark">Scuro</option></select></label></div>
         <div class="card"><h3>Google Calendar</h3><div id="gcalBody"></div></div>
         <div class="card"><h3>Promemoria</h3><div class="stack">
           <label class="check"><input type="checkbox" id="promem"> Avvisami delle attività da confermare</label>
           <div class="g2"><label>Alle ore<select id="oraProm"><option value="17:00">17:00</option><option value="17:30">17:30</option><option value="18:00">18:00</option><option value="18:30">18:30</option><option value="19:00">19:00</option><option value="19:30">19:30</option><option value="20:00">20:00</option><option value="20:30">20:30</option><option value="21:00">21:00</option><option value="21:30">21:30</option><option value="22:00">22:00</option><option value="22:30">22:30</option><option value="23:00">23:00</option><option value="23:30">23:30</option></select></label><div style="align-self:end"><button class="btn ghost sm" id="icsBtn">Aggiungi al calendario del telefono</button></div></div>
-          <p class="muted sm" style="margin:0">Il file del calendario mette un promemoria per ogni attività prevista: funziona anche ad app chiusa.</p></div></div>
+          <p class="muted sm" style="margin:0">Questo avviso arriva solo se apri Soldirini dopo l’orario scelto (o, ad app installata, quando Chrome decide di controllare: di solito una volta al giorno, non a un’ora precisa). Per avvisi puntuali ad app chiusa attiva <b>Google Calendar</b> qui sopra e scegli “Avvisami prima di ogni attività”.</p></div></div>
         <div class="card"><h3>Blocco dell’app</h3><div id="sicBox"></div></div>
         <div class="card"><h3>Cestino</h3><p class="muted sm" style="margin-top:0">Le attività e i progetti eliminati restano qui 30 giorni.</p><div id="cestBox"></div></div>
         <div class="card"><h3>Storico modifiche</h3><div id="storBox" class="storbox"></div></div>
@@ -583,6 +640,24 @@ input.manca{border-color:var(--err)}
     <details class="extra"><summary>Mostra cosa ho letto</summary><pre class="lettoTesto"></pre></details>
     <div class="foot"><button class="btn ghost" id="ftAnnulla">Annulla</button><button class="btn" id="ftSalva">Conferma e salva</button></div></div>
 </div></div>
+<div class="modal" id="fxModal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="fxTit">
+  <div class="sheethead"><h2 id="fxTit">Pagamento fisso</h2><button class="x" id="fxClose" aria-label="Chiudi">×</button></div>
+  <div class="tuchips" id="fxCats"></div>
+  <div class="g2"><label class="s2">Nome<input id="fxNome" placeholder="es. Netflix, Mutuo casa, Rata auto"></label>
+    <label>Importo €<input id="fxImp" inputmode="decimal" placeholder="0,00"></label><label>Giorno di addebito<input id="fxGiorno" type="number" inputmode="numeric" min="1" max="31" placeholder="1–31"></label>
+    <label>Dal mese<input id="fxDal" type="month"></label><label>Durata<select id="fxDur"><option value="">senza fine</option><option value="rate">numero di rate</option><option value="al">fino al mese</option></select></label>
+    <label id="fxRateL" hidden>Rate<input id="fxRate" type="number" inputmode="numeric" min="1"></label><label id="fxAlL" hidden>Fino al mese<input id="fxAl" type="month"></label>
+    <label class="s2">Nota<input id="fxNota"></label></div>
+  <div class="foot"><button class="btn ghost" id="fxDel">Elimina</button><button class="btn" id="fxSave">Salva</button></div></div></div>
+<div class="modal" id="obModal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="obTit">
+  <div class="sheethead"><h2 id="obTit">Obiettivo</h2><button class="x" id="obClose" aria-label="Chiudi">×</button></div>
+  <div class="g2"><label class="s2">Nome<input id="obNome" placeholder="es. Vacanze, Fondo emergenze, Auto"></label><label>Quanto €<input id="obTarget" inputmode="decimal"></label><label>Entro<input id="obEntro" type="month"></label></div>
+  <div class="foot"><button class="btn ghost" id="obDel">Elimina</button><button class="btn" id="obSave">Salva</button></div></div></div>
+<div class="modal" id="mvModal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mvTit">
+  <div class="sheethead"><h2 id="mvTit">Metti da parte</h2><button class="x" id="mvClose" aria-label="Chiudi">×</button></div>
+  <div class="seg" id="mvTipo"><button data-t="in" class="on">Metto da parte</button><button data-t="out">Prelevo</button></div>
+  <div class="g2" style="margin-top:10px"><label>Importo €<input id="mvImp" inputmode="decimal"></label><label>Data<input id="mvData" type="date"></label><label class="s2">Obiettivo<select id="mvOb"></select></label><label class="s2">Nota<input id="mvNota"></label></div>
+  <div class="foot"><button class="btn ghost" id="mvDel">Elimina</button><button class="btn" id="mvSave">Salva</button></div></div></div>
 <div class="modal" id="dlg" hidden><div class="sheet dlg" role="alertdialog" aria-modal="true"><p id="dlgMsg"></p><div class="acts" id="dlgBtns"></div></div></div>
 <div class="modal" id="cuModal" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="cuTitle">
@@ -633,5 +708,8 @@ input.manca{border-color:var(--err)}
 <script src="attivita.js"></script>
 <script src="fototurni.js"></script>
 <script src="gcal.js"></script>
+<script src="soldi.js"></script>
+<script src="risparmi.js"></script>
+<script src="animazioni.js"></script>
 </body>
 </html>
