@@ -168,11 +168,21 @@ const errMsg=e=>(e&&e.message)||String(e);
 const DRIVE='https://www.googleapis.com/drive/v3',UPLOAD='https://www.googleapis.com/upload/drive/v3',SHEETS_MIME='application/vnd.google-apps.spreadsheet',FOLDER_MIME='application/vnd.google-apps.folder';
 const XLSX_MIME='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 class AuthErr extends Error{}
+// v20: tempo massimo di attesa delle risposte di Google (millisecondi). Senza limite una richiesta "appesa" bloccava la sincronizzazione.
+const TEMPI={richiesta:30000,caricamento:120000};
+class TempoErr extends Error{}
+// fetch con tempo massimo: se Google non risponde in tempo la richiesta viene interrotta
+async function fetchTempo(url,opt,ms,chi){
+  const ac=new AbortController();const tm=setTimeout(()=>ac.abort(),ms);
+  try{return await fetch(url,Object.assign({},opt,{signal:ac.signal}));}
+  catch(e){if(ac.signal.aborted)throw new TempoErr(`${chi||'Google'} non risponde: riprova più tardi.`);throw e;}
+  finally{clearTimeout(tm);}
+}
 async function gfetch(method,url,{json,body,headers,raw}={}){
   const t=await getToken(false);if(!t)throw new AuthErr('Accedi con Google per sincronizzare.');
   const h=Object.assign({Authorization:'Bearer '+t},headers||{});
   if(json!==undefined){h['Content-Type']='application/json';body=JSON.stringify(json);}
-  const r=await fetch(url,{method,headers:h,body});
+  const r=await fetchTempo(url,{method,headers:h,body},url.startsWith(UPLOAD)?TEMPI.caricamento:TEMPI.richiesta,'Google Drive');
   if(r.status===401){TOK=null;localStorage.removeItem('soldirini-tok');throw new AuthErr('Accesso scaduto: tocca "Sincronizza" per riconnetterti.');}
   if(!r.ok){let m='';try{const j=await r.json();m=j.error?.message||'';}catch(e){}const err=new Error(`Google Drive (${r.status}): ${m||r.statusText}`);err.status=r.status;throw err;}
   if(raw)return r;
@@ -208,6 +218,15 @@ async function pickFolder(title){
 
 // ================= Sincronizzazione =================
 let syncing=false,syncTimer=null,lastErr='',needLogin=false;
+// v20: il file dati su Drive non si legge → non lo tocco e fermo la sincronizzazione finché non torna leggibile
+let datiIllegibili=false;
+class IllegErr extends Error{}
+const MSG_ILLEGGIBILE='Il file dei dati su Drive (“Soldirini - dati (non cancellare).json”) non si legge. Non l’ho toccato: i tuoi dati restano su questo telefono. Su Drive ripristina una versione precedente del file dalla sua cronologia delle versioni (nella cartella “Copie di sicurezza” trovi anche le copie mensili), poi tocca la scritta in alto per riprovare.';
+function leggiDati(testo){
+  let o;try{o=JSON.parse(testo);}catch(e){o=undefined;}
+  if(!o||typeof o!=='object'||Array.isArray(o))throw new IllegErr(MSG_ILLEGGIBILE);
+  return o;
+}
 const DATA_Q="appProperties has { key='soldirini' and value='dati' } and trashed=false";
 function scheduleSync(ms){clearTimeout(syncTimer);syncTimer=setTimeout(()=>sync(false),ms??1500);renderSync();}
 const pendingCount=()=>(DB.meta.seq>DB.meta.synced?1:0)+Object.keys(DB.meta.queue).length;
@@ -235,7 +254,9 @@ async function sync(interactive){
       } else {syncing=false;showSetup=true;render();return;}
     }
     const seq0=DB.meta.seq;
-    const remote=await gfetch('GET',`${DRIVE}/files/${DB.meta.dataId}?alt=media`).then(t=>typeof t==='string'?JSON.parse(t||'null'):t).catch(e=>{if(e instanceof SyntaxError)return null;throw e;});
+    // v20: se il file non si legge mi fermo qui, prima di qualsiasi scrittura (prima veniva sovrascritto con i soli dati del telefono)
+    const remote=leggiDati(await gfetch('GET',`${DRIVE}/files/${DB.meta.dataId}?alt=media`,{raw:true}).then(r=>r.text()));
+    datiIllegibili=false;
     const merged=mergeData(D(),remote);
     // eventi arrivati da altri dispositivi: niente da esportare qui (lo fa chi li ha creati)
     DB.data=merged;persist();
@@ -243,7 +264,9 @@ async function sync(interactive){
     if(DB.meta.seq===seq0)DB.meta.synced=seq0;
     await processQueue();
     DB.meta.lastSync=Date.now();lastErr='';persist();
-  }catch(e){lastErr=errMsg(e);if(e instanceof AuthErr)needLogin=true;console.warn(e);}
+  }catch(e){lastErr=errMsg(e);if(e instanceof AuthErr)needLogin=true;
+    if(e instanceof IllegErr){if((!datiIllegibili||interactive)&&typeof ask==='function')ask(MSG_ILLEGGIBILE,[{t:'Ho capito',v:true}]);datiIllegibili=true;}
+    console.warn(e);}
   finally{syncing=false;render();if(DB.meta.seq>DB.meta.synced&&!lastErr)scheduleSync(1500);}
 }
 
@@ -319,20 +342,41 @@ async function exportOre(year){
   await saveSheet(`ore|${year}`,'ore',`Ritenuta d'acconto ${year}`,D().root.id,bytes);
 }
 let queueBusy='';
+// v20: coda che non si blocca. Un elemento in errore viene saltato e ritentato dopo 1, 5, poi 15 minuti; gli altri proseguono.
+// I tentativi sono tenuti solo in memoria (non nei dati salvati): riaprendo l'app si riprova subito.
+const codaAttesa={};let codaTimer=null;
+const ATTESE=[60000,300000,900000];
+const codaBloccante=e=>e instanceof AuthErr||e instanceof TempoErr||e instanceof IllegErr||!navigator.onLine;
+function codaRitenta(){
+  clearTimeout(codaTimer);codaTimer=null;
+  const t=Math.min(...Object.values(codaAttesa).map(a=>a.dopo));if(!isFinite(t))return;
+  codaTimer=setTimeout(()=>{codaTimer=null;scheduleSync(0);},Math.max(1000,t-Date.now()));
+}
+// esegue un passo della coda; false se è stato saltato o è fallito (resta in attesa)
+async function codaPasso(k,fn){
+  const a=codaAttesa[k];if(a&&a.dopo>Date.now())return false;
+  try{await fn();delete codaAttesa[k];codaRitenta();return true;}
+  catch(e){if(codaBloccante(e))throw e;
+    const n=(a?.n||0)+1;codaAttesa[k]={n,dopo:Date.now()+ATTESE[Math.min(n,ATTESE.length)-1],err:errMsg(e)};
+    console.warn('In attesa:',k,e);codaRitenta();renderSync();return false;}
+}
+const inAttesa=()=>Object.keys(codaAttesa).length;
 async function processQueue(){
   const keys=Object.keys(DB.meta.queue).sort((a,b)=>(a.startsWith('folder')?0:1)-(b.startsWith('folder')?0:1));
   for(const k of keys){
-    const ts=DB.meta.queue[k];const [kind,a,b]=k.split('|');
+    const ts=DB.meta.queue[k];if(ts===undefined)continue;const [kind,a,b]=k.split('|');
     queueBusy=kind==='cust'?`Foglio ${prog(a)?.nome||''} ${b}`:kind==='ore'?`Foglio ritenuta ${a}`:kind==='rimb'?`Fogli rimborsi ${prog(a)?.nome||''} ${b}`:`Cartella ${prog(a)?.nome||''}`;renderSync();
-    if(kind==='folder'){const p=prog(a);if(p&&!p.deleted)await ensureFolder(p);}
-    else if(kind==='rimb')await exportRimborsi(a,b);
-    else if(kind==='cust')await exportCustom(a,b);
-    else if(kind==='ore')await exportOre(a);
-    if(DB.meta.queue[k]===ts)delete DB.meta.queue[k];persist();
+    const ok=await codaPasso(k,async()=>{
+      if(kind==='folder'){const p=prog(a);if(p&&!p.deleted)await ensureFolder(p);}
+      else if(kind==='rimb')await exportRimborsi(a,b);
+      else if(kind==='cust')await exportCustom(a,b);
+      else if(kind==='ore')await exportOre(a);
+    });
+    if(ok&&DB.meta.queue[k]===ts)delete DB.meta.queue[k];persist();
   }
   queueBusy='';
-  // se ho cambiato file o cartelle, salvo anche i dati
-  if(DB.meta.seq>DB.meta.synced){const s0=DB.meta.seq;await uploadUpdate(DB.meta.dataId,{},canon(D()),'application/json');if(DB.meta.seq===s0)DB.meta.synced=s0;}
+  // se ho cambiato file o cartelle, salvo anche i dati (mai sopra un file dati che non si legge)
+  if(!datiIllegibili&&DB.meta.seq>DB.meta.synced){const s0=DB.meta.seq;await uploadUpdate(DB.meta.dataId,{},canon(D()),'application/json');if(DB.meta.seq===s0)DB.meta.synced=s0;}
 }
 
 // ================= PDF =================
@@ -399,10 +443,14 @@ function renderSync(){
   else if(!navigator.onLine){txt='Offline'+(pendingCount()?' · '+pendingCount()+' da inviare':'');cls='off';}
   else if(syncing){txt=queueBusy?'Aggiorno: '+queueBusy:'Sincronizzo…';cls='busy';}
   else if(needLogin){txt='Tocca per riconnettere';cls='warn';}
-  else if(lastErr){txt='Errore · riprova';cls='err';}
+  else if(datiIllegibili){txt='File dati non si legge';cls='err';}
+  else if(lastErr){txt=/non risponde/.test(lastErr)?'Drive non risponde · riprova':'Errore · riprova';cls='err';}
+  else if(inAttesa()){const n=inAttesa();txt=n===1?'1 elemento in attesa':n+' elementi in attesa';cls='warn';}
   else if(pendingCount()){txt=pendingCount()+' da inviare';cls='busy';}
+  // v20b: "Sincronizzato" solo dopo una sincronizzazione riuscita (prima compariva già sulla scelta della cartella, con Drive ancora vuoto)
+  else if(!DB.meta.lastSync||!DB.meta.dataId){txt='Da sincronizzare';cls='busy';}
   else {txt='Sincronizzato';cls='ok';}
-  c.textContent=txt;c.className='chip sync '+cls;c.title=lastErr||(DB.meta.lastSync?'Ultima sincronizzazione: '+new Date(DB.meta.lastSync).toLocaleString('it-IT'):'');
+  c.textContent=txt;c.className='chip sync '+cls;c.title=lastErr||(inAttesa()?'Riprovo da solo tra qualche minuto: '+Object.values(codaAttesa).map(a=>a.err).join(' · '):'')||(DB.meta.lastSync?'Ultima sincronizzazione: '+new Date(DB.meta.lastSync).toLocaleString('it-IT'):'');
 }
 function render(){
   renderSync();

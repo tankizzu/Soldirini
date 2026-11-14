@@ -1,0 +1,5 @@
+# strumenti e risultati delle prove (non vanno nel repository)
+test/node_modules/
+test/risultati/
+test/playwright-report/
+__pycache__/

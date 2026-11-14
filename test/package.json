@@ -1,0 +1,11 @@
+{
+  "name": "soldirini-test",
+  "private": true,
+  "description": "Prove automatiche di Soldirini (non pubblicate sul sito)",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0"
+  }
+}

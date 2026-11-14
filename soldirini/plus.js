@@ -437,11 +437,13 @@ async function miniatura(src){const img=new Image();img.src=src;await img.decode
   const c=document.createElement('canvas');c.width=Math.round(img.naturalWidth*k);c.height=Math.round(img.naturalHeight*k);c.getContext('2d').drawImage(img,0,0,c.width,c.height);return c.toDataURL('image/jpeg',0.7);}
 async function uploadFoto(){
   for(const e of eventi()){const p=prog(e.pid);if(!p||p.deleted)continue;
-    for(const x of (e.spese||[])){if(!x.foto||x.fotoId||x.foto.length<40000&&x.mini)continue;
+    for(const [i,x] of (e.spese||[]).entries()){if(!x.foto||x.fotoId||x.foto.length<40000&&x.mini)continue;
       queueBusy='Foto scontrini';renderSync();
+      // v20: una foto che non si carica resta in attesa e non blocca il resto della coda
+      await codaPasso(`foto|${e.id}|${i}`,async()=>{
       const folder=await ensureFolder(p);const bin=atob(x.foto.split(',')[1]);const u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);
       const f=await uploadNew({name:`Scontrino ${e.data} ${SPESE[x.tipo]||x.tipo} ${nf(x.importo,2)} €.jpg`,parents:[folder],mimeType:'image/jpeg'},new Blob([u],{type:'image/jpeg'}),'image/jpeg');
-      x.fotoId=f.id;x.fotoLink=f.webViewLink;x.foto=await miniatura(x.foto);x.mini=true;e.updatedAt=Date.now();DB.meta.seq++;persist();}}
+      x.fotoId=f.id;x.fotoLink=f.webViewLink;x.foto=await miniatura(x.foto);x.mini=true;e.updatedAt=Date.now();DB.meta.seq++;persist();});}}
 }
 const _processQueue=processQueue;
 processQueue=async function(){await uploadFoto();return _processQueue();};

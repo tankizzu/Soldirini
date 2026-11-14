@@ -33,7 +33,7 @@ getToken=function(interactive){
 
 async function cfetch(method,path,json){
   const t=await getToken(false);if(!t)throw new AuthErr('Accedi con Google.');
-  const r=await fetch(CAPI+path,{method,headers:Object.assign({Authorization:'Bearer '+t},json?{'Content-Type':'application/json'}:{}),body:json?JSON.stringify(json):undefined});
+  const r=await fetchTempo(CAPI+path,{method,headers:Object.assign({Authorization:'Bearer '+t},json?{'Content-Type':'application/json'}:{}),body:json?JSON.stringify(json):undefined},TEMPI.richiesta,'Google Calendar');
   if(r.status===204)return null;
   let j=null;try{j=await r.json();}catch(e){}
   if(!r.ok){const e=new Error(`Google Calendar (${r.status}): ${j?.error?.message||r.statusText}`);e.status=r.status;throw e;}
@@ -104,7 +104,7 @@ async function sincronizza(manuale){
   return fatti;
 }
 const _processQueue17=processQueue;
-processQueue=async function(){const r=await _processQueue17();try{await sincronizza(false);}catch(e){}return r;};
+processQueue=async function(){const r=await _processQueue17();await codaPasso('gcal',async()=>{await sincronizza(false);if(errore&&attivo())throw new Error(errore);});return r;};
 
 // ---------- attiva / disattiva ----------
 async function attiva(){

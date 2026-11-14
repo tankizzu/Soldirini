@@ -272,7 +272,7 @@ async function caricaPendenti(silenzioso){
   if(n&&!silenzioso)toast(n===1?'1 busta salvata su Drive.':`${n} buste salvate su Drive.`);if(n)render();return n;
 }
 const _processQueue15=processQueue;
-processQueue=async function(){const r=await _processQueue15();try{await caricaPendenti(true);}catch(e){}return r;};
+processQueue=async function(){const r=await _processQueue15();await codaPasso('buste',()=>caricaPendenti(true));return r;};
 
 let bp=null;
 function apriBusta(lid,mese,esistente){

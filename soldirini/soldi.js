@@ -108,7 +108,7 @@ async function backupMensile(){
   DB.meta.backupMese=ym;DB.meta.backupUltimo=Date.now();persist();
 }
 const _processQueue18=processQueue;
-processQueue=async function(){const r=await _processQueue18();try{await backupMensile();}catch(e){console.warn('backup',e);}return r;};
+processQueue=async function(){const r=await _processQueue18();await codaPasso('backup',backupMensile);return r;};
 
 // ---------- impostazioni ----------
 const _renderProg18=renderProgetti;

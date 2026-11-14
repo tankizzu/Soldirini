@@ -1,4 +1,6 @@
-# Pubblica su GitHub Pages il contenuto della cartella "soldirini"
+# Pubblica su GitHub Pages il contenuto della cartella "soldirini".
+# Dalla v20: prima partono le prove automatiche (cartella "test"); se una prova fallisce il sito NON viene aggiornato
+# e resta online la versione precedente.
 name: Pubblica Soldirini
 on:
   push:
@@ -12,7 +14,36 @@ concurrency:
   group: pages
   cancel-in-progress: true
 jobs:
+  test:
+    name: Prove automatiche
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Installa gli strumenti delle prove
+        working-directory: test
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: docs.js e fonts.css corrispondono ai sorgenti
+        run: python3 tools/genera-docs.py --controlla
+      - name: Prove
+        working-directory: test
+        env:
+          CI: '1'
+        run: npx playwright test
+      - name: Conserva i risultati se qualcosa non va
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: risultati-prove
+          path: test/risultati
+          retention-days: 7
   deploy:
+    needs: test
     runs-on: ubuntu-latest
     environment:
       name: github-pages
