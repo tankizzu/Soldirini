@@ -31,10 +31,13 @@ function multipart(buf, ct) {
 
 // Un Drive in memoria. Si può usare da più "dispositivi" (più pagine) dello STESSO utente finto.
 class DriveFinto {
-  constructor() { this.file = {}; this.n = 0; this.registro = []; this.guasto = null; this.ritardo = null; }
+  constructor() { this.file = {}; this.n = 0; this.registro = []; this.guasto = null; this.ritardo = null; this.dopoScrittura = null; }
   nuovoId() { return 'f' + (++this.n); }
   pubblico(f) { return { id: f.id, name: f.name, parents: f.parents, webViewLink: 'https://drive.google.com/finto/' + f.id, trashed: !!f.trashed,
-    mimeType: f.mimeType, modifiedTime: new Date(f.mt).toISOString(), appProperties: f.appProperties }; }
+    mimeType: f.mimeType, modifiedTime: new Date(f.mt).toISOString(), createdTime: new Date(f.ct || f.mt).toISOString(),
+    headRevisionId: f.rev || null, appProperties: f.appProperties }; }
+  // nuova revisione del contenuto (come headRevisionId di Drive: cambia solo quando cambia il contenuto)
+  nuovaRevisione(f) { f.rev = 'rev' + (++this.n); }
   fileDati() { return Object.values(this.file).filter(f => !f.trashed && f.appProperties && f.appProperties.soldirini === 'dati'); }
   datiJson() { const f = this.fileDati()[0]; return f ? JSON.parse(f.corpo) : null; }
   async gestisci(route) {
@@ -57,7 +60,7 @@ class DriveFinto {
       return json({ files: L.map(f => this.pubblico(f)) });
     }
     if (p === '/drive/v3/files' && m === 'POST') {
-      const b = JSON.parse(req.postData()); const f = { id: this.nuovoId(), ...b, mt: Date.now() }; this.file[f.id] = f; return json(this.pubblico(f));
+      const b = JSON.parse(req.postData()); const f = { id: this.nuovoId(), ...b, mt: Date.now(), ct: Date.now() }; this.file[f.id] = f; return json(this.pubblico(f));
     }
     let x = /^\/drive\/v3\/files\/([^/]+)(\/copy)?$/.exec(p);
     if (x) {
@@ -70,14 +73,18 @@ class DriveFinto {
     }
     if (p === '/upload/drive/v3/files' && m === 'POST') {
       const { meta, corpo } = multipart(req.postDataBuffer(), req.headers()['content-type']);
-      const f = { id: this.nuovoId(), ...meta, corpo: meta.mimeType === 'application/json' ? corpo.toString('utf8') : corpo, mt: Date.now() };
-      this.file[f.id] = f; return json(this.pubblico(f));
+      const f = { id: this.nuovoId(), ...meta, corpo: meta.mimeType === 'application/json' ? corpo.toString('utf8') : corpo, mt: Date.now(), ct: Date.now() };
+      this.nuovaRevisione(f); this.file[f.id] = f; return json(this.pubblico(f));
     }
     x = /^\/upload\/drive\/v3\/files\/([^/]+)$/.exec(p);
     if (x && m === 'PATCH') {
       const f = this.file[x[1]]; if (!f) return json({ error: { message: 'non trovato' } }, 404);
       const { meta, corpo } = multipart(req.postDataBuffer(), req.headers()['content-type']);
-      Object.assign(f, meta); f.corpo = f.mimeType === 'application/json' ? corpo.toString('utf8') : corpo; f.mt = Date.now(); return json(this.pubblico(f));
+      Object.assign(f, meta); f.corpo = f.mimeType === 'application/json' ? corpo.toString('utf8') : corpo; f.mt = Date.now(); this.nuovaRevisione(f);
+      const risposta = this.pubblico(f);
+      // per le prove: qualcosa che succede subito dopo una scrittura (es. un altro dispositivo che scrive a sua volta)
+      if (this.dopoScrittura) { const fn = this.dopoScrittura; this.dopoScrittura = null; await fn(f); }
+      return json(risposta);
     }
     return json({ error: { message: 'richiesta non prevista dal Drive finto: ' + voce } }, 400);
   }

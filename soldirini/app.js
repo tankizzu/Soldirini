@@ -80,17 +80,7 @@ function motivo(e){
 const etichetta=e=>e.tipo==='allenamento'?motivo(e):(e.titolo?`${TIPI[e.tipo]}: ${e.titolo}`:TIPI[e.tipo]);
 const meseKey=(pid,ym)=>`${pid}|${ym}`;
 function meseExtra(pid,ym){const p=prog(pid);return Object.assign({pedaggi:0,altro:0,altroDesc:'',pernN:'',pernEur:0,pastiN:'',pastiEur:0,allegati:'',dataFirma:'',tariffa:p.rimborso.tariffa,tariffaData:p.rimborso.tariffaData},D().mesi[meseKey(pid,ym)]||{});}
-function docData(pid,ym){
-  const p=prog(pid),R=p.rimborso,x=meseExtra(pid,ym),pr=D().profilo;
-  const rows=eventiDel(e=>e.pid===pid&&e.rimborso&&e.data.startsWith(ym)&&kmOf(e)>0)
-    .map(e=>({date:e.data,itinerary:R.origine?`${R.origine} - ${e.luogo||''} - ${R.origine}`:(e.luogo||''),reason:motivo(e),km:kmOf(e)}));
-  const km=r2(rows.reduce((s,r)=>s+r.km,0)),rate=+x.tariffa||0,kmEur=r2(km*rate);
-  const pedaggi=r2(x.pedaggi),altro=r2(x.altro),pernEur=r2(x.pernEur),pastiEur=r2(x.pastiEur);
-  const totViaggio=r2(kmEur+pedaggi+altro),totSogg=r2(pernEur+pastiEur);
-  return {p:{cognome:pr.cognome,natoA:pr.natoA,dataNascita:pr.dataNascita,residenza:pr.residenza,via:pr.via,cf:pr.cf},assoc:R.assoc,auto:pr.auto,occasione:R.occasione,mansione:R.mansione,
-    from:`${ym}-01`,to:`${ym}-${pad(lastDay(ym))}`,rate,rateDate:x.tariffaData,km,kmEur,pedaggi,altro,altroDesc:x.altroDesc,pernN:x.pernN,pernEur,pastiN:x.pastiN,pastiEur,
-    dataFirma:x.dataFirma||`${ym}-${pad(lastDay(ym))}`,allegati:x.allegati,totViaggio,totSogg,tot:r2(totViaggio+totSogg),rows};
-}
+let docData; // v21: versione originale tolta (non usata); definita in plus.js
 function riepilogo(prefix){ // prefix: 'YYYY-MM' o 'YYYY'
   const per={};const tot={km:0,rimb:0,ore:0,lordo:0,rit:0,netto:0,n:0};
   for(const p of progetti())per[p.id]={p,km:0,rimb:0,ore:0,lordo:0,rit:0,netto:0,n:0};
@@ -169,7 +159,7 @@ const DRIVE='https://www.googleapis.com/drive/v3',UPLOAD='https://www.googleapis
 const XLSX_MIME='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 class AuthErr extends Error{}
 // v20: tempo massimo di attesa delle risposte di Google (millisecondi). Senza limite una richiesta "appesa" bloccava la sincronizzazione.
-const TEMPI={richiesta:30000,caricamento:120000};
+const TEMPI={richiesta:30000,caricamento:120000,verifica:1500};
 class TempoErr extends Error{}
 // fetch con tempo massimo: se Google non risponde in tempo la richiesta viene interrotta
 async function fetchTempo(url,opt,ms,chi){
@@ -196,7 +186,7 @@ function multipart(meta,data,mime){
 const F='id,name,webViewLink,parents';
 const createFolder=(name,parent,props)=>gfetch('POST',`${DRIVE}/files?fields=${F}`,{json:{name,mimeType:FOLDER_MIME,parents:[parent||'root'],appProperties:props}});
 async function uploadNew(meta,data,mime){const m=multipart(meta,data,mime);return gfetch('POST',`${UPLOAD}/files?uploadType=multipart&fields=${F}`,m);}
-async function uploadUpdate(id,meta,data,mime){const m=multipart(meta,data,mime);return gfetch('PATCH',`${UPLOAD}/files/${id}?uploadType=multipart&fields=${F}`,m);}
+async function uploadUpdate(id,meta,data,mime,campi=F){const m=multipart(meta,data,mime);return gfetch('PATCH',`${UPLOAD}/files/${id}?uploadType=multipart&fields=${campi}`,m);}
 const trash=id=>gfetch('PATCH',`${DRIVE}/files/${id}?fields=id`,{json:{trashed:true}}).catch(()=>{});
 const getMeta=id=>gfetch('GET',`${DRIVE}/files/${id}?fields=${F},trashed`);
 async function exists(id){if(!id)return false;try{const m=await getMeta(id);return !m.trashed;}catch(e){if(e.status===404)return false;throw e;}}
@@ -230,10 +220,53 @@ function leggiDati(testo){
 const DATA_Q="appProperties has { key='soldirini' and value='dati' } and trashed=false";
 function scheduleSync(ms){clearTimeout(syncTimer);syncTimer=setTimeout(()=>sync(false),ms??1500);renderSync();}
 const pendingCount=()=>(DB.meta.seq>DB.meta.synced?1:0)+Object.keys(DB.meta.queue).length;
-async function findDataFile(){
-  const r=await gfetch('GET',`${DRIVE}/files?q=${encodeURIComponent(DATA_Q)}&fields=files(id,name,parents,modifiedTime)&orderBy=modifiedTime desc&spaces=drive`);
-  return r.files?.[0]||null;
+// v21: tutti i file dati, dal più vecchio. Se ce n'è più di uno (es. due telefoni al primo avvio) tutti i dispositivi scelgono lo stesso: il più vecchio.
+async function fileDati(){
+  const r=await gfetch('GET',`${DRIVE}/files?q=${encodeURIComponent(DATA_Q)}&fields=files(id,name,createdTime)&spaces=drive&pageSize=50`);
+  return (r.files||[]).sort((a,b)=>(a.createdTime||'').localeCompare(b.createdTime||'')||a.id.localeCompare(b.id));
 }
+async function findDataFile(){return (await fileDati())[0]||null;}
+// v21: controllo di versione. Drive v3 non permette di scrivere "solo se il file non è cambiato" (niente ETag),
+// quindi si confronta il numero di revisione del contenuto (headRevisionId) prima e dopo la scrittura.
+const revisione=id=>gfetch('GET',`${DRIVE}/files/${id}?fields=headRevisionId`).then(m=>m.headRevisionId||'');
+const MSG_CAMBIA='Il file dei dati su Drive viene modificato da un altro dispositivo proprio adesso: riprovo tra poco.';
+async function salvaDati(){
+  const id=DB.meta.dataId;
+  for(let giro=1;giro<=4;giro++){
+    const rev=await revisione(id);
+    const remote=leggiDati(await gfetch('GET',`${DRIVE}/files/${id}?alt=media`,{raw:true}).then(r=>r.text()));
+    datiIllegibili=false;
+    const merged=mergeData(D(),remote);DB.data=merged;persist();
+    if(canon(merged)===canon(remote))return;
+    if(await revisione(id)!==rev)continue;                       // cambiato mentre leggevo: rileggo e riunisco
+    const scritto=await uploadUpdate(id,{},canon(merged),'application/json','id,headRevisionId');
+    if(!scritto.headRevisionId||await revisione(id)===scritto.headRevisionId){verificaDopo(id,scritto.headRevisionId);return;}   // l'ultima scrittura è la mia
+    // un altro dispositivo ha scritto subito dopo di me: rileggo, riunisco e riscrivo
+  }
+  throw new Error(MSG_CAMBIA);
+}
+// v21: poco dopo aver scritto ricontrollo una volta, senza bloccare l'app: se un altro dispositivo ha scritto
+// mentre la mia scrittura era in viaggio, la sua copre la mia; me ne accorgo qui e risincronizzo (unendo di nuovo).
+let verificaTimer=null;
+function verificaDopo(id,mia){
+  clearTimeout(verificaTimer);if(!mia)return;
+  verificaTimer=setTimeout(async()=>{verificaTimer=null;
+    try{if(DB.meta.dataId===id&&tokenOk()&&navigator.onLine&&await revisione(id)!==mia)scheduleSync(0);}catch(e){console.warn('Verifica dopo la scrittura non riuscita',e);}
+  },TEMPI.verifica);
+}
+// v21: unisce i file dati in più dentro quello principale e li mette da parte (rinominati, non cancellati)
+async function unisciFileDati(altri){
+  const fatti=[];
+  for(const f of altri){
+    let dati;try{dati=leggiDati(await gfetch('GET',`${DRIVE}/files/${f.id}?alt=media`,{raw:true}).then(r=>r.text()));}
+    catch(e){if(e instanceof IllegErr){console.warn('File dati in più illeggibile, lasciato com\u2019è:',f.id);continue;}throw e;}
+    DB.data=mergeData(D(),dati);persist();fatti.push(f);
+  }
+  return fatti;
+}
+// il file esiste, non è nel cestino ed è ancora un file dati (non uno già messo da parte)
+async function fileDatiValido(id){try{const m=await gfetch('GET',`${DRIVE}/files/${id}?fields=trashed,appProperties`);return !m.trashed&&m.appProperties?.soldirini==='dati';}catch(e){if(e.status===404)return false;throw e;}}
+const metteDaParte=f=>gfetch('PATCH',`${DRIVE}/files/${f.id}?fields=id`,{json:{name:'Soldirini - dati (unito, si può eliminare).json',appProperties:{soldirini:'dati-unito'}}});
 async function sync(interactive){
   if(syncing){return;}
   if(!DB.meta.account){renderSync();return;}
@@ -244,23 +277,24 @@ async function sync(interactive){
   }
   needLogin=false;syncing=true;renderSync();
   try{
-    if(DB.meta.dataId&&!(await exists(DB.meta.dataId)))DB.meta.dataId=null;
+    // v21: elenco dei file dati a ogni sincronizzazione (per trovare i doppioni). La ricerca di Drive può non vedere subito
+    // un file appena creato: in quel caso tengo quello che conosco già, se esiste ancora.
+    const L=await fileDati();
+    if(DB.meta.dataId&&!L.some(f=>f.id===DB.meta.dataId)){if(await fileDatiValido(DB.meta.dataId))L.push({id:DB.meta.dataId,createdTime:'9'});else DB.meta.dataId=null;}
+    const altri=L.slice(1);
+    if(L.length)DB.meta.dataId=L[0].id;
     if(!DB.meta.dataId){
-      const f=await findDataFile();
-      if(f){DB.meta.dataId=f.id;}
-      else if(D().root?.id&&await exists(D().root.id)){
+      if(D().root?.id&&await exists(D().root.id)){
         const nf=await uploadNew({name:'Soldirini - dati (non cancellare).json',parents:[D().root.id],mimeType:'application/json',appProperties:{soldirini:'dati'}},canon(D()),'application/json');
         DB.meta.dataId=nf.id;
       } else {syncing=false;showSetup=true;render();return;}
     }
     const seq0=DB.meta.seq;
-    // v20: se il file non si legge mi fermo qui, prima di qualsiasi scrittura (prima veniva sovrascritto con i soli dati del telefono)
-    const remote=leggiDati(await gfetch('GET',`${DRIVE}/files/${DB.meta.dataId}?alt=media`,{raw:true}).then(r=>r.text()));
-    datiIllegibili=false;
-    const merged=mergeData(D(),remote);
+    const uniti=altri.length?await unisciFileDati(altri):[];
+    // v20: se il file non si legge salvaDati si ferma prima di qualsiasi scrittura (prima veniva sovrascritto con i soli dati del telefono)
     // eventi arrivati da altri dispositivi: niente da esportare qui (lo fa chi li ha creati)
-    DB.data=merged;persist();
-    if(!remote||canon(merged)!==canon(remote))await uploadUpdate(DB.meta.dataId,{},canon(merged),'application/json');
+    await salvaDati();
+    for(const f of uniti)await metteDaParte(f);
     if(DB.meta.seq===seq0)DB.meta.synced=seq0;
     await processQueue();
     DB.meta.lastSync=Date.now();lastErr='';persist();
@@ -313,18 +347,7 @@ async function saveSheet(fileKey,slot,name,parent,bytes){
   D().files[fileKey]=Object.assign({},D().files[fileKey],{[slot]:{id:f.id,link:f.webViewLink,name},updatedAt:Date.now()});
   DB.meta.seq++;persist();
 }
-async function exportRimborsi(pid,year){
-  const p=prog(pid);if(!p||p.deleted)return;
-  const yms=[...new Set(eventi().filter(e=>e.pid===pid&&e.rimborso&&kmOf(e)>0&&e.data.startsWith(year)).map(e=>e.data.slice(0,7)))].sort();
-  if(!yms.length)return;
-  const folder=await ensureFolder(p);
-  const mesi=yms.map(ym=>({ym,d:docData(pid,ym)}));
-  const cogn=(D().profilo.cognome||'Soldirini').trim();
-  const ric=await MODELLI.ricevute(await tpl('ricevuta.xlsx'),mesi,await logoSrc(p));
-  await saveSheet(`rimb|${pid}|${year}`,'ric',`${cogn} - Ricevute rimborso ${year}`,folder,ric);
-  const nota=await MODELLI.note(await tpl('nota.xlsx'),mesi);
-  await saveSheet(`rimb|${pid}|${year}`,'nota',`${cogn} - Nota Riepilogativa ${year}`,folder,nota);
-}
+let exportRimborsi; // v21: versione originale tolta (non usata); definita in plus.js
 function oreMesi(year){
   const yms=[...new Set(eventi().filter(e=>e.ore&&e.data.startsWith(year)&&prog(e.pid)&&!prog(e.pid).deleted).map(e=>e.data.slice(0,7)))].sort();
   return yms.map(ym=>{
@@ -376,7 +399,7 @@ async function processQueue(){
   }
   queueBusy='';
   // se ho cambiato file o cartelle, salvo anche i dati (mai sopra un file dati che non si legge)
-  if(!datiIllegibili&&DB.meta.seq>DB.meta.synced){const s0=DB.meta.seq;await uploadUpdate(DB.meta.dataId,{},canon(D()),'application/json');if(DB.meta.seq===s0)DB.meta.synced=s0;}
+  if(!datiIllegibili&&DB.meta.seq>DB.meta.synced){const s0=DB.meta.seq;await salvaDati();if(DB.meta.seq===s0)DB.meta.synced=s0;}
 }
 
 // ================= PDF =================
@@ -387,21 +410,7 @@ async function uploadPdf(key,name,parent,bytes){
   else f=await uploadNew({name,parents:[parent],mimeType:'application/pdf'},blob,'application/pdf');
   D().files[key]={pdf:{id:f.id,link:f.webViewLink,name},updatedAt:Date.now()};changed();
 }
-async function pdfRimborso(pid,ym){
-  const p=prog(pid),d=docData(pid,ym);
-  if(!d.rows.length&&!d.tot){toast('In questo mese non ci sono trasferte per '+p.nome,'err');return;}
-  busy(true,'Preparo il PDF…');
-  try{
-    const host=document.body;
-    const pages=[buildRicevuta(d,await logoSrc(p)),...buildNota(d,host)];
-    const bytes=await pagesToPdf(pages);
-    const [y,m]=ym.split('-');const name=`${(D().profilo.cognome||'Rimborso').trim()} - Rimborso spese ${p.nome} ${m}-${y}.pdf`;
-    download(bytes,name,'application/pdf');
-    if(navigator.onLine&&tokenOk()&&D().root?.id){try{busy(true,'Salvo il PDF su Drive…');await uploadPdf(`pdf|${pid}|${ym}`,name,await ensureFolder(p),bytes);toast('PDF scaricato e salvato su Drive');}catch(e){toast('PDF scaricato. Non sono riuscito a salvarlo su Drive: '+errMsg(e),'err');}}
-    else toast('PDF scaricato');
-  }catch(e){toast(errMsg(e),'err');}
-  finally{busy(false);render();}
-}
+let pdfRimborso; // v21: versione originale tolta (non usata); definita in plus.js
 function pagineOre(ym){
   const m=oreMesi(ym.slice(0,4)).find(x=>x.ym===ym);if(!m)return [];
   const pr=intestazione();
@@ -436,6 +445,8 @@ async function pdfOre(ym){
 let cur=today().slice(0,7),tab='cal',selDay=today(),multi=false,selected=new Set(),filtro='';
 function toast(msg,kind){const t=$('toast');t.textContent=msg;t.className='toast show'+(kind?' '+kind:'');clearTimeout(toast.t);toast.t=setTimeout(()=>t.className='toast',kind==='err'?6000:3000);}
 function busy(on,msg){$('busy').hidden=!on;if(msg)$('busyMsg').textContent=msg;}
+// accesso fatto ma nessuna cartella Soldirini ancora scelta (né file dati conosciuto)
+const cartellaMancante=()=>!!DB.meta.account&&!DB.meta.dataId&&!D().root?.id;
 function renderSync(){
   const c=$('sync');if(!c)return;
   let txt,cls;
@@ -444,11 +455,12 @@ function renderSync(){
   else if(syncing){txt=queueBusy?'Aggiorno: '+queueBusy:'Sincronizzo…';cls='busy';}
   else if(needLogin){txt='Tocca per riconnettere';cls='warn';}
   else if(datiIllegibili){txt='File dati non si legge';cls='err';}
+  // v21 (D-026): prima della prima sincronizzazione riuscita, scritte che dicono cosa manca; il giallo resta solo per ciò che è in corso
+  else if(cartellaMancante()){txt='Scegli la cartella';cls='warn';}
+  else if(!DB.meta.lastSync){txt='Non ancora su Drive';cls='warn';}
   else if(lastErr){txt=/non risponde/.test(lastErr)?'Drive non risponde · riprova':'Errore · riprova';cls='err';}
   else if(inAttesa()){const n=inAttesa();txt=n===1?'1 elemento in attesa':n+' elementi in attesa';cls='warn';}
-  else if(pendingCount()){txt=pendingCount()+' da inviare';cls='busy';}
-  // v20b: "Sincronizzato" solo dopo una sincronizzazione riuscita (prima compariva già sulla scelta della cartella, con Drive ancora vuoto)
-  else if(!DB.meta.lastSync||!DB.meta.dataId){txt='Da sincronizzare';cls='busy';}
+  else if(pendingCount()){txt=pendingCount()+' da inviare';cls='warn';}
   else {txt='Sincronizzato';cls='ok';}
   c.textContent=txt;c.className='chip sync '+cls;c.title=lastErr||(inAttesa()?'Riprovo da solo tra qualche minuto: '+Object.values(codaAttesa).map(a=>a.err).join(' · '):'')||(DB.meta.lastSync?'Ultima sincronizzazione: '+new Date(DB.meta.lastSync).toLocaleString('it-IT'):'');
 }
@@ -567,105 +579,19 @@ function calcEv(){
   $('evOreTot').textContent=isFisso(e)?'':`${nf(oreFasce(e.fasce))} ore`;
   $('evCalc').textContent=e.ore?`Lordo ${eur(s.lordo)} · ritenuta ${eur(s.rit)} · netto ${eur(s.netto)}`:'';
 }
-async function saveEv(){
-  const e=readEv();const p=prog(e.pid);
-  if(e.rimborso){
-    if($('evLuogo').value==='__new'){
-      const nome=$('evNewLuogoN').value.trim();const km=+String($('evKm').value).replace(',','.');
-      if(!nome){toast('Scrivi il nome del luogo.','err');return;}
-      if(!km){toast('Scrivi i km andata e ritorno.','err');return;}
-      const l={id:uid(),nome,km};p.rimborso.luoghi.push(l);p.updatedAt=Date.now();e.luogoId=l.id;e.luogo=nome;e.km=km;
-    } else {const l=p.rimborso.luoghi.find(x=>x.id===$('evLuogo').value);if(l){e.luogoId=l.id;e.luogo=l.nome;}}
-    if(!(+e.km>0)){toast('Mancano i km.','err');return;}
-  }
-  if(e.ore&&!isFisso(e)&&!(oreFasce(e.fasce)>0)){toast('Indica almeno un orario (es. 9:45 → 14:00).','err');return;}
-  if(!e.rimborso&&!e.ore&&!confirm('Non hai scelto né rimborso km né ore: salvo solo come promemoria?'))return;
-  const now=Date.now();
-  const old=md.ev;
-  if(md.id){const n=Object.assign({},D().eventi[md.id],e,{data:$('evDate').value||old.data,updatedAt:now});D().eventi[md.id]=n;markExport([...exportKeysOf(old),...exportKeysOf(n)]);}
-  else md.dates.forEach((d,i)=>{const n=Object.assign(clone(e),{id:uid(),data:d,created:now+i,updatedAt:now});D().eventi[n.id]=n;markExport(exportKeysOf(n));});
-  DB.meta.lastPid=e.pid;
-  closeEv();if(multi){multi=false;selected.clear();}
-  changed();render();toast(md.dates.length>1&&!md.id?`Aggiunta a ${md.dates.length} giorni`:'Salvato');
-}
-function delEv(){
-  if(!md.id||!confirm('Elimino questa attività?'))return;
-  const e=D().eventi[md.id];markExport(exportKeysOf(e));
-  D().eventi[md.id]={id:e.id,pid:e.pid,data:e.data,deleted:true,updatedAt:Date.now()};
-  closeEv();changed();render();toast('Eliminata');
-}
+let saveEv; // v21: versione originale tolta (non usata); definita in plus.js
+let delEv; // v21: versione originale tolta (non usata); definita in plus.js
 function dupEv(){const e=clone(readEv());const d=$('evDate').value;md={dates:[d],id:null,ev:null,pid:e.pid};fillEv(e);
   $('evTitle').textContent='Copia attività';$('evDel').hidden=true;$('evDup').hidden=true;$('evDateRow').hidden=false;$('evSub').textContent='Scegli il giorno della copia';}
 function closeEv(){$('evModal').hidden=true;document.body.classList.remove('noscroll');}
 
 // ---- riepilogo ----
 let rieMode='mese';
-function renderRiepilogo(){
-  const key=rieMode==='mese'?cur:cur.slice(0,4);
-  $('rieTitle').textContent=rieMode==='mese'?monthName(cur):'Anno '+cur.slice(0,4);
-  document.querySelectorAll('#rieSeg button').forEach(b=>b.classList.toggle('on',b.dataset.m===rieMode));
-  const {per,tot}=riepilogo(key);
-  const card=(t,p)=>`<div class="card pc" style="--c:${p?p.colore:'#2a2c30'}"><h3>${p?`<i></i>${esc(p.nome)}`:'Totale'}</h3>
-    <div class="kv"><span>Attività</span><b>${t.n}</b></div>
-    ${t.km||!p||p.rimborso.attivo?`<div class="kv"><span>Rimborsi km</span><b>${nf(t.km,1)} km · ${eur(t.rimb)}</b></div>`:''}
-    ${t.lordo||!p||p.ore.attivo?`<div class="kv"><span>Ore</span><b>${nf(t.ore)}</b></div><div class="kv"><span>Lordo</span><b>${eur(t.lordo)}</b></div><div class="kv"><span>Ritenuta</span><b>− ${eur(t.rit)}</b></div><div class="kv"><span>Netto</span><b>${eur(t.netto)}</b></div>`:''}
-    <div class="kv big"><span>Totale da ricevere</span><b>${eur(r2(t.netto+t.rimb))}</b></div></div>`;
-  $('rieTot').innerHTML=`<div class="hero"><div><small>Da ricevere</small><b>${eur(r2(tot.netto+tot.rimb))}</b></div><div><small>Ritenuta d'acconto</small><b>${eur(tot.rit)}</b></div><div><small>Lordo compensi</small><b>${eur(tot.lordo)}</b></div><div><small>Rimborsi km</small><b>${eur(tot.rimb)}</b></div></div>`;
-  $('rieCards').innerHTML=Object.values(per).filter(t=>t.n).map(t=>card(t,t.p)).join('')||'<p class="muted">Nessuna attività in questo periodo.</p>';
-  if(rieMode==='anno'){
-    const y=cur.slice(0,4);let rows='';const T={rimb:0,lordo:0,rit:0,netto:0};
-    for(let m=1;m<=12;m++){const ym=`${y}-${pad(m)}`;const r=riepilogo(ym).tot;if(!r.n)continue;for(const k in T)T[k]=r2(T[k]+r[k]);
-      rows+=`<tr data-ym="${ym}"><td>${MESI[m-1]}</td><td>${eur(r.rimb)}</td><td>${eur(r.lordo)}</td><td>${eur(r.rit)}</td><td>${eur(r.netto)}</td><td><b>${eur(r2(r.netto+r.rimb))}</b></td></tr>`;}
-    $('rieAnno').innerHTML=rows?`<div class="tw"><table class="tab"><thead><tr><th>Mese</th><th>Rimborsi</th><th>Lordo</th><th>Ritenuta</th><th>Netto</th><th>Da ricevere</th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td>Totale</td><td>${eur(T.rimb)}</td><td>${eur(T.lordo)}</td><td>${eur(T.rit)}</td><td>${eur(T.netto)}</td><td>${eur(r2(T.netto+T.rimb))}</td></tr></tfoot></table></div>`:'';
-  } else $('rieAnno').innerHTML='';
-}
+let renderRiepilogo; // v21: versione originale tolta (non usata); definita in plus.js
 
 // ---- documenti ----
 function fileLink(rec,slot,label){const f=rec?.[slot];return f?.link?`<a class="btn ghost sm" href="${esc(f.link)}" target="_blank" rel="noopener">${label} ↗</a>`:'';}
-function renderDoc(){
-  $('docTitle').textContent=monthName(cur);
-  const y=cur.slice(0,4);let h='';
-  const root=D().root;
-  for(const p of progetti()){
-    if(!p.rimborso.attivo)continue;
-    const d=docData(p.id,cur);const x=meseExtra(p.id,cur);const rec=D().files[`rimb|${p.id}|${y}`];const pdf=D().files[`pdf|${p.id}|${cur}`];
-    const q=DB.meta.queue[`rimb|${p.id}|${y}`];
-    h+=`<div class="card pc" style="--c:${p.colore}"><h3><i></i>${esc(p.nome)} · rimborso spese</h3>
-      <div class="kv"><span>Trasferte</span><b>${d.rows.length} · ${nf(d.km,1)} km</b></div>
-      <div class="kv"><span>Km × ${nf(d.rate,4)} €</span><b>${eur(d.kmEur)}</b></div>
-      <div class="kv big"><span>Totale ricevuta</span><b>${eur(d.tot)}</b></div>
-      <details class="extra" data-pid="${p.id}"><summary>Altre spese e dati della ricevuta</summary>
-        <div class="g2">
-          <label>Pedaggi €<input inputmode="decimal" data-x="pedaggi" value="${x.pedaggi||''}"></label>
-          <label>Altro €<input inputmode="decimal" data-x="altro" value="${x.altro||''}"></label>
-          <label class="s2">Altro: descrizione<input data-x="altroDesc" value="${esc(x.altroDesc)}"></label>
-          <label>Pernottamenti n.<input data-x="pernN" value="${esc(x.pernN)}"></label>
-          <label>Pernottamenti €<input inputmode="decimal" data-x="pernEur" value="${x.pernEur||''}"></label>
-          <label>Pasti n.<input data-x="pastiN" value="${esc(x.pastiN)}"></label>
-          <label>Pasti €<input inputmode="decimal" data-x="pastiEur" value="${x.pastiEur||''}"></label>
-          <label>Allegati n.<input data-x="allegati" value="${esc(x.allegati)}"></label>
-          <label>Data firma<input type="date" data-x="dataFirma" value="${esc(x.dataFirma||d.dataFirma)}"></label>
-          <label>Tariffa ACI €/km<input inputmode="decimal" data-x="tariffa" value="${x.tariffa}"></label>
-          <label>Calcolata il<input data-x="tariffaData" value="${esc(x.tariffaData)}"></label>
-        </div></details>
-      <div class="acts"><button class="btn" data-pdf="${p.id}" ${d.rows.length||d.tot?'':'disabled'}>Scarica PDF</button>
-        ${fileLink(rec,'ric','Ricevute')}${fileLink(rec,'nota','Nota')}${fileLink(pdf,'pdf','PDF su Drive')}
-        ${p.cartella?.link?`<a class="btn ghost sm" href="${esc(p.cartella.link)}" target="_blank" rel="noopener">Cartella ↗</a>`:''}</div>
-      <p class="muted sm">${q?'Fogli Google da aggiornare: lo faccio alla prossima sincronizzazione.':rec?'Fogli Google aggiornati.':'I Fogli Google si creano da soli alla sincronizzazione.'}</p></div>`;
-  }
-  const om=oreMesi(y).find(m=>m.ym===cur);const rec=D().files[`ore|${y}`];const pdfo=D().files[`pdfore|${cur}`];
-  if(progetti().some(p=>p.ore.attivo)||om){
-    const T=(om?.progetti||[]).reduce((a,p)=>({ore:a.ore+p.ore,lordo:a.lordo+p.lordo,rit:a.rit+p.rit,netto:a.netto+p.netto}),{ore:0,lordo:0,rit:0,netto:0});
-    h+=`<div class="card pc" style="--c:#a16207"><h3><i></i>Ore e ritenuta d'acconto</h3>
-      ${(om?.progetti||[]).map(p=>`<div class="kv"><span>${esc(p.nome)}</span><b>${nf(p.ore)} h · ${eur(p.netto)} netti</b></div>`).join('')||'<p class="muted">Nessuna ora segnata questo mese.</p>'}
-      <div class="kv"><span>Lordo</span><b>${eur(T.lordo)}</b></div><div class="kv"><span>Ritenuta</span><b>${eur(T.rit)}</b></div><div class="kv big"><span>Netto</span><b>${eur(T.netto)}</b></div>
-      <div class="acts"><button class="btn" data-pdfore="1" ${om?'':'disabled'}>Scarica PDF</button>${fileLink(rec,'ore',"Foglio ritenuta "+y)}${fileLink(pdfo,'pdf','PDF su Drive')}</div>
-      <p class="muted sm">${DB.meta.queue['ore|'+y]?'Foglio da aggiornare: lo faccio alla prossima sincronizzazione.':''}</p></div>`;
-  }
-  if(!h)h='<p class="muted">Crea un progetto per vedere qui i documenti.</p>';
-  h+=root?.link?`<p class="muted sm">Tutti i file sono nella cartella <a href="${esc(root.link)}" target="_blank" rel="noopener">Soldirini ↗</a>${root.dove?' ('+esc(root.dove)+')':''}.</p>`:'';
-  $('docList').innerHTML=h;
-}
+let renderDoc; // v21: versione originale tolta (non usata); definita in plus.js
 function saveExtra(pid,k,v){
   const key=meseKey(pid,cur);const x=Object.assign({},meseExtra(pid,cur),D().mesi[key]||{});
   x[k]=['pedaggi','altro','pernEur','pastiEur','tariffa'].includes(k)?(v===''?0:+String(v).replace(',','.')||0):v;
@@ -734,14 +660,7 @@ function saveProj(){
   if(old&&canon(old)!==canon(p)){const ys=new Set(eventi().filter(e=>e.pid===p.id).map(e=>e.data.slice(0,4)));ys.forEach(y=>markExport([`rimb|${p.id}|${y}`,`ore|${y}`]));}
   closeProj();changed();render();toast(pe.isNew?'Progetto creato':'Progetto salvato');
 }
-function delProj(){
-  const p=pe.p;const n=eventi().filter(e=>e.pid===p.id).length;
-  if(!confirm(`Elimino il progetto “${p.nome}”${n?` e le sue ${n} attività`:''}? I file già creati su Drive restano.`))return;
-  const now=Date.now();
-  for(const e of eventi().filter(e=>e.pid===p.id)){markExport(exportKeysOf(e));D().eventi[e.id]={id:e.id,pid:e.pid,data:e.data,deleted:true,updatedAt:now};}
-  D().progetti[p.id]=Object.assign({},prog(p.id),{deleted:true,updatedAt:now});delete DB.meta.queue['folder|'+p.id];
-  closeProj();changed();render();toast('Progetto eliminato');
-}
+let delProj; // v21: versione originale tolta (non usata); definita in plus.js
 function closeProj(){$('pjModal').hidden=true;document.body.classList.remove('noscroll');}
 function applyPreset(k){
   if(k!=='bulldogs')return;
@@ -793,9 +712,11 @@ function importOld(){
 function backup(){download(new TextEncoder().encode(JSON.stringify(D(),null,1)),`soldirini-backup-${today()}.json`,'application/json');}
 
 // ================= eventi interfaccia =================
+// v21: i pulsanti chiamano la funzione per nome al momento del tocco, così usano sempre la versione attuale
+// (anche se un file successivo la ridefinisce), qualunque sia l'ordine in cui i file si caricano.
 function bind(){
   document.querySelector('.tabs').addEventListener('click',e=>{const b=e.target.closest('button[data-tab]');if(b){tab=b.dataset.tab;render();window.scrollTo(0,0);}});
-  $('sync').addEventListener('click',()=>{if(!DB.meta.account)login();else sync(true);});
+  $('sync').addEventListener('click',()=>{if(!DB.meta.account)login();else if(cartellaMancante()&&!syncing){showSetup=true;render();}else sync(true);});
     $('prev').onclick=()=>shift(-1);$('next').onclick=()=>shift(1);$('oggi').onclick=()=>{cur=today().slice(0,7);selDay=today();render();};
   for(const id of ['rPrev','dPrev'])$(id).onclick=()=>shift(rieMode==='anno'&&id==='rPrev'?-12:-1);
   for(const id of ['rNext','dNext'])$(id).onclick=()=>shift(rieMode==='anno'&&id==='rNext'?12:1);
@@ -811,7 +732,7 @@ function bind(){
   for(const id of ['dayList','lista'])$(id).addEventListener('click',e=>{const b=e.target.closest('[data-ev]');if(b){const ev=D().eventi[b.dataset.ev];selDay=ev.data;openEv([ev.data],ev);}});
   $('listaHead').onclick=()=>{$('listaSec').classList.toggle('closed');};
   // finestra attività
-  $('evClose').onclick=closeEv;$('evModal').addEventListener('click',e=>{if(e.target.id==='evModal')closeEv();});
+  $('evClose').onclick=e=>closeEv(e);$('evModal').addEventListener('click',e=>{if(e.target.id==='evModal')closeEv();});
   $('evProj').addEventListener('click',e=>{const b=e.target.closest('[data-pid]');if(!b)return;const cur0=readEv();const p=prog(b.dataset.pid);
     const n=defaultsEv(p);if(md.tipoSet)n.tipo=cur0.tipo;n.titolo=cur0.titolo;n.squadra=cur0.squadra;n.note=cur0.note;fillEv(n);});
   $('evTipo').addEventListener('click',e=>{const b=e.target.closest('[data-t]');if(!b)return;const x=readEv();
@@ -827,7 +748,7 @@ function bind(){
     const p=prog(md.e.pid);document.querySelectorAll('#evPreset [data-fa]').forEach(b=>{const f=p.ore.fasce.find(q=>q.id===b.dataset.fa);b.classList.toggle('on',md.e.fasce.some(x=>x.da===f.da&&x.a===f.a));});});
   $('evFasce').addEventListener('click',e=>{const b=e.target.closest('[data-frm]');if(!b)return;const x=readEv();x.fasce.splice(+b.dataset.frm,1);fillEv(x);});
   for(const id of ['evFissoV','evTar','evRit','evKm'])$(id).addEventListener('input',calcEv);
-  $('evSave').onclick=saveEv;$('evDel').onclick=delEv;$('evDup').onclick=dupEv;
+  $('evSave').onclick=e=>saveEv(e);$('evDel').onclick=e=>delEv(e);$('evDup').onclick=e=>dupEv(e);
   // riepilogo
   $('rieSeg').addEventListener('click',e=>{const b=e.target.closest('[data-m]');if(b){rieMode=b.dataset.m;render();}});
   $('rieAnno').addEventListener('click',e=>{const r=e.target.closest('tr[data-ym]');if(r){cur=r.dataset.ym;rieMode='mese';render();}});
@@ -837,11 +758,11 @@ function bind(){
   // progetti e profilo
   $('projNew').onclick=()=>openProj();
   $('projList').addEventListener('click',e=>{const b=e.target.closest('[data-proj]');if(b)openProj(b.dataset.proj);});
-  $('pfSave').onclick=saveProfilo;
+  $('pfSave').onclick=e=>saveProfilo(e);
   $('accBox').addEventListener('click',e=>{if(e.target.id==='syncNow')sync(true);if(e.target.id==='logout')logout();if(e.target.id==='loginBtn2')login();});
-  $('importBtn').onclick=importOld;$('backupBtn').onclick=backup;
+  $('importBtn').onclick=e=>importOld(e);$('backupBtn').onclick=e=>backup(e);
   // finestra progetto
-  $('pjClose').onclick=closeProj;$('pjSave').onclick=saveProj;$('pjDel').onclick=delProj;
+  $('pjClose').onclick=e=>closeProj(e);$('pjSave').onclick=e=>saveProj(e);$('pjDel').onclick=e=>delProj(e);
   $('pjModal').addEventListener('click',e=>{if(e.target.id==='pjModal')closeProj();});
   $('pjPreset').addEventListener('click',e=>{const b=e.target.closest('[data-preset]');if(b){readProj();applyPreset(b.dataset.preset);}});
   $('pjColori').addEventListener('click',e=>{const b=e.target.closest('[data-col]');if(!b)return;pe.p.colore=b.dataset.col;document.querySelectorAll('#pjColori .sw').forEach(x=>x.classList.toggle('on',x===b));});
@@ -860,7 +781,7 @@ function bind(){
   $('pjLogoFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{pe.p.rimborso.logo=await toJpeg(f);renderLogo();}catch(err){toast('Immagine non valida','err');}e.target.value='';};
   $('pjLogo').addEventListener('click',e=>{if(e.target.id==='pjLogoRm'){pe.p.rimborso.logo=null;renderLogo();}});
   // setup cartella
-  $('loginW').onclick=login;$('skipW').onclick=()=>{DB.meta.skipWelcome=true;persist();render();};
+  $('loginW').onclick=e=>login(e);$('skipW').onclick=()=>{DB.meta.skipWelcome=true;persist();render();};
   $('setupMy').onclick=()=>setupRoot('mio');$('setupPick').onclick=()=>setupRoot('scegli');
   addEventListener('online',()=>{prepGis();scheduleSync(500);});addEventListener('offline',renderSync);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)scheduleSync(800);});

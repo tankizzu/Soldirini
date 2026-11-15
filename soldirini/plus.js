@@ -663,7 +663,6 @@ function bindPlus(){
   document.querySelectorAll('[name=pjMod]').forEach(r=>r.onchange=()=>{pe.p.modello.tipo=r.value;$('pjModBox').hidden=r.value!=='custom';renderMappa();});
   $('pjModFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;if(!/\.xlsx$/i.test(f.name)){toast('Serve un file Excel .xlsx','err');return;}
     try{pe.p.modello={tipo:'custom',nome:f.name,file:bufToB64(await f.arrayBuffer()),map:{campi:{},tab:{row:0,cols:{}}}};$('pjModNome').textContent='File: '+f.name;mapSel='nome_completo';await renderMappa();toast('Ora tocca le celle dove scrivere i dati');}catch(err){toast('Non riesco a leggere il file: '+errMsg(err),'err');}e.target.value='';};
-  $('pjModEs').onclick=async()=>{const b=await (await fetch('tpl/esempio-polisportiva.xlsx')).arrayBuffer();pe.p.modello={tipo:'custom',nome:'esempio-polisportiva.xlsx',file:bufToB64(b),map:{campi:{},tab:{row:0,cols:{}}}};$('pjModNome').textContent='File: esempio-polisportiva.xlsx';mapSel='nome_completo';await renderMappa();};
   $('pjMappa').addEventListener('click',e=>{const td=e.target.closest('td[data-ref]');if(td)tapCella(td.dataset.ref);});
   $('pjMappa').addEventListener('change',e=>{if(e.target.id==='mapField')mapSel=e.target.value;});
   // documenti e riepilogo

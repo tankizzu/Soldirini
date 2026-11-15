@@ -13,14 +13,15 @@ permissions:
 concurrency:
   group: pages
   cancel-in-progress: true
+# Versioni delle azioni controllate il 15/11/2026 (note di rilascio lette; tutte su Node 24).
 jobs:
   test:
     name: Prove automatiche
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       - name: Installa gli strumenti delle prove
@@ -37,7 +38,7 @@ jobs:
         run: npx playwright test
       - name: Conserva i risultati se qualcosa non va
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: risultati-prove
           path: test/risultati
@@ -49,10 +50,10 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/checkout@v7
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: soldirini
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
