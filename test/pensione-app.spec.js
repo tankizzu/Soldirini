@@ -298,3 +298,19 @@ test('compatibilità: un telefono con la v21 sincronizza senza perdere i dati de
   await sincronizza(A.page);
   expect(await A.page.evaluate(() => [D().pensione.profilo.lordoMese, Object.keys(D().spesePers).length])).toEqual(['1000', 1]);
 });
+
+test('v22c: acconto comunale segnato "stima" e addizionali non dovute con IRPEF zero, nella pagina e nella finestra', async ({ browser }) => {
+  const { page, errori } = await nuovoDispositivo(browser, { drive: new DriveFinto() });
+  await accedi(page); await profilo(page, { addReg: '1,23', addCom: '0,8' });
+  await page.evaluate(() => { tab = 'pen'; render(); });
+  await page.locator('[data-sez=mia] summary').click();
+  const acc = page.locator('[data-sez=mia] .pacc');
+  await expect(acc).toContainText('Acconto dell’addizionale comunale: 31,20 € in 9 rate da marzo');
+  await expect(acc.locator('.stima')).toHaveText('stima');
+  await profilo(page, { lordoMese: '615', addReg: '1,23', addCom: '0,8' });
+  await expect(page.locator('[data-sez=mia]')).toContainText('Con IRPEF zero le addizionali non sono dovute.');
+  await expect(page.locator('[data-sez=mia] .pacc')).toHaveCount(0);
+  await page.evaluate(() => Pensione.apriProfilo());
+  await expect(page.locator('#penLive')).toContainText('addizionali non dovute (IRPEF zero)');
+  expect(errori).toEqual([]);
+});

@@ -55,7 +55,8 @@ function secMia(p,y){const S=P.stimaAnno(p,y);const mesi=mesiPensione(p,y).rever
   const q=P.quattordicesima({anno:y,annoNascita:p.annoNascita,anniContributi:p.anniContributi,tipo:p.prima,reddito:S.reddito,dal:p.dal});
   const q14=q.importo>0?`Quattordicesima probabile: ${eu(q.importo)}, a ${q.mese===12?'dicembre':'luglio'}. La decide l’INPS.`:q.importo===null?'Quattordicesima probabile, ridotta in dodicesimi dal mese del tuo compleanno, a dicembre. La decide l’INPS.':'';
   const corpo=`${kv('Pensione lorda al mese',eu(p.lordoMese))}${kv(`Netto stimato al mese <span class="stima">stima</span>`,eu(S.nettoMese))}
-    <p class="pnota">${S.add.indicate?'Con le addizionali che hai indicato (trattenute a rate da gennaio e da marzo).':'Senza addizionali.'}${S.prudente?' Per l’anno del pensionamento la stima è prudente.':''}</p>
+    <p class="pnota">${S.add.esenti?'Con IRPEF zero le addizionali non sono dovute.':S.add.indicate?'Con le addizionali che hai indicato (trattenute a rate da gennaio e da marzo).':'Senza addizionali.'}${S.prudente?' Per l’anno del pensionamento la stima è prudente.':''}</p>
+    ${S.acconto.importo>0?`<p class="pnota pacc">Acconto dell’addizionale comunale: ${eu(S.acconto.importo)} in 9 rate da marzo <span class="stima">stima</span><br>È il 30% dell’addizionale dell’anno prima, calcolato con le aliquote che hai scritto: il Comune usa quelle deliberate per l’anno prima.</p>`:''}
     ${righe||`<p class="muted sm">${S.mesi?'Nessun mese da mostrare in questo anno.':'In questo anno non eri ancora in pensione.'}</p>`}
     ${q14?`<p class="sm">${esc(q14)}</p>`:''}
     <div class="acts"><button class="btn sm" data-cdnew="1">+ Carica cedolino</button><button class="btn ghost sm" data-cdarch="1">Tutti i cedolini</button><button class="btn ghost sm" data-penedit="1">Modifica i dati</button></div>
@@ -182,7 +183,7 @@ function aggiornaProfilo(){const o=leggiProfilo();$('penDetrBox').hidden=!ancheL
   const reg=n(o.addReg),com=n(o.addCom);$('penAddSum').textContent=reg==null&&com==null?'non indicate':[reg!=null?'reg. '+nf(reg)+'%':'',com!=null?'com. '+nf(com)+'%':''].filter(Boolean).join(' · ');
   if(!(n(o.lordoMese)>0)){$('penLive').innerHTML='Scrivi la pensione lorda al mese per vedere il netto stimato.';return;}
   const y=o.dal&&+o.dal.slice(0,4)>+today().slice(0,4)?+o.dal.slice(0,4):+today().slice(0,4);const S=P.stimaAnno(o,y);
-  $('penLive').innerHTML=`Netto stimato al mese <b>${eu(S.nettoMese)}</b><br><small>${S.add.indicate?'con addizionali':'senza addizionali'} · stima con le regole ${S.regole}${S.prudente?' · stima prudente per l’anno del pensionamento':''}</small>`;}
+  $('penLive').innerHTML=`Netto stimato al mese <b>${eu(S.nettoMese)}</b><br><small>${S.add.esenti?'addizionali non dovute (IRPEF zero)':S.add.indicate?'con addizionali':'senza addizionali'} · stima con le regole ${S.regole}${S.prudente?' · stima prudente per l’anno del pensionamento':''}</small>`;}
 function apriProfilo(){const p=PEN().profilo&&!PEN().profilo.deleted?PEN().profilo:{};
   for(const [id,k] of Object.entries(PFX))$(id).value=p[k]??'';
   document.querySelectorAll('[name=penPrima]').forEach(r=>r.checked=r.value===(p.prima||'dipendente'));

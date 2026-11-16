@@ -53,13 +53,14 @@ function irpefNetta(reddito,tipo,giorni,anno){const R=Math.max(0,z(reddito));con
   return {reddito:r2(R),lorda,detr,netta:r2(Math.max(0,lorda-detr))};}
 
 // ---------- addizionali (P-5): aliquote scritte dall'utente; vuote = "senza addizionali" ----------
-function addizionali(R,{addReg,addCom,sogliaCom}={}){const reg=n(addReg),com=n(addCom),soglia=n(sogliaCom);
+// v22c (04, conferme del 16/11/2026): le addizionali sono dovute solo se l'IRPEF netta dell'anno è più di zero;
+// in quel caso si calcolano sull'intero reddito, con la soglia di esenzione del Comune. irpefNetta assente = non controllata.
+function addizionali(R,{addReg,addCom,sogliaCom}={},irpefNetta){const reg=n(addReg),com=n(addCom),soglia=n(sogliaCom);
+  const indicate=reg!=null||com!=null;
+  if(irpefNetta!=null&&!(irpefNetta>0))return {regionale:0,comunale:0,rataReg:0,rataComSaldo:0,indicate,esenti:indicate};
   const regionale=reg!=null?r2(R*reg/100):0;
   const comunale=com!=null&&!(soglia!=null&&R<=soglia)?r2(R*com/100):0;
-  return {regionale,comunale,rataReg:r2(regionale/11),rataComSaldo:r2(comunale/11),rataComAcconto:r2(comunale*0.3/9),
-    indicate:reg!=null||com!=null};}
-// Nota: l'acconto comunale dell'anno in corso è il 30% dell'addizionale dell'anno prima (regola generale dell'addizionale comunale);
-// serve solo all'andamento mese per mese, non agli avvisi.
+  return {regionale,comunale,rataReg:r2(regionale/11),rataComSaldo:r2(comunale/11),indicate,esenti:false};}
 
 // ---------- profilo pensionato: giorni, mesi e stima dell'anno ----------
 function periodo(p,anno){anno=+anno;const dal=String(p.dal||'');const [ay,am]=dal.split('-').map(Number);
@@ -69,14 +70,20 @@ function periodo(p,anno){anno=+anno;const dal=String(p.dal||'');const [ay,am]=da
   return {mesi:13-am,giorni:Math.round((fine-inizio)/864e5),primoMese:am};}
 // Reddito dell'anno (P-1): 12 mensilità + tredicesima (in proporzione ai mesi se la pensione inizia nell'anno) + altri redditi.
 // La quattordicesima non si somma: è esente (rilettura delle fonti, punto 3).
-function stimaAnno(p,anno){const v=valori(anno);const lordo=z(p.lordoMese);const per=periodo(p,anno);
-  const pensione=r2(lordo*per.mesi*13/12);const altri=z(p.altriRedditi);const R=r2(pensione+altri);
+function baseAnno(p,anno){const per=periodo(p,anno);
+  const pensione=r2(z(p.lordoMese)*per.mesi*13/12);const altri=z(p.altriRedditi);const R=r2(pensione+altri);
   const tipo=p.detrazione==='lavoro'?'nessuna':'pensione';
-  const I=irpefNetta(R,tipo,per.giorni,anno);const A=addizionali(R,p);
+  const I=irpefNetta(R,tipo,per.giorni,anno);return {per,pensione,altri,R,I,A:addizionali(R,p,I.netta)};}
+// Acconto dell'addizionale comunale trattenuto nell'anno (9 rate, marzo-novembre): 30% dell'addizionale comunale dell'anno prima,
+// sul reddito dell'anno prima. Se l'anno prima non c'era pensione o l'addizionale era zero, l'acconto è zero.
+// L'app conosce solo le aliquote scritte dall'utente (non quelle deliberate dal Comune per l'anno prima): quindi è sempre una "stima".
+function accontoComunale(p,anno){const prima=baseAnno(p,+anno-1);const com=prima.per.mesi?prima.A.comunale:0;
+  const importo=r2(com*0.3);return {importo,rata:r2(importo/9),stima:importo>0};}
+function stimaAnno(p,anno){const v=valori(anno);const B=baseAnno(p,anno);const per=B.per,pensione=B.pensione,altri=B.altri,R=B.R,I=B.I,A=B.A;
   const netto=r2(pensione-I.netta-A.regionale-A.comunale);
   // netto di un mese normale (02, mockup: 1.000 € lordi → circa 898 €): (pensione − IRPEF) / 13, senza le rate delle addizionali
   const mese=per.mesi?r2((pensione-I.netta)/(per.mesi*13/12)):0;
-  return {anno:+anno,regole:v.regole,mesi:per.mesi,giorni:per.giorni,pensione,altri,reddito:R,irpef:I,add:A,netto,nettoMese:mese,
+  return {anno:+anno,regole:v.regole,mesi:per.mesi,giorni:per.giorni,pensione,altri,reddito:R,irpef:I,add:A,acconto:accontoComunale(p,anno),netto,nettoMese:mese,
     // anno del pensionamento con anche uno stipendio: una sola detrazione, quindi stima prudente (D-039)
     prudente:per.mesi>0&&per.mesi<12&&!!p.detrazione};}
 // netto stimato di un mese preciso (solo andamento, 04 §3): rata normale, tredicesima a dicembre, rate delle addizionali
@@ -84,7 +91,7 @@ function stimaMese(p,ym){const [y,m]=ym.split('-').map(Number);const S=stimaAnno
   if(m<per.primoMese||!S.mesi)return null;
   let netto=S.nettoMese*(m===12?2:1);
   if(m<=11)netto-=S.add.rataReg+S.add.rataComSaldo;
-  if(m>=3&&m<=11)netto-=S.add.rataComAcconto;
+  if(m>=3&&m<=11)netto-=S.acconto.rata;
   return r2(netto);}
 
 // ---------- quattordicesima (P-7): solo "probabile", la decide l'INPS ----------
@@ -174,6 +181,6 @@ function confrontoAnno(cedolini,stima,anno){const C=cedolini.filter(c=>String(c.
   const diff=r2(T.confrontabile-stima),perc=stima?r2(diff/stima*100):0;
   return {totali:T,mancano,completo:true,stima:r2(stima),ricevuto:T.confrontabile,differenza:diff,percentuale:perc,avviso:Math.abs(perc)>3||Math.abs(diff)>100};}
 
-window.PenCalc={valori,irpefLorda,detrPensione,irpefNetta,addizionali,periodo,stimaAnno,stimaMese,quattordicesima,fondo,
+window.PenCalc={valori,irpefLorda,detrPensione,irpefNetta,addizionali,accontoComunale,periodo,stimaAnno,stimaMese,quattordicesima,fondo,
   contributiAnno,contributiAttesi,controlloContributi,lordoPagamento,trattenuteTot,controlliCedolino,nettoConfrontabile,confrontoAnno,MESI,r2,n};
 })();

@@ -60,10 +60,9 @@ test.describe('quattordicesima (P-7): solo stima', () => {
   // Il report 04 indicava 386,08 € (12.586,08 − 12.200). La tabella INPS "Somma aggiuntiva anno 2026"
   // (pagina INPS del cedolino di luglio 2026) dice che la fascia intermedia per chi ha più di 25 anni
   // finisce a 12.082,07 €: oltre, fino a 15.908,10 €, spetta l'importo della seconda fascia, 504 €.
-  // Correzione segnalata a 04 nel report v22.
+  // Confermato da 04 il 16/11/2026 (report "04-fisco-conferme-v22-2026-11-16.md"): T-Q2 = 504 €.
   test('T-Q2 come Q1, reddito 12.200 → 504 € (corretto sulla tabella INPS)', () => {
     expect(Q({ anniContributi: 30, reddito: 12200 }).importo).toBe(504);
-    expect(Q({ anniContributi: 30, reddito: 12000 }).importo).toBe(586.08); // fascia intermedia: differenza fino a 12.586,08
   });
   test('T-Q3 dipendente 20 anni, reddito 14.000 → 420 €', () => expect(Q({ anniContributi: 20, reddito: 14000 }).importo).toBe(420));
   test('T-Q4 dipendente 20 anni, reddito 16.000 → 328,10 €', () => expect(Q({ anniContributi: 20, reddito: 16000 }).importo).toBe(328.1));
@@ -190,5 +189,40 @@ test.describe('andamento mese per mese (solo grafico)', () => {
     expect(d).toBeCloseTo(2 * P.stimaAnno(p, 2026).nettoMese, 2);
     expect(g).toBeCloseTo(P.stimaAnno(p, 2026).nettoMese - 14.54, 2);
     expect(P.stimaMese({ lordoMese: '1000', dal: '2026-07' }, '2026-03')).toBeNull();
+  });
+});
+
+// v22c: correzioni di 04 (report "04-fisco-conferme-v22-2026-11-16.md")
+test.describe('v22c · conferme di 04', () => {
+  test('addizionali con IRPEF netta zero: regionale e comunale stimate = 0', () => {
+    // 615 € × 13 = 7.995 €: IRPEF lorda 1.838,85, detrazione 1.955 → IRPEF netta 0
+    const S = P.stimaAnno({ lordoMese: '615', dal: '2020-01', addReg: '1,23', addCom: '0,8' }, 2026);
+    expect(S.irpef.netta).toBe(0);
+    expect([S.add.regionale, S.add.comunale, S.add.esenti]).toEqual([0, 0, true]);
+    expect(S.netto).toBe(7995);
+    expect(P.addizionali(8000, { addReg: '1,23' }, 0).regionale).toBe(0);
+  });
+  test('addizionali con IRPEF netta di pochi euro: sull\'intero reddito, con la soglia di esenzione del Comune', () => {
+    const I = P.irpefNetta(8700, 'pensione', null, 2026);
+    expect(I.netta).toBe(58.87);
+    const A = P.addizionali(8700, { addReg: '1,23', addCom: '0,8', sogliaCom: '8000' }, I.netta);
+    expect([A.regionale, A.comunale]).toEqual([107.01, 69.6]); // 1,23% e 0,8% di 8.700 €, non dei 58,87 €
+    expect(P.addizionali(8700, { addCom: '0,8', sogliaCom: '9000' }, I.netta).comunale).toBe(0); // sotto la soglia del Comune
+  });
+  test('acconto comunale: 30% dell\'addizionale dell\'anno prima, in 9 rate da marzo, segnato "stima"', () => {
+    const p = { lordoMese: '1000', dal: '2020-01', addCom: '0,8' };
+    expect(P.accontoComunale(p, 2026)).toEqual({ importo: 31.2, rata: 3.47, stima: true }); // 30% di 104 € (0,8% di 13.000 €)
+    expect(P.stimaAnno(p, 2026).acconto.importo).toBe(31.2);
+    const N = P.stimaAnno(p, 2026).nettoMese;
+    expect(P.stimaMese(p, '2026-02')).toBeCloseTo(N - 9.45, 2);        // febbraio: solo il saldo comunale
+    expect(P.stimaMese(p, '2026-03')).toBeCloseTo(N - 9.45 - 3.47, 2); // da marzo anche l'acconto
+  });
+  test('acconto comunale zero se l\'anno prima l\'addizionale era zero (niente pensione o IRPEF zero) o non c\'è aliquota comunale', () => {
+    expect(P.accontoComunale({ lordoMese: '1000', dal: '2026-01', addCom: '0,8' }, 2026).importo).toBe(0); // in pensione da quest'anno
+    expect(P.accontoComunale({ lordoMese: '600', dal: '2020-01', addCom: '0,8' }, 2026).importo).toBe(0);   // IRPEF zero l'anno prima
+    expect(P.accontoComunale({ lordoMese: '1000', dal: '2020-01', addReg: '1,23' }, 2026)).toEqual({ importo: 0, rata: 0, stima: false });
+  });
+  test('T-Q2b dipendente, 30 anni, reddito 12.000 € → 586,08 € (salvaguardia nella prima fascia)', () => {
+    expect(P.quattordicesima({ anno: 2026, annoNascita: 1956, tipo: 'dipendente', anniContributi: 30, reddito: 12000 }).importo).toBe(586.08);
   });
 });
