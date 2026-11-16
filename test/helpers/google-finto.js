@@ -10,7 +10,7 @@ const BASE = 'https://tankizzu.github.io/Soldirini/';
 const TOKEN = 'token-finto';
 
 const TIPI = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.json': 'application/json',
-  '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.xlsx': 'application/octet-stream', '.mjs': 'text/javascript' };
+  '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.xlsx': 'application/octet-stream', '.mjs': 'text/javascript', '.woff2': 'font/woff2', '.txt': 'text/plain; charset=utf-8' };
 
 const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' };
 
@@ -124,8 +124,10 @@ async function collega(ctx, { drive, calendar, sito = SITO } = {}) {
     if (!u.pathname.startsWith('/Soldirini/')) return r.fulfill({ status: 404, body: 'non trovato' });
     let f = u.pathname.slice('/Soldirini/'.length) || 'index.html';
     const fp = path.join(sito, decodeURIComponent(f));
-    if (!fp.startsWith(sito) || !fs.existsSync(fp) || fs.statSync(fp).isDirectory()) return r.fulfill({ status: 404, body: 'non trovato' });
-    r.fulfill({ status: 200, contentType: TIPI[path.extname(fp)] || 'application/octet-stream', body: fs.readFileSync(fp) });
+    // come GitHub Pages: una cartella (es. licenze/) serve il suo index.html
+    const vero = fs.existsSync(fp) && fs.statSync(fp).isDirectory() ? path.join(fp, 'index.html') : fp;
+    if (!fp.startsWith(sito) || !fs.existsSync(vero)) return r.fulfill({ status: 404, body: 'non trovato' });
+    r.fulfill({ status: 200, contentType: TIPI[path.extname(vero)] || 'application/octet-stream', body: fs.readFileSync(vero) });
   });
   await ctx.route('https://accounts.google.com/gsi/client', r => r.fulfill({ contentType: 'text/javascript', body: GSI }));
   if (drive) await ctx.route(/https:\/\/www\.googleapis\.com\/(upload\/)?drive\//, r => drive.gestisci(r));

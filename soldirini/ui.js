@@ -3,7 +3,7 @@
 // Calendario a schermo pieno: tocco = riepilogo del giorno, doppio tocco = nuova attività,
 // pressione lunga = selezione di più giorni. Documenti e Tasse sono sottopagine di Riepilogo.
 
-const APP_VERSIONE='21';
+const APP_VERSIONE='22';
 const SUB={doc:'rie',tas:'rie'}; // sottopagina -> scheda madre
 const sheets=['dayModal','listModal','confModal'];
 function chiudiSheets(){for(const id of sheets)$(id).hidden=true;if($('evModal').hidden&&$('pjModal').hidden&&$('cuModal').hidden)document.body.classList.remove('noscroll');}
@@ -126,5 +126,7 @@ openEv=function(dates,e){const r=_openEv10(dates,e);
 
 // numero di versione visibile in Impostazioni (per controllare che l'aggiornamento sia arrivato)
 const _renderProg11=renderProgetti;
-renderProgetti=function(){_renderProg11();let v=$('appVer');if(!v){v=document.createElement('p');v.id='appVer';v.className='muted sm';v.style.textAlign='center';document.querySelector('#v-pro .two > .stack:last-child').appendChild(v);}
-  v.textContent=`Soldirini · versione ${APP_VERSIONE} · © 2026 Stefano Tanca · Ideato da Stefano Tanca`;};
+// v21b: piede con i collegamenti Privacy e Licenze (stessa finestra), versione e nota d'autore su due righe (02, indicazione B)
+renderProgetti=function(){_renderProg11();let v=$('appVer');if(!v){v=document.createElement('div');v.id='appVer';v.className='piede';document.querySelector('#v-pro .two > .stack:last-child').appendChild(v);}
+  v.innerHTML=`<nav class="lnk" aria-label="Informazioni legali"><a href="privacy.html">Privacy</a><span class="muted" aria-hidden="true">·</span><a href="licenze/">Licenze</a></nav>
+    <p class="muted sm">Soldirini · versione ${APP_VERSIONE}</p><p class="muted sm">© 2026 Stefano Tanca · Ideato da Stefano Tanca</p>`;};

@@ -9,11 +9,12 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" sizes="192x192" href="soldirini-tonda-192.png">
 <link rel="apple-touch-icon" href="soldirini-quadrata-192.png">
-<link rel="preconnect" href="https://api.fontshare.com" crossorigin>
-<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=pally@400,500,700&amp;display=swap">
+<!-- v21b: font dell'interfaccia Nunito (SIL OFL 1.1) dentro l'app, al posto di Pally da Fontshare (D-022, D-032) -->
+<link rel="preload" href="nunito.woff2" as="font" type="font/woff2" crossorigin>
+<style>@font-face{font-family:"Nunito";src:url(nunito.woff2) format("woff2");font-weight:400 800;font-style:normal;font-display:swap}</style>
 <link rel="stylesheet" href="fonts.css">
 <style>
-:root{--bg:#f1f0ee;--card:#fff;--ink:#1b1c1e;--mut:#6b6a68;--line:#e2e0dc;--pri:#2a2c30;--pri2:#3d4046;--pri-ink:#fff;--top:#17191c;--gold:#e0a93a;--err:#b0412e;--ok:#3f7a52;--sez:#5b6475;--shadow:0 1px 2px rgba(20,20,20,.05),0 4px 14px rgba(20,20,20,.05);--r:14px;--font:"Pally",ui-rounded,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+:root{--bg:#f1f0ee;--card:#fff;--ink:#1b1c1e;--mut:#6b6a68;--line:#e2e0dc;--pri:#2a2c30;--pri2:#3d4046;--pri-ink:#fff;--top:#17191c;--gold:#e0a93a;--err:#b0412e;--ok:#3f7a52;--sez:#5b6475;--shadow:0 1px 2px rgba(20,20,20,.05),0 4px 14px rgba(20,20,20,.05);--r:14px;--font:"Nunito",ui-rounded,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 :root[data-theme="dark"]{--bg:#0f1011;--card:#1a1b1e;--ink:#ebeae7;--mut:#a09e9a;--line:#2c2d31;--pri:#e6e4df;--pri2:#c9c7c2;--pri-ink:#16171a;--top:#0b0c0d;--shadow:none;color-scheme:dark}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1011;--card:#1a1b1e;--ink:#ebeae7;--mut:#a09e9a;--line:#2c2d31;--pri:#e6e4df;--pri2:#c9c7c2;--pri-ink:#16171a;--top:#0b0c0d;--shadow:none;color-scheme:dark}}
 *{box-sizing:border-box}
@@ -345,6 +346,51 @@ button:active:not(:disabled),.btn:active,.chip:active,.prow:active,.subnav butto
 .cascata :is(.cards,.stack,#docList,#tasList,#risBody)>*:nth-child(4){animation-delay:calc(150ms*var(--t))}.cascata :is(.cards,.stack,#docList,#tasList,#risBody)>*:nth-child(n+5){animation-delay:calc(200ms*var(--t))}
 .toast{transition:opacity calc(250ms*var(--t)) ease,transform calc(320ms*var(--t)) cubic-bezier(.2,.9,.3,1.2)}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after,::details-content{animation-duration:1ms!important;animation-delay:0s!important;transition-duration:1ms!important}}
+/* v21b: piede di Impostazioni con Privacy e Licenze (02, indicazione B) e collegamento nel benvenuto (indicazione C) */
+.piede{margin:20px 0 8px;text-align:center}.piede p{margin:2px 0}
+.piede .lnk{display:flex;justify-content:center;align-items:center;gap:8px;margin-bottom:6px}
+.piede .lnk a{display:inline-flex;align-items:center;min-height:44px;padding:0 14px;border-radius:11px;font-weight:650;font-size:14px;color:var(--ink);text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px}
+.piede .lnk a:active{background:color-mix(in srgb,var(--mut) 14%,transparent)}
+.welcome .lnkw{color:#fff;font-weight:650;text-decoration:underline;text-underline-offset:3px;display:inline-flex;align-items:center;min-height:44px;padding:0 6px}
+/* v22: turni a colpo d'occhio nel calendario (proposta di 02) */
+.vh{position:absolute!important;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.ev.tu .tus{display:none}.ev.tu .tui{margin-right:3px}
+fieldset.lvcal{border:0;padding:0;margin:12px 0 4px}fieldset.lvcal legend{font-weight:700;font-size:14px;padding:0;margin-bottom:4px}fieldset.lvcal p{margin:2px 0 0}
+@media(max-width:520px){
+ #grid .day .evs{flex:1}
+ #grid .ev.tu{font-size:0;height:auto;flex:1;max-height:52px;padding:4px 0 3px;border-left:0;border-radius:7px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;background:color-mix(in srgb,var(--c) 24%,var(--card));box-shadow:inset 0 -3px 0 var(--c);color:var(--ink);opacity:1}
+ #grid .ev.tu .tui{font-size:17px;line-height:1;margin:0}
+ #grid .ev.tu .tus{display:block;font-size:13px;font-weight:800;line-height:1.1}
+ #grid .ev.tu .tun{display:none}
+ #grid .evs:has(.ev.tu:not(.bar) ~ .ev.tu:not(.bar)) .ev.tu:not(.bar){flex-direction:row;gap:3px;padding:1px 2px;max-height:none}
+ #grid .evs:has(.ev.tu:not(.bar) ~ .ev.tu:not(.bar)) .ev.tu .tui{font-size:12px}
+ #grid .evs:has(.ev.tu:not(.bar) ~ .ev.tu:not(.bar)) .ev.tu .tus{font-size:11.5px}
+ #grid .ev.tu.imp.bar{flex:none;font-size:0;height:6px;padding:0;box-shadow:none;background:var(--c);border-radius:4px}
+ #grid .ev.tu.imp.bar>span{display:none}
+}
+.bpgr{font-size:15px;margin:16px 0 4px}
+.dc{display:inline-block;font-size:11px;font-weight:700;line-height:1.3;padding:0 6px;border-radius:6px;background:color-mix(in srgb,var(--gold) 30%,var(--card));color:var(--ink);vertical-align:1px}
+/* v22: pensione (mockup di 02) */
+:root{--pen:#5d6b7a}
+.subnav button[data-goto="pen"] .ico{background:var(--pen)}
+.live{background:color-mix(in srgb,var(--ok) 10%,var(--card));border:1px solid color-mix(in srgb,var(--ok) 35%,var(--card));border-radius:12px;padding:10px 12px;margin-top:12px;font-size:14px}.live b{font-size:18px}
+.stima{display:inline-block;font-size:11.5px;font-weight:700;padding:1px 8px;border-radius:999px;background:color-mix(in srgb,var(--gold) 28%,var(--card));color:var(--ink);margin-left:6px;vertical-align:1px}
+.err.sm{color:var(--err);margin:4px 0 0}
+.cdmsg p{margin:4px 0 0}.cdmsg .k-errore{color:var(--err);font-weight:650}.cdmsg .k-nota{color:var(--mut)}
+.cdnetto{margin-top:14px;font-weight:700}.cdnetto input{font-size:18px;font-weight:700}
+#cdModal details.fold,#penModal details.fold{margin-top:12px;box-shadow:none}
+.cdcr{display:grid;grid-template-columns:1fr 110px 44px;gap:6px;align-items:end;margin-top:6px}
+.yr{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px dashed var(--line);width:100%;background:none;border-left:0;border-right:0;border-top:0;color:var(--ink);text-align:left;font:inherit;min-height:44px}
+button.yr{cursor:pointer}.yr>b{width:40px;flex:none}.yr .tx{flex:1;display:flex;flex-direction:column;font-size:13.5px;min-width:0}.yr .tx small{color:var(--mut)}.yr .am{font-weight:750;white-space:nowrap}.yr.manca .tx,.yr.manca .am{color:var(--mut)}
+.pnota{font-size:12.5px;color:var(--mut);margin:8px 0 0}
+.penbars{position:relative;height:120px;margin-top:8px;border-bottom:1px solid var(--line)}.penbars .pb{display:grid;grid-template-columns:repeat(12,1fr);gap:4px;align-items:end;height:100%}
+.penbars .pb span{border-radius:5px 5px 2px 2px;background:var(--pen);min-height:2px}.penbars .pb span.vuota{background:var(--line)}
+.penbars svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+.pbl{display:grid;grid-template-columns:repeat(12,1fr);font-size:10.5px;color:var(--mut);text-align:center;margin:3px 0 8px}
+.cdcr .s3{grid-column:1/-1}
+.penleg{display:flex;gap:12px;font-size:12px;color:var(--mut)}.penleg i{display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--pen);vertical-align:-1px}.penleg i.l{width:14px;height:0;border-top:2px dashed var(--gold);border-radius:0;vertical-align:3px;background:none}
+.pempty{text-align:center}.pempty .acts{flex-direction:column;align-items:stretch}
+.bacon{margin:0 0 6px}.bacon a{color:var(--ink)}
 </style>
 </head>
 <body>
@@ -365,7 +411,7 @@ button:active:not(:disabled),.btn:active,.chip:active,.prow:active,.subnav butto
     <h2>Benvenuto in Soldirini</h2>
     <p>Segna nel calendario allenamenti, partite e lavori: Soldirini calcola rimborsi km, ore e ritenuta d'acconto e prepara i documenti su <b>il tuo</b> Google Drive.</p>
     <div class="acts"><button class="btn google" id="loginW">Accedi con Google</button><button class="btn ghost" id="skipW">Prova senza accedere</button></div>
-    <p class="muted sm" style="text-align:center">© 2026 Stefano Tanca · Ideato da Stefano Tanca</p>
+    <p class="muted sm" style="text-align:center"><a href="privacy.html" class="lnkw">Privacy</a> · © 2026 Stefano Tanca · Ideato da Stefano Tanca</p>
   </div>
   <div id="setup" class="card setup" hidden>
     <h2>Dove salvo i tuoi file?</h2>
@@ -391,6 +437,7 @@ button:active:not(:disabled),.btn:active,.chip:active,.prow:active,.subnav butto
       <button data-goto="doc"><span class="ico"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg></span><span class="tx"><b>Documenti</b><small>Ricevute, note km, PDF e invio</small></span><span class="chev">›</span></button>
       <button data-goto="tas"><span class="ico"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M9 17l6-6"/><circle cx="9.5" cy="11.5" r=".9"/><circle cx="14.5" cy="16.5" r=".9"/></svg></span><span class="tx"><b>Tasse</b><small>Quanto mettere da parte, CU, soglie</small></span><span class="chev">›</span></button>
       <button data-goto="ris"><span class="ico"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 9c1.2.3 2 1.3 2 2.5V13h-2l-1 3h-3v2h-3v-2H8l-1-2c-1.7-.7-3-2.5-3-4.5C4 6.5 7.6 5 11 5c2 0 3.6.5 4.8 1.3L18 5v3.2"/><circle cx="15.5" cy="10.5" r=".8" fill="currentColor"/></svg></span><span class="tx"><b>Risparmi</b><small>Obiettivi, salvadanaio, andamento</small></span><span class="chev">›</span></button>
+      <button data-goto="pen"><span class="ico"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10 12 4l9 6"/><path d="M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"/></svg></span><span class="tx"><b>Pensione</b><small>Contributi, fondo pensione, la tua pensione</small></span><span class="chev">›</span></button>
     </div>
     <div id="rieAnno"></div>
   </section>
@@ -399,6 +446,12 @@ button:active:not(:disabled),.btn:active,.chip:active,.prow:active,.subnav butto
     <button class="back" data-goto="rie">‹ Riepilogo</button>
     <div class="monthbar"><h2>Risparmi</h2></div>
     <div id="risBody"></div>
+  </section>
+
+  <section id="v-pen" hidden>
+    <button class="back" data-goto="rie">‹ Riepilogo</button>
+    <div class="monthbar"><button class="ib" id="penPrev" aria-label="Anno prima">‹</button><h2 id="penTitle"></h2><button class="ib" id="penNext" aria-label="Anno dopo">›</button></div>
+    <div id="penBody"></div>
   </section>
 
   <section id="v-doc" hidden>
@@ -419,6 +472,7 @@ button:active:not(:disabled),.btn:active,.chip:active,.prow:active,.subnav butto
       <div class="stack">
         <details class="card fold" id="foldLav"><summary><span class="st">Lavoro dipendente</span><span class="sum" id="foldLavSum"></span></summary><div class="fbody">
           <div id="lavList"></div><div class="acts"><button class="btn sm" id="lavNew">+ Nuovo lavoro</button></div></div></details>
+        <details class="card fold" id="foldPen"><summary><span class="st">Pensione</span><span class="sum" id="foldPenSum"></span></summary><div class="fbody"><div id="penImp"></div></div></details>
         <details class="card fold" id="foldProj"><summary><span class="st">Progetti</span><span class="sum" id="foldProjSum"></span></summary><div class="fbody">
           <div id="projList"></div><div class="acts"><button class="btn sm" id="projNew">+ Nuovo progetto</button></div></div></details>
         <details class="card fold" id="foldFix"><summary><span class="st">Pagamenti fissi</span><span class="sum" id="foldFixSum"></span></summary><div class="fbody">
@@ -586,6 +640,7 @@ button:active:not(:disabled),.btn:active,.chip:active,.prow:active,.subnav butto
       <p class="muted sm">Lo trovi in busta paga o nel contratto. Se lo lasci vuoto, Soldirini conta solo le ore.</p></div></details>
     <details class="card fold" id="lvFissoBox" open><summary><span class="st">🗓️ Orario settimanale</span></summary><div class="fbody"><p class="muted sm" style="margin-top:0">Il mese si riempie da solo con questo orario: nel calendario segni solo le eccezioni.</p>
       <div id="lvSett"></div><div class="acts"><button type="button" class="btn ghost sm" id="lvCopia">Copia il lunedì su mar–ven</button></div>
+      <fieldset class="lvcal"><legend>Nel calendario mostra</legend><label class="check"><input type="radio" name="lvCalMostra" value="diversi"> Solo i giorni diversi dal solito</label><label class="check"><input type="radio" name="lvCalMostra" value="tutti"> Tutti i giorni di lavoro</label><p class="muted sm">I giorni diversi sono ferie, permessi, malattia, straordinari e orari cambiati.</p></fieldset>
       <div class="g2"><label>Dal giorno (inizio)<input type="date" id="lvDal"></label><label>Fino al (fine contratto)<input type="date" id="lvAl"></label></div></div></details>
     <details class="card fold" id="lvTurniBox"><summary><span class="st">⏱️ Straordinario</span></summary><div class="fbody"><label>Ore al mese oltre le quali è straordinario<input id="lvOreMese" type="number" inputmode="decimal" placeholder="vuoto = nessuno straordinario automatico"></label></div></details>
     <details class="card fold"><summary><span class="st" id="lvTipiTit">Tipi di turno</span></summary><div class="fbody"><div id="lvTipi"></div><button type="button" class="btn ghost sm" id="lvTipiAdd">+ Aggiungi tipo</button></div></details>
@@ -621,7 +676,66 @@ button:active:not(:disabled),.btn:active,.chip:active,.prow:active,.subnav butto
     <div class="g2"><label class="s2">Mese<input type="month" id="bpMese"></label><label>Lordo (competenze)<input id="bp-lordo" inputmode="decimal"></label><label>Trattenute<input id="bp-trattenute" inputmode="decimal"></label>
     <label class="s2">Netto<input id="bp-netto" inputmode="decimal"></label><label>Saldo ferie<input id="bp-ferie" inputmode="decimal"></label><label>in<select id="bpUF"><option value="giorni">giorni</option><option value="ore">ore</option></select></label>
     <label>Saldo permessi (ROL)<input id="bp-rol" inputmode="decimal"></label><label>Ex festività<input id="bp-exfest" inputmode="decimal"></label><label class="s2">Permessi in<select id="bpUP"><option value="ore">ore</option><option value="giorni">giorni</option></select></label></div>
+    <h3 class="bpgr">Per la pensione</h3><p class="muted sm" id="bpPenNota" hidden>Non letto: scrivilo se vuoi contarlo nei contributi.</p>
+    <div class="g2"><label class="s2"><span>Imponibile previdenziale <small class="dc" data-dc="imponibilePrev" hidden>da controllare</small></span><input id="bp-imponibilePrev" inputmode="decimal"></label>
+    <label><span>Contributi a tuo carico <small class="dc" data-dc="contribLav" hidden>da controllare</small></span><input id="bp-contribLav" inputmode="decimal" aria-describedby="bpC2"></label>
+    <label><span>Giorni INPS <small class="muted">(facoltativo)</small> <small class="dc" data-dc="giorniInps" hidden>da controllare</small></span><input id="bp-giorniInps" inputmode="numeric"></label></div>
+    <p class="warn sm" id="bpC2" hidden></p>
     <div class="foot"><button class="btn ghost" id="bpDel" hidden>Togli</button><button class="btn" id="bpSave">Salva busta</button></div></div></div></div>
+<div class="modal" id="penModal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="penMTit">
+  <div class="sheethead"><h2 id="penMTit">La mia pensione</h2><button class="x" id="penClose" aria-label="Chiudi">×</button></div>
+  <label>Pensione lorda al mese (€)<input id="penLordo" inputmode="decimal" aria-describedby="penLordoErr"></label><p class="err sm" id="penLordoErr" hidden></p>
+  <div class="g2"><label>In pensione dal<input type="month" id="penDal"></label><label>Anno di nascita<input id="penNascita" inputmode="numeric" maxlength="4" aria-describedby="penNascitaErr"></label></div><p class="err sm" id="penNascitaErr" hidden></p>
+  <label>Anni di contributi (circa)<input id="penAnni" inputmode="numeric"></label>
+  <fieldset class="lvcal"><legend>Prima della pensione lavoravi come</legend><label class="check"><input type="radio" name="penPrima" value="dipendente"> Dipendente</label><label class="check"><input type="radio" name="penPrima" value="autonomo"> Autonomo</label></fieldset>
+  <label>Altri redditi nell’anno (facoltativo, €)<input id="penAltri" inputmode="decimal"></label>
+  <p class="muted sm">Non contare il reddito del coniuge, gli assegni familiari, l’indennità di accompagnamento, le pensioni di guerra, la casa dove abiti, TFR e arretrati.</p>
+  <details class="card fold" id="penAddBox"><summary><span class="st">Addizionali regionale e comunale</span><span class="sum" id="penAddSum"></span></summary><div class="fbody">
+    <p class="muted sm" style="margin-top:0">Facoltativo. Se le lasci vuote, il netto è stimato senza addizionali.</p>
+    <div class="g2"><label>Regionale (%)<input id="penAddReg" inputmode="decimal"></label><label>Comunale (%)<input id="penAddCom" inputmode="decimal"></label>
+    <label class="s2">Soglia di esenzione comunale (€)<input id="penSoglia" inputmode="decimal"></label></div>
+    <p class="sm"><a href="https://www1.finanze.gov.it/finanze2/dipartimentopolitichefiscali/fiscalitalocale/addirpef_newDF/download/tabella.htm" target="_blank" rel="noopener">Trova le aliquote del tuo Comune ↗</a></p></div></details>
+  <fieldset class="lvcal" id="penDetrBox" hidden><legend>Quest’anno hai anche uno stipendio. Quale detrazione applico?</legend><label class="check"><input type="radio" name="penDetr" value="pensione"> Quella per la pensione</label><label class="check"><input type="radio" name="penDetr" value="lavoro"> Quella per il lavoro dipendente</label></fieldset>
+  <div class="live" id="penLive" aria-live="polite"></div>
+  <div class="foot"><button class="btn ghost" id="penDel" hidden>Togli</button><button class="btn" id="penSave">Salva</button></div></div></div>
+<div class="modal" id="fpModal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="fpTit">
+  <div class="sheethead"><h2 id="fpTit">Fondo pensione</h2><button class="x" id="fpClose" aria-label="Chiudi">×</button></div>
+  <label>Nome del fondo (facoltativo)<input id="fpNome"></label>
+  <div class="g2"><label>Versati da te (€)<input id="fpPropri" inputmode="decimal"></label><label>Versati dal datore (€)<input id="fpDatore" inputmode="decimal"></label>
+  <label class="s2">TFR mandato al fondo (€) <small class="muted">non si deduce</small><input id="fpTfr" inputmode="decimal"></label>
+  <label class="s2"><span>Reddito dell’anno (€) <small class="dc" id="fpRedDc" hidden>da controllare</small></span><input id="fpReddito" inputmode="decimal"></label></div>
+  <div class="live" id="fpLive" aria-live="polite"></div>
+  <p class="muted sm">Se hai iniziato a lavorare dal 2007 potresti dedurre di più: chiedi al tuo fondo.</p>
+  <div class="foot"><button class="btn ghost" id="fpDel" hidden>Togli</button><button class="btn" id="fpSave">Salva</button></div></div></div>
+<div class="modal" id="cdModal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="cdTit">
+  <div class="sheethead"><h2 id="cdTit">Cedolino</h2><button class="x" id="cdClose" aria-label="Chiudi">×</button></div>
+  <div id="cdStep1"><p>Carica il PDF del cedolino (o una foto): leggo io le voci principali. Puoi sceglierne anche più di uno insieme.</p>
+    <div class="acts"><label class="btn filebtn">Scegli il file<input type="file" id="cdFile" accept="application/pdf,image/*" multiple hidden></label><button class="btn ghost" id="cdManuale">Scrivo i valori a mano</button></div>
+    <p class="muted sm">Il cedolino viene letto sul telefono e salvato nella tua cartella Pensione su Drive. Nell’app restano solo i numeri.</p></div>
+  <div id="cdProg" hidden><div class="bpbar"><span id="cdBar"></span></div><p class="muted sm" id="cdFase"></p></div>
+  <p class="warn sm" id="cdErr" hidden></p>
+  <div id="cdRis" hidden></div>
+  <div id="cdStep2" hidden><p class="muted sm" id="cdNote"></p>
+    <div class="g2"><label>Mese<input type="month" id="cdMese"></label><label>Data di accredito<input type="date" id="cd-dataAccredito"></label></div>
+    <h3 class="bpgr">Entrate del mese</h3>
+    <label><span>Pensione lorda <small class="dc" data-cdc="pensioneLorda" hidden>da controllare</small></span><input id="cd-pensioneLorda" inputmode="decimal"></label><div class="cdmsg" data-msg="pensioneLorda"></div>
+    <details class="card fold" id="cdAltreBox"><summary><span class="st">Altre somme <small class="muted">(facoltativo)</small></span><span class="sum" id="cdAltreSum"></span></summary><div class="fbody">
+      <p class="muted sm" style="margin-top:0">Tredicesima, quattordicesima, importo aggiuntivo, arretrati, rimborso IRPEF.</p>
+      <div id="cdCrediti"></div><button type="button" class="btn ghost sm" id="cdCredAdd">+ Aggiungi</button>
+      <div id="cdLordoBox" hidden><label><span>Lordo del pagamento <small class="dc" data-cdc="lordoPagamento" hidden>da controllare</small></span><input id="cd-lordoPagamento" inputmode="decimal"></label><div class="cdmsg" data-msg="lordoPagamento"></div></div></div></details>
+    <details class="card fold" id="cdTrBox"><summary><span class="st">Trattenute <small class="muted">(facoltativo)</small></span><span class="sum" id="cdTrSum"></span></summary><div class="fbody">
+      <div class="g2"><label><span>IRPEF <small class="dc" data-cdc="irpef" hidden>da controllare</small></span><input id="cd-irpef" inputmode="decimal"></label>
+      <label><span>Add. regionale <small class="dc" data-cdc="addReg" hidden>da controllare</small></span><input id="cd-addReg" inputmode="decimal"></label>
+      <label><span>Add. comunale (saldo) <small class="dc" data-cdc="addComSaldo" hidden>da controllare</small></span><input id="cd-addComSaldo" inputmode="decimal"></label>
+      <label><span>Add. comunale (acconto) <small class="dc" data-cdc="addComAcconto" hidden>da controllare</small></span><input id="cd-addComAcconto" inputmode="decimal"></label></div>
+      <div class="cdmsg" data-msg="addReg"></div><div class="cdmsg" data-msg="addComSaldo"></div><div class="cdmsg" data-msg="addComAcconto"></div>
+      <label><span>Conguagli IRPEF a debito <small class="dc" data-cdc="conguagliDebito" hidden>da controllare</small></span><input id="cd-conguagliDebito" inputmode="decimal"></label>
+      <label><span>Altre trattenute (sindacato, cessione del quinto, recuperi…) <small class="dc" data-cdc="altreTrattenute" hidden>da controllare</small></span><input id="cd-altreTrattenute" inputmode="decimal"></label>
+      <label>Nota sulle altre trattenute (facoltativa, la scrivi tu)<input id="cd-altreNota" maxlength="80"></label></div></details>
+    <label class="cdnetto"><span>Netto accreditato <small class="dc" data-cdc="netto" hidden>da controllare</small></span><input id="cd-netto" inputmode="decimal"></label><div class="cdmsg" data-msg="netto"></div><div class="cdmsg" data-msg="mese"></div>
+    <div class="foot"><button class="btn ghost" id="cdDel" hidden>Togli</button><button class="btn" id="cdSave">Salva cedolino</button></div></div></div></div>
+<div class="modal" id="cdArch" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="caTit">
+  <div class="sheethead"><h2 id="caTit">Cedolini</h2><button class="x" id="caClose" aria-label="Chiudi">×</button></div><div id="caBody"></div></div></div>
 <div class="modal" id="bpArch" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="baTit">
   <div class="sheethead"><h2 id="baTit">Buste paga</h2><button class="x" id="baClose" aria-label="Chiudi">×</button></div><div id="baBody"></div></div></div>
 <div class="modal" id="ftModal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="ftTit">
@@ -704,6 +818,7 @@ button:active:not(:disabled),.btn:active,.chip:active,.prow:active,.subnav butto
 <script src="word.js"></script>
 <script src="pdfdoc.js"></script>
 <script src="stipcalc.js"></script>
+<script src="pencalc.js"></script>
 <script src="buste.js"></script>
 <script src="stipendio.js"></script>
 <script src="attivita.js"></script>
@@ -711,6 +826,7 @@ button:active:not(:disabled),.btn:active,.chip:active,.prow:active,.subnav butto
 <script src="gcal.js"></script>
 <script src="soldi.js"></script>
 <script src="risparmi.js"></script>
+<script src="pensione.js"></script>
 <script src="animazioni.js"></script>
 </body>
 </html>

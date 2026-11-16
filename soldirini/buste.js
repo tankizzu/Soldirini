@@ -40,7 +40,8 @@
     return pezzi;
   }
 
-  function analizzaBusta(pezzi) {
+  // v22: parti comuni alla busta paga e al cedolino della pensione (righe, etichette, valori)
+  function struttura(pezzi) {
     const N = s => String(s).toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
     const numero = s => {
       let t = String(s).replace(/[€\s]/g, ''); const neg = /-$|^-/.test(t); t = t.replace(/^-|-$/g, '');
@@ -76,8 +77,19 @@
       return sotto.length ? sotto[0].v : null;
     };
     const primo = (...re) => { for (const r of re) for (const e of trova(r)) { const v = valoreDi(e); if (v != null && v > 0) return v; } return null; };
+    return { N, numero, P, H, righe, testo, trova, valoreDi, primo };
+  }
+  const MM = ['GENNAIO','FEBBRAIO','MARZO','APRILE','MAGGIO','GIUGNO','LUGLIO','AGOSTO','SETTEMBRE','OTTOBRE','NOVEMBRE','DICEMBRE'];
+  function analizzaBusta(pezzi) {
+    const { N, numero, P, H, righe, testo, primo } = struttura(pezzi);
     const netto = primo(/^NETTO (DEL MESE|A PAGARE|IN BUSTA|BUSTA|DA PAGARE|IN PAGAMENTO)$/, /^NETTO$/);
-    let lordo = primo(/^TOT(ALE|\.)? ?COMPETENZE$/, /^COMPETENZE LORDE$/, /^(RETRIBUZIONE|TOTALE) LORD[AO]$/, /^IMPONIBILE PREVIDENZIALE$/);
+    // v22: l'imponibile previdenziale NON è il lordo (report 04, caso T-C6): ha un campo suo
+    let lordo = primo(/^TOT(ALE|\.)? ?COMPETENZE$/, /^COMPETENZE LORDE$/, /^(RETRIBUZIONE|TOTALE) LORD[AO]$/);
+    // v22: voci per la pensione (etichette ipotizzate da 04: vanno sempre controllate dall'utente)
+    const imponibilePrev = primo(/^IMPONIBILE PREVIDENZIALE$/, /^IMPON(IBILE|\.)? ?PREVID(ENZIALE|\.)?$/, /^IMPON(IBILE|\.)? ?INPS$/, /^IMPONIBILE CONTRIBUTIVO$/);
+    const contribLav = primo(/^CONTRIBUTI PREVIDENZIALI$/, /^CONTR(IBUTI|\.)? ?IVS$/, /^F\.? ?P\.? ?L\.? ?D\.?$/, /^CONTRIBUT[OI] INPS$/, /^TOT(ALE|\.)? ?CONTRIBUTI$/);
+    const gi = primo(/^(GG|GIORNI) INPS$/, /^GIORNI RETRIBUITI$/);
+    const giorniInps = gi != null && gi <= 31 && Number.isInteger(gi) ? gi : null;
     let trattenute = primo(/^TOT(ALE|\.)? ?TRATTENUTE$/, /^TOTALE RITENUTE$/);
     // v17: totali senza etichetta (es. sotto le colonne COMPETENZE e TRATTENUTE): due importi sulla stessa riga con competenze − trattenute = netto
     if (netto != null && (lordo == null || trattenute == null)) {
@@ -87,7 +99,6 @@
     }
     if (netto != null && lordo != null && trattenute == null && lordo > netto) trattenute = Math.round((lordo - netto) * 100) / 100;
     // mese: "OTTOBRE 2026" oppure "10/2026"
-    const MM = ['GENNAIO','FEBBRAIO','MARZO','APRILE','MAGGIO','GIUGNO','LUGLIO','AGOSTO','SETTEMBRE','OTTOBRE','NOVEMBRE','DICEMBRE'];
     let mese = null; const T = N(testo);
     const m1 = T.match(new RegExp('(' + MM.join('|') + ')\\s*(20\\d\\d)'));
     if (m1) mese = m1[2] + '-' + String(MM.indexOf(m1[1]) + 1).padStart(2, '0');
@@ -122,7 +133,47 @@
     const rx = righe.find(r => r !== rf && r !== rr && EXF.test(r.testo) && conNumeri(r));
     const sf = saldoDi(rf), sr = saldoDi(rr), sx = saldoDi(rx);
     const ferieV = sf.v, unita = sf.unita;
-    return { mese, lordo, trattenute, netto: netto != null ? netto : (lordo != null && trattenute != null ? Math.round((lordo - trattenute) * 100) / 100 : null), ferie: ferieV, unita, rol: sr.v, exfest: sx.v, unitaPermessi: sr.unita || sx.unita || 'ore', testo };
+    return { mese, lordo, trattenute, netto: netto != null ? netto : (lordo != null && trattenute != null ? Math.round((lordo - trattenute) * 100) / 100 : null), ferie: ferieV, unita, rol: sr.v, exfest: sx.v, unitaPermessi: sr.unita || sx.unita || 'ore', imponibilePrev, contribLav, giorniInps, testo };
+  }
+
+  // ---------- v22: cedolino della pensione INPS ----------
+  // Etichette dalle guide INPS alla lettura del cedolino (report 04 · Fisco, 15/11/2026); alcune non sono verificate su
+  // cedolini veri: ogni valore letto va controllato dall'utente. Si restituiscono SOLO numeri: nessun testo del PDF
+  // (contiene codice fiscale, indirizzo e conto di accredito) e nessuna descrizione delle "altre trattenute" (D-039).
+  function analizzaCedolino(pezzi) {
+    const { N, numero, righe } = struttura(pezzi);
+    // importo della riga: l'ultimo numero con due decimali (non l'anno citato nella descrizione)
+    const importo = r => { const v = r.el.filter(p => p.v != null && /[.,]\d{2}-?$/.test(p.t.replace(/[€\s]/g, ''))); return v.length ? Math.abs(v[v.length - 1].v) : null; };
+    const out = { pensioneLorda: null, lordoPagamento: null, irpef: null, addReg: null, addComSaldo: null, addComAcconto: null, conguagliDebito: null, altreTrattenute: null, netto: null, crediti: [] };
+    const somma = (k, v) => { out[k] = Math.round(((out[k] || 0) + v) * 100) / 100; };
+    const primoV = (k, v) => { if (out[k] == null) out[k] = v; };
+    for (const r of righe) {
+      const t = r.testo, v = importo(r); if (v == null) continue;
+      if (/^PENSIONE LORDA\b/.test(t)) primoV('pensioneLorda', v);
+      else if (/^IMPORTO LORDO( DEL PAGAMENTO)?\b/.test(t)) primoV('lordoPagamento', v);
+      else if (/^IMPORTO NETTO( DEL PAGAMENTO)?\b/.test(t)) primoV('netto', v);
+      else if (/^ACCONTO ADDIZIONALE( IRPEF)? COMUNALE\b/.test(t)) somma('addComAcconto', v);
+      else if (/^ADDIZIONALE( IRPEF)? COMUNALE\b/.test(t)) somma('addComSaldo', v);
+      else if (/^ADDIZIONALE( IRPEF)? REGIONALE\b/.test(t)) somma('addReg', v);
+      else if (/^(TRATTENUTE IRPEF|IRPEF NETTA)\b/.test(t)) primoV('irpef', v);
+      else if (/QUATTORDICESIMA/.test(t)) out.crediti.push({ tipo: '14', descr: 'Quattordicesima', importo: v });
+      else if (/IMPORTO AGGIUNTIVO/.test(t)) out.crediti.push({ tipo: 'aggiuntivo', descr: 'Importo aggiuntivo', importo: v });
+      else if (/^TREDICESIMA\b|\b13\W? ?MENSILITA\b/.test(t)) out.crediti.push({ tipo: '13', descr: 'Tredicesima', importo: v });
+      else if (/^CONGUAGLIO A CREDITO IRPEF\b/.test(t)) out.crediti.push({ tipo: 'rimborso', descr: 'Conguaglio a credito IRPEF', importo: v });
+      else if (/^CONGUAGLIO PER ARRETRATI\b/.test(t)) out.crediti.push({ tipo: 'arretrati', descr: 'Arretrati', importo: v });
+      else if (/^CONGUAGLIO IRPEF A DEBITO\b|^IRPEF ANNI PRECEDENTI\b|\b730\b.*\bDEBITO\b/.test(t)) somma('conguagliDebito', v);
+      else if (/^CONTRIBUTO ASSOCIATIVO\b|^CONTRIBUTO EX ONPI\b|^TRATTENUTA MENSILE RECUPERO\b|^CESSIONE\b|\bDEBITO ANNO\b/.test(t)) somma('altreTrattenute', v);
+    }
+    const T = N(righe.map(r => r.el.map(p => p.t).join(' ')).join('\n'));
+    let mese = null;
+    const m1 = T.match(new RegExp('(?:RATA|MESE)\\s+(?:DI\\s+)?(' + MM.join('|') + ')\\s*(20\\d\\d)')) || T.match(new RegExp('(' + MM.join('|') + ')\\s*(20\\d\\d)'));
+    if (m1) mese = m1[2] + '-' + String(MM.indexOf(m1[1]) + 1).padStart(2, '0');
+    let dataAccredito = null;
+    const v1 = T.match(new RegExp('VALUTA\\s*(?:DEL\\s*|AL\\s*)?(\\d{1,2})\\s*[°ºO]?\\s*(' + MM.join('|') + ')\\s*(20\\d\\d)'));
+    const v2 = T.match(/VALUTA\s*(?:DEL\s*|AL\s*)?(\d{1,2})[\/\-.](\d{1,2})[\/\-.](20\d\d)/);
+    if (v1) dataAccredito = `${v1[3]}-${String(MM.indexOf(v1[2]) + 1).padStart(2, '0')}-${String(+v1[1]).padStart(2, '0')}`;
+    else if (v2) dataAccredito = `${v2[3]}-${String(+v2[2]).padStart(2, '0')}-${String(+v2[1]).padStart(2, '0')}`;
+    return Object.assign(out, { mese, dataAccredito });
   }
 
   // ---------- v16: testo di un documento qualsiasi (contratto o busta) diviso in righe ----------
@@ -182,5 +233,5 @@
     }
     return out;
   }
-  g.Buste={testoBusta,analizzaBusta,testoDocumento,suggerisci};
+  g.Buste={testoBusta,analizzaBusta,analizzaCedolino,testoDocumento,suggerisci};
 })(typeof window!=='undefined'?window:globalThis);

@@ -71,7 +71,7 @@ function apriLavoro(l,isNew){
   for(const k of ['stra','nott','fest','dom'])$('lvM-'+k).value=x.magg[k]??'';
   $('lvNottDa').value=x.nott?.da||'';$('lvNottA').value=x.nott?.a||'';
   $('lvLocali').value=x.locali||'';$('lvFerieU').value=x.ferie.unita;$('lvFerieA').value=x.ferie.anno;$('lvFerieR').value=x.ferie.residuo;
-  $('lvPermU').value=x.perm.unita;$('lvPermA').value=x.perm.anno;$('lvTratt').value=x.tratt;$('lvContratto').value=x.contratto||'';
+  document.querySelectorAll('[name=lvCalMostra]').forEach(r=>r.checked=r.value===calMostra(x));$('lvPermU').value=x.perm.unita;$('lvPermA').value=x.perm.anno;$('lvTratt').value=x.tratt;$('lvContratto').value=x.contratto||'';
   docRis=null;lv.pendBusta=null;lv.pendContr=null;$('lvDocRis').innerHTML='';$('lvDocProg').hidden=true;$('lvDocBox').open=!!isNew;
   $('lvContrFile').innerHTML=x.contrattoFile?(x.contrattoFile.file?.link?`Contratto su Drive: <a href="${esc(x.contrattoFile.file.link)}" target="_blank" rel="noopener">${esc(x.contrattoFile.nome)} ↗</a>`:`Contratto “${esc(x.contrattoFile.nome)}” da caricare su Drive`):'';
   renderSett();renderTipi();aggiornaModo();apri('lvModal');
@@ -100,7 +100,7 @@ function leggiLavoro(){
   x.magg={};for(const k of ['stra','nott','fest','dom'])x.magg[k]=$('lvM-'+k).value.trim();
   x.nott={da:$('lvNottDa').value,a:$('lvNottA').value};x.locali=$('lvLocali').value.trim();
   x.ferie={unita:$('lvFerieU').value,anno:$('lvFerieA').value.trim(),residuo:$('lvFerieR').value.trim()};
-  x.perm={unita:$('lvPermU').value,anno:$('lvPermA').value.trim()};x.tratt=$('lvTratt').value.trim();x.contratto=$('lvContratto').value.trim();
+  x.perm={unita:$('lvPermU').value,anno:$('lvPermA').value.trim()};if(x.modo==='fisso')x.calMostra=document.querySelector('[name=lvCalMostra]:checked')?.value||'diversi';x.tratt=$('lvTratt').value.trim();x.contratto=$('lvContratto').value.trim();
   x.tipi=x.tipi.filter(t=>t.nome);
   return x;
 }
@@ -119,16 +119,37 @@ async function eliminaLavoro(){
 }
 
 // ================= calendario =================
+// v22 (D-034, D-038): ogni turno è un riquadro con icona e sigla (sul telefono) o nome intero (schermi larghi);
+// i giorni normali del lavoro a orario fisso, se l'utente sceglie "solo i giorni diversi", sono una barretta.
+const MESI_N=['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];
+const dataLunga=iso=>{const [y,m,d]=iso.split('-').map(Number);const g=(new Date(y,m-1,d).getDay()+6)%7+1;return `${SETT[g]} ${d} ${MESI_N[m-1]}`;};
+const oraBreve=h=>!h?'':h.replace(/^0(?=\d)/,'').replace(/:00$/,'');
+const calMostra=l=>l.calMostra==='tutti'?'tutti':'diversi';
+window.etichettaTurno=function(l,v){
+  let ico='',sig,nome,full;
+  if(v.implicito){const o=(v.a<=v.da?v.a+1440:v.a)-v.da-(v.pausa||0);sig=nome=nOre(Math.round(o/60*100)/100)+'h';ico='💼';
+    full=`${l.nome}, orario abituale ${oraBreve(v.daS)}–${oraBreve(v.aS)}`;}
+  else if(v.tipo){ico=v.tipo.icona||'';sig=v.tipo.sigla||v.tipo.nome;nome=v.tipo.nome;
+    full=`${l.nome}, ${v.tipo.nome}${v.daS&&v.aS?' '+oraBreve(v.daS)+'–'+oraBreve(v.aS):''}`;}
+  else{sig=`${oraBreve(v.daS)}–${oraBreve(v.aS)}`;nome=`${v.daS||''}–${v.aS||''}`;full=`${l.nome}, turno ${sig}`;}
+  const bar=v.implicito&&l.modo==='fisso'&&calMostra(l)==='diversi';
+  return {bar,full,html:`<span class="ev tu${v.implicito?' imp':''}${bar?' bar':''}" data-lid="${l.id}" style="--c:${v.colore||l.colore}" title="${esc(full)}">${ico?`<span class="tui" aria-hidden="true">${esc(ico)}</span>`:''}<span class="tus" aria-hidden="true">${esc(sig)}</span><span class="tun" aria-hidden="true">${esc(nome)}</span><span class="vh">${esc(full)}</span></span>`};
+};
 const _renderCal15=renderCal;
 renderCal=function(){
-  _renderCal15();const L=lavori();if(!L.length)return;
-  const per={};for(const l of L){const ts=turniDi(l.id).filter(t=>t.data.startsWith(cur));const byD={};for(const t of ts)(byD[t.data]=byD[t.data]||[]).push(t);
+  _renderCal15();
+  // etichetta per il lettore di schermo: "Lunedì 9 novembre" prima del contenuto della casella
+  document.querySelectorAll('#grid [data-day]').forEach(b=>{const n=b.querySelector('.n');if(n&&!n.hasAttribute('aria-hidden')){n.setAttribute('aria-hidden','true');n.insertAdjacentHTML('afterend',`<span class="vh">${dataLunga(b.dataset.day)}</span>`);}});
+  const L=lavori();if(!L.length)return;
+  const per={};
+  for(const l of L){if(window.lavoroNascosto?.(l.id))continue;const ts=turniDi(l.id).filter(t=>t.data.startsWith(cur));const byD={};for(const t of ts)(byD[t.data]=byD[t.data]||[]).push(t);
     for(let d=1;d<=new Date(+cur.slice(0,4),+cur.slice(5),0).getDate();d++){const iso=`${cur}-${pad(d)}`;const G=C.vociGiorno(l,byD[iso]||[],iso);
-      for(const v of G.voci){let lab;
-        if(v.implicito){const o=(v.a<=v.da?v.a+1440:v.a)-v.da-(v.pausa||0);lab='💼 '+nOre(Math.round(o/60*100)/100)+'h';}
-        else lab=v.tipo?((v.tipo.icona?v.tipo.icona+' ':'')+(v.tipo.sigla||v.tipo.nome)):`${v.daS||''}–${v.aS||''}`;
-        (per[iso]=per[iso]||[]).push(`<span class="ev tu${v.implicito?' imp':''}" style="--c:${v.colore||l.colore}" title="${esc(l.nome)}">${esc(lab)}</span>`);}}}
-  document.querySelectorAll('#grid [data-day]').forEach(b=>{const x=per[b.dataset.day];if(x)b.querySelector('.evs').insertAdjacentHTML('afterbegin',x.join(''));});
+      for(const v of G.voci)(per[iso]=per[iso]||[]).push(etichettaTurno(l,v));}}
+  document.querySelectorAll('#grid [data-day]').forEach(b=>{const x=per[b.dataset.day];if(!x)return;
+    // al massimo due riquadri; le barrette (giorni normali) non contano
+    const box=x.filter(e=>!e.bar),bar=x.filter(e=>e.bar);const vis=box.slice(0,2),altri=box.slice(2);
+    const h=bar.map(e=>e.html).join('')+vis.map(e=>e.html).join('')+(altri.length?`<span class="more tumore" aria-hidden="true">+${altri.length}</span><span class="vh">${esc(altri.map(e=>e.full).join('; '))}</span>`:'');
+    b.querySelector('.evs').insertAdjacentHTML('afterbegin',h);});
 };
 // riepilogo del giorno: turni e scelta veloce
 const _apriGiorno15=apriGiorno;
@@ -281,6 +302,8 @@ function apriBusta(lid,mese,esistente){
   const b=esistente?BUS()[bp.key]:{};
   $('bpMese').value=mese||cur;for(const k of ['lordo','trattenute','netto','ferie','rol','exfest'])$('bp-'+k).value=b?.[k]??'';
   $('bpUF').value=b?.unitaFerie||lav(lid).ferie.unita;$('bpUP').value=b?.unitaPerm||lav(lid).perm.unita;
+  for(const k of PEN_B)$('bp-'+k).value=b?.[k]??'';bp.dc=[...(b?.daControllare||[])];
+  $('bpPenNota').hidden=!(esistente&&PEN_B.every(k=>(b?.[k]??'')===''));penBusta();
   $('bpNote').textContent=esistente?'':'';apri('bpModal');
 }
 async function leggiBusta(file){
@@ -293,6 +316,7 @@ async function leggiBusta(file){
   const metti=(k,v)=>{const el=$('bp-'+k);el.value=v==null?'':v;el.classList.toggle('manca',v==null);};
   metti('lordo',r.lordo);metti('trattenute',r.trattenute);metti('netto',r.netto);metti('ferie',r.ferie);metti('rol',r.rol);metti('exfest',r.exfest);
   if(r.unita)$('bpUF').value=r.unita;if(r.unitaPermessi)$('bpUP').value=r.unitaPermessi;
+  for(const k of PEN_B)$('bp-'+k).value=r[k]==null?'':r[k];bp.dc=PEN_B.filter(k=>r[k]!=null);$('bpPenNota').hidden=true;penBusta();
   bp.letti=letteVoci(r);
   $('bpNote').innerHTML=`<b>${bp.letti.ok.length?'Busta letta':'Non ho trovato le voci'}</b><br>${bp.letti.html}<br>${bp.letti.manca.length?'Quelle mancanti (bordo rosso) scrivile tu o lasciale vuote.':'Controlla e salva.'}`;
 }
@@ -303,6 +327,8 @@ async function salvaBusta(){
   const val=k=>$('bp-'+k).value.trim().replace(',','.');
   const b=Object.assign({},vecchia&&!vecchia.deleted?vecchia:{},bp.key?BUS()[bp.key]:{},{lid:bp.lid,mese,deleted:false,updatedAt:Date.now()});
   for(const k of ['lordo','trattenute','netto','ferie','rol','exfest'])b[k]=val(k);b.unitaFerie=$('bpUF').value;b.unitaPerm=$('bpUP').value;
+  // v22: campi per la pensione; salvando dalla finestra l'utente li ha visti, quindi tolgo "da controllare"
+  for(const k of PEN_B)b[k]=val(k);delete b.daControllare;
   if(bp.file){await fset(key,{nome:bp.file.name,tipo:bp.file.type||'application/pdf',blob:bp.file});b.daCaricare=true;b.nomeFile=bp.file.name;}
   if(bp.letti)b.lettura={auto:bp.letti.ok,manca:bp.letti.manca.filter(k=>!b[k==='mese'?'mese':k])};else if(!bp.key)b.lettura={manuale:true};
   BUS()[key]=b;changed();chiudi('bpModal');render();
@@ -317,22 +343,32 @@ function renderArchivio(){
   $('baTit').textContent='Buste paga · '+l.nome;
   const anni=[...new Set(B.map(b=>b.mese.slice(0,4)))];const pend=B.filter(b=>b.daCaricare).length;
   $('baBody').innerHTML=`<div class="acts"><button class="btn sm" data-bpnew="${l.id}">+ Carica busta paga</button><button class="btn ghost sm" id="baTutte">Salva tutto su Drive${pend?` (${pend})`:''}</button>${l.drive?.buste?.link?`<a class="btn ghost sm" href="${esc(l.drive.buste.link)}" target="_blank" rel="noopener">Cartella su Drive ↗</a>`:''}</div>`+
-    (anni.map(y=>`<h3 class="bay">${y}</h3>`+B.filter(b=>b.mese.startsWith(y)).map(b=>`<div class="bai"><span class="tx"><b>${(m=>m[0].toUpperCase()+m.slice(1))(MESI[+b.mese.slice(5)-1])}</b><small>${b.netto!==''?'netto '+eur(+b.netto):''}${b.lordo!==''?' · lordo '+eur(+b.lordo):''}${b.daCaricare?' · ⏳ da caricare su Drive':b.file?' · su Drive':' · senza file'}</small>${statoLettura(b)}</span>
+    (anni.map(y=>`<h3 class="bay">${y}</h3>`+rigaContributi(B,y)+B.filter(b=>b.mese.startsWith(y)).map(b=>`<div class="bai"><span class="tx"><b>${(m=>m[0].toUpperCase()+m.slice(1))(MESI[+b.mese.slice(5)-1])}</b><small>${b.netto!==''?'netto '+eur(+b.netto):''}${b.lordo!==''?' · lordo '+eur(+b.lordo):''}${b.daCaricare?' · ⏳ da caricare su Drive':b.file?' · su Drive':' · senza file'}</small>${statoLettura(b)}${b.daControllare?.length?' <small class="dc">da controllare</small>':''}</span>
       ${b.file?.link?`<a class="btn ghost sm" href="${esc(b.file.link)}" target="_blank" rel="noopener">Apri</a>`:''}<button class="btn ghost sm" data-bped="${esc(b.lid+'|'+b.mese)}">Modifica</button></div>`).join('')).join('')||'<p class="muted" style="margin-top:12px">Ancora nessuna busta paga.</p>');
 }
 async function eliminaBusta(){const b=BUS()[bp.key];if(!b)return;if(!await conferma(`Togliere la busta di ${monthName(b.mese)} dall’app? Il file su Drive resta.`,'Togli','danger'))return;
   b.deleted=true;b.updatedAt=Date.now();await fset(bp.key,undefined);changed();chiudi('bpModal');render();if(!$('bpArch').hidden)renderArchivio();}
 
 // ---------- v17: cosa è stato letto, più buste insieme ----------
-const VOCI_B=[['mese','mese'],['lordo','lordo'],['trattenute','trattenute'],['netto','netto'],['ferie','ferie'],['rol','permessi'],['exfest','ex festività']];
+const VOCI_B=[['mese','mese'],['lordo','lordo'],['trattenute','trattenute'],['netto','netto'],['ferie','ferie'],['rol','permessi'],['exfest','ex festività'],['imponibilePrev','imponibile previdenziale'],['contribLav','contributi']];
 function letteVoci(r){const ok=VOCI_B.filter(([k])=>r[k]!=null).map(([k])=>k),manca=VOCI_B.filter(([k])=>r[k]==null&&['mese','lordo','netto'].includes(k)).map(([k])=>k);
   return {ok,manca,html:VOCI_B.filter(([k])=>r[k]!=null||['mese','lordo','netto'].includes(k)).map(([k,t])=>r[k]!=null?`✓ ${t}`:`✗ ${t}`).join(' · ')};}
 function statoLettura(b){const L=b.lettura;if(!L)return '';if(L.manuale)return '<small class="bdg">✍️ scritta a mano</small>';
   return L.manca&&L.manca.length?`<small class="bdg warn">⚠ letta in parte: manca ${L.manca.join(', ')}</small>`:'<small class="bdg ok">✓ letta</small>';}
+// ---------- v22: campi "Per la pensione" nella busta ----------
+const PEN_B=['imponibilePrev','contribLav','giorniInps'];
+function penBusta(){
+  for(const k of PEN_B){const f=document.querySelector(`#bpModal [data-dc="${k}"]`);if(f)f.hidden=!bp.dc.includes(k);}
+  const anno=($('bpMese').value||cur).slice(0,4);const c=PenCalc.controlloContributi($('bp-imponibilePrev').value,$('bp-contribLav').value,anno);
+  $('bpC2').hidden=!c;$('bpC2').textContent=c?'⚠ '+c.testo:'';
+}
+function rigaContributi(B,y){const C=PenCalc.contributiAnno(B.map(b=>({mese:b.mese,imponibilePrev:b.imponibilePrev,contribLav:b.contribLav})),y);
+  return C.conContributi?`<p class="sm muted bacon"><a href="#" data-penapri="contributi">Contributi ${y}: <b>${eur(C.contributi)}</b> · ${C.buste} ${C.buste===1?'busta':'buste'} ›</a></p>`:'';}
 let molte=[];
 async function leggiMolte(files){
   $('bpStep1').hidden=true;$('bpStep2').hidden=true;$('bpProg').hidden=false;$('bpErr').hidden=true;$('bpRis').hidden=true;molte=[];
-  const righe=[];const valori=r=>{const s=v=>v==null?'':String(v);return {lordo:s(r.lordo),trattenute:s(r.trattenute),netto:s(r.netto),ferie:s(r.ferie),rol:s(r.rol),exfest:s(r.exfest)};};
+  const righe=[];const valori=r=>{const s=v=>v==null?'':String(v);return {lordo:s(r.lordo),trattenute:s(r.trattenute),netto:s(r.netto),ferie:s(r.ferie),rol:s(r.rol),exfest:s(r.exfest),
+    imponibilePrev:s(r.imponibilePrev),contribLav:s(r.contribLav),giorniInps:s(r.giorniInps),daControllare:PEN_B.filter(k=>r[k]!=null)};};
   for(let i=0;i<files.length;i++){const f=files[i];
     const prog=(p,t)=>{$('bpBar').style.width=Math.round((i+p)/files.length*100)+'%';$('bpFase').textContent=`Busta ${i+1} di ${files.length} · ${t||''}`;};
     let r=null,err=null;try{r=Buste.analizzaBusta(await Buste.testoBusta(f,prog));}catch(e){err=errMsg(e);}
@@ -490,6 +526,8 @@ function bind15(){
   $('bpFile').onchange=e=>{const F=[...e.target.files];e.target.value='';if(F.length>1)leggiMolte(F);else if(F[0])leggiBusta(F[0]);};
   $('bpRis').addEventListener('click',e=>{const b=e.target.closest('[data-bpfix]');if(b)salvaSenzaMese(+b.dataset.bpfix);});
   $('bpManuale').onclick=()=>{$('bpStep1').hidden=true;$('bpStep2').hidden=false;$('bpNote').textContent='Scrivi i valori della busta. Senza file la busta resta solo nell’app.';};
+  for(const k of PEN_B)$('bp-'+k).addEventListener('input',()=>{bp.dc=bp.dc.filter(x=>x!==k);penBusta();});
+  $('bpMese').addEventListener('change',()=>{if(bp)penBusta();});
   $('bpClose').onclick=()=>chiudi('bpModal');$('bpSave').onclick=salvaBusta;$('bpDel').onclick=eliminaBusta;$('baClose').onclick=()=>chiudi('bpArch');
   for(const id of MODALI)$(id).addEventListener('click',e=>{if(e.target.id===id)chiudi(id);});
 }

@@ -19,10 +19,12 @@ function contiMese(ym){
   const t=today();const F=fissiDel(ym);
   const fAdd=r2(F.filter(x=>x.data<=t).reduce((a,x)=>a+num(x.f.importo),0)),fTot=r2(F.reduce((a,x)=>a+num(x.f.importo),0));
   const sp=r2((window.spesePersonali?spesePersonali(s=>s.data.startsWith(ym)):[]).reduce((a,s)=>a+num(s.importo),0));
-  const entrate=r2(prog+lav.v);return {prog,lav,fAdd,fTot,fArrivo:r2(fTot-fAdd),sp,entrate,rimanenti:r2(entrate-fAdd-sp)};
+  // v22 (D-040): la pensione conta come lo stipendio: netto del cedolino se c'è, altrimenti la stima
+  const pen=window.pensioneMese?pensioneMese(ym):{v:0,stima:false};
+  const entrate=r2(prog+lav.v+pen.v);return {prog,lav,pen,fAdd,fTot,fArrivo:r2(fTot-fAdd),sp,entrate,rimanenti:r2(entrate-fAdd-sp)};
 }
-function contiAnno(y){const T={prog:0,lav:0,fAdd:0,fTot:0,sp:0,entrate:0,rimanenti:0,stima:false};
-  for(let m=1;m<=12;m++){const c=contiMese(`${y}-${pad(m)}`);T.prog+=c.prog;T.lav+=c.lav.v;T.stima=T.stima||c.lav.stima;T.fAdd+=c.fAdd;T.fTot+=c.fTot;T.sp+=c.sp;T.entrate+=c.entrate;T.rimanenti+=c.rimanenti;}
+function contiAnno(y){const T={prog:0,lav:0,pen:0,fAdd:0,fTot:0,sp:0,entrate:0,rimanenti:0,stima:false,penStima:false};
+  for(let m=1;m<=12;m++){const c=contiMese(`${y}-${pad(m)}`);T.prog+=c.prog;T.lav+=c.lav.v;T.stima=T.stima||c.lav.stima;T.pen+=c.pen.v;T.penStima=T.penStima||c.pen.stima;T.fAdd+=c.fAdd;T.fTot+=c.fTot;T.sp+=c.sp;T.entrate+=c.entrate;T.rimanenti+=c.rimanenti;}
   for(const k in T)if(typeof T[k]==='number')T[k]=r2(T[k]);return T;}
 window.contiMese=contiMese;window.contiAnno=contiAnno;
 
@@ -35,6 +37,7 @@ renderRiepilogo=function(){_renderRie18();
   const cella=(t,v,cls='')=>`<div class="${cls}"><small>${t}</small><b>${v}</b></div>`;
   hero.innerHTML=`<div class="rim${C.rimanenti<0?' neg':''}"><small>${anno?'Rimasti nel '+y:'Soldi rimanenti'}</small><b>${eur(C.rimanenti)}</b><small class="det">Entrati ${eur(C.entrate)} · usciti ${eur(r2(C.fAdd+C.sp))}${!anno&&C.fArrivo?` · in arrivo ${eur(C.fArrivo)} di pagamenti fissi`:''}</small></div>`+
     (lavori().length?cella('Lavoro dipendente'+(lav.stima?' (stima)':''),eur(lav.v)):'')+
+    ((anno?C.pen:C.pen.v)?cella('Pensione'+((anno?C.penStima:C.pen.stima)?' (stima)':''),eur(anno?C.pen:C.pen.v)):'')+
     cella('Rimborsi spese',eur(tot.rimb))+cella('Ritenuta d’acconto',eur(tot.rit))+
     (fissi().length?cella('Pagamenti fissi','− '+eur(fT)):'')+
     (C.sp?cella('Spese del giorno','− '+eur(C.sp)):'')+
@@ -69,6 +72,7 @@ async function eliminaFisso(){if(!await conferma(`Eliminare “${fx.nome}”?`,'
 
 // ---------- calendario: pagamenti fissi, filtri a comparsa, scorrimento ----------
 let nascosti=new Set();try{nascosti=new Set(JSON.parse(localStorage.getItem('soldirini-nascosti')||'[]'));}catch(e){}
+window.lavoroNascosto=id=>nascosti.has('l:'+id); // v22: i turni dei lavori nascosti non entrano nemmeno nel conteggio "+N"
 const salvaNascosti=()=>{try{localStorage.setItem('soldirini-nascosti',JSON.stringify([...nascosti]));}catch(e){}};
 let popAperto=false;
 const _renderCal18=renderCal;
@@ -76,7 +80,7 @@ renderCal=function(){_renderCal18();
   for(const x of fissiDel(cur)){if(nascosti.has('fx'))break;const b=document.querySelector(`#grid [data-day="${x.data}"] .evs`);if(b)b.insertAdjacentHTML('beforeend',`<span class="ev fx" style="--c:#868e96">${fcat(x.f.cat)[1]} ${esc(x.f.nome)}</span>`);}
   // tolgo dalla griglia i calendari nascosti
   if(nascosti.has('sp'))document.querySelectorAll('#grid .ev.sp').forEach(e=>e.remove());
-  for(const l of lavori())if(nascosti.has('l:'+l.id))document.querySelectorAll('#grid .ev.tu').forEach(e=>{if(e.title===l.nome)e.remove();});
+  for(const l of lavori())if(nascosti.has('l:'+l.id))document.querySelectorAll('#grid .ev.tu').forEach(e=>{if(e.dataset.lid===l.id)e.remove();});
   filtriPop();
 };
 function filtriPop(){

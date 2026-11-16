@@ -1,7 +1,9 @@
 // Soldirini funziona anche senza rete.
 // Quando cambi i file su GitHub, aumenta il numero di versione qui sotto.
-const VERSIONE = 'soldirini-21';
-const FILE = ['./', 'index.html', 'app.js', 'plus.js', 'tasse.js', 'ui.js', 'word.js', 'pdfdoc.js', 'stipcalc.js', 'buste.js', 'stipendio.js', 'attivita.js', 'fototurni.js', 'gcal.js', 'soldi.js', 'risparmi.js', 'animazioni.js', 'xlsx.js', 'modelli.js', 'docs.js', 'fonts.css', 'manifest.json',
+const VERSIONE = 'soldirini-22';
+const FILE = ['./', 'index.html', 'app.js', 'plus.js', 'tasse.js', 'ui.js', 'word.js', 'pdfdoc.js', 'stipcalc.js', 'pencalc.js', 'buste.js', 'stipendio.js', 'attivita.js', 'fototurni.js', 'gcal.js', 'soldi.js', 'risparmi.js', 'pensione.js', 'animazioni.js', 'xlsx.js', 'modelli.js', 'docs.js', 'fonts.css', 'nunito.woff2', 'manifest.json', 'privacy.html',
+  'licenze/', 'licenze/index.html', 'licenze/OFL-Nunito.txt', 'licenze/OFL-Carlito.txt', 'licenze/LICENSE-Liberation.txt', 'licenze/GUST-FONT-LICENSE.txt', 'licenze/LPPL-1.3c.txt',
+  'licenze/LICENSE-jszip.txt', 'licenze/MIT-pako.txt', 'licenze/MIT-jspdf.txt', 'licenze/MIT-html2canvas.txt', 'licenze/MIT-pdf-lib.txt', 'licenze/Apache-2.0.txt',
   'soldirini-tonda-192.png', 'soldirini-tonda-512.png', 'soldirini-quadrata-192.png', 'soldirini-quadrata-512.png', 'logo-bulldogs.jpg',
   'lib/jszip.min.js', 'lib/jspdf.umd.min.js', 'lib/html2canvas.min.js', 'lib/pdf.min.js', 'lib/pdf.worker.min.js', 'lib/pdf-lib.min.js', 'tpl/ricevuta.xlsx', 'tpl/nota.xlsx', 'tpl/ore.xlsx'];
 
@@ -9,15 +11,11 @@ self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSIONE).then(c => c.addAll(FILE)).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k.startsWith('soldirini-') && k !== VERSIONE).map(k => caches.delete(k)))).then(() => self.clients.claim()));
+  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => (k.startsWith('soldirini-') && k !== VERSIONE) || k === 'font-soldirini').map(k => caches.delete(k)))).then(() => self.clients.claim()));
 });
 // Prima la rete (così prendi sempre l'ultima versione), se non c'è rete la copia salvata
 self.addEventListener('fetch', e => {
   const req = e.request;
-  if (req.method === 'GET' && /fontshare\.com$/.test(new URL(req.url).hostname)) {
-    e.respondWith(caches.open('font-soldirini').then(c => c.match(req).then(r => r || fetch(req).then(res => { c.put(req, res.clone()); return res; }))));
-    return;
-  }
   if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
   e.respondWith(
     // chiedo sempre al sito se il file è cambiato (evita di mescolare file vecchi e nuovi)

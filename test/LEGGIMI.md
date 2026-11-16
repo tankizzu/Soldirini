@@ -29,4 +29,6 @@ npx playwright test
 ```
 Per provare un'altra copia del sito: `SOLDIRINI_SITO=/percorso/della/cartella npx playwright test`.
 
+La prova di compatibilità della pensione (`pensione-app.spec.js`) usa anche la v21 pubblicata (commit `0d04c94`): la prende da sola dal repository git (con `git fetch` se il commit non c'è) e la mette in una cartella temporanea. In alternativa si indica una copia con `SOLDIRINI_V21=/percorso/della/cartella/soldirini`. Se non c'è git o la rete, la prova viene saltata e il motivo compare nel risultato.
+
 Le prove con la lettura delle foto dei turni (OCR) non sono qui: sono lente e restano da fare a mano.
