@@ -236,7 +236,7 @@ const _renderDoc9=renderDoc;
 renderDoc=function(){
   _renderDoc9();const L=progetti().filter(p=>p.docTpl?.file);if(!L.length)return;
   const box=$('docList');
-  for(const p of L){if(foldState()['doc:word-'+p.id]===undefined)foldState()['doc:word-'+p.id]=true;
+  for(const p of L){ // v23 (D-010): anche la ricevuta Word parte chiusa, come le altre sezioni
     const dopo=[...box.children].filter(c=>c.dataset.fold&&c.dataset.fold.includes(p.nome)).pop();
     if(dopo)dopo.insertAdjacentHTML('afterend',cardWord(p));else box.insertAdjacentHTML('afterbegin',cardWord(p));}
   foldify(box,'doc');

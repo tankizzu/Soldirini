@@ -227,14 +227,15 @@ function leggiCed(){leggiCrediti();const c={mese:$('cdMese').value,dataAccredito
 function messaggiCed(){const c=leggiCed();document.querySelectorAll('#cdModal .cdmsg').forEach(e=>e.innerHTML='');
   for(const k of CAMPI.concat(['crediti']))document.querySelectorAll(`#cdModal [data-cdc="${k}"]`).forEach(e=>e.hidden=!cd.dc.includes(k));
   const L=c.mese?P.controlliCedolino(c,{precedente:cedDi(mesePrima(c.mese))}):[];
-  for(const x of L){const box=document.querySelector(`#cdModal [data-msg="${x.campo}"]`);if(box)box.insertAdjacentHTML('beforeend',`<p class="sm ${x.tipo==='avviso'?'warn':'k-'+x.tipo}">${x.tipo==='avviso'?'⚠ ':''}${esc(x.testo)}</p>`);}
+  for(const x of L){const box=document.querySelector(`#cdModal [data-msg="${x.campo}"]`);if(box){box.insertAdjacentHTML('beforeend',`<p class="sm ${x.tipo==='avviso'?'warn':'k-'+x.tipo}">${x.tipo==='avviso'?'⚠ ':''}${esc(x.testo)}</p>`);
+    if(x.tipo!=='nota'){const d=box.closest('details');if(d)d.open=true;}}} // la sezione con un avviso o un errore si apre da sola
   const tr=P.trattenuteTot(c);$('cdTrSum').textContent=tr?'− '+eu(tr):'';$('cdAltreSum').textContent=c.crediti.length?'+ '+eu(c.crediti.reduce((a,x)=>a+z(x.importo),0)):'';
   if(!$('cdLordoBox').hidden)$('cd-lordoPagamento').placeholder=eu(P.lordoPagamento(c));
   return L;}
 function apriCedolino(ym,esistente){const c=esistente?cedDi(ym):null;cd={key:c?ym:null,file:null,dc:[...(c?.daControllare||[])],crediti:clone(c?.crediti||[]),letti:null};
   $('cdTit').textContent=c?'Cedolino · '+monthName(ym):'Cedolino';$('cdStep1').hidden=!!c;$('cdStep2').hidden=!c;$('cdProg').hidden=true;$('cdErr').hidden=true;$('cdRis').hidden=true;$('cdDel').hidden=!c;
   $('cdMese').value=ym||cur;$('cd-dataAccredito').value=c?.dataAccredito||'';for(const k of CAMPI)$('cd-'+k).value=c?.[k]??'';$('cd-altreNota').value=c?.altreNota||'';
-  $('cdNote').textContent='';$('cdAltreBox').open=!!cd.crediti.length;$('cdTrBox').open=CAMPI.slice(2,8).some(k=>(c?.[k]??'')!=='');
+  $('cdNote').textContent='';chiudiSezioni($('cdModal')); // v23: chiuse all'apertura; si apre da sola la sezione con un avviso
   renderCrediti();messaggiCed();apri('cdModal');}
 function manuale(){$('cdStep1').hidden=true;$('cdStep2').hidden=false;$('cdNote').textContent='Bastano mese, pensione lorda e netto accreditato; il resto è facoltativo. Senza file il cedolino resta solo nell’app.';$('cd-pensioneLorda').focus();}
 const valoriLetti=r=>{const o={};for(const k of CAMPI)o[k]=r[k]==null?'':String(r[k]);o.crediti=(r.crediti||[]).map(x=>({tipo:x.tipo,descr:x.descr,importo:String(x.importo)}));if(r.dataAccredito)o.dataAccredito=r.dataAccredito;
@@ -245,7 +246,7 @@ async function leggiCedolino(file){cd.file=file;$('cdStep1').hidden=true;$('cdPr
   catch(e){$('cdErr').textContent='Non sono riuscito a leggerlo ('+errMsg(e)+'): scrivi tu i valori, lo archivio lo stesso.';$('cdErr').hidden=false;}
   $('cdProg').hidden=true;$('cdStep2').hidden=false;if(r.mese)$('cdMese').value=r.mese;if(r.dataAccredito)$('cd-dataAccredito').value=r.dataAccredito;
   const v=valoriLetti(r);for(const k of CAMPI){$('cd-'+k).value=v[k];$('cd-'+k).classList.toggle('manca',v[k]===''&&['pensioneLorda','netto'].includes(k));}
-  cd.crediti=v.crediti;cd.dc=v.daControllare;cd.letti=true;renderCrediti();$('cdAltreBox').open=!!cd.crediti.length;$('cdTrBox').open=CAMPI.slice(2,8).some(k=>v[k]!=='');
+  cd.crediti=v.crediti;cd.dc=v.daControllare;cd.letti=true;renderCrediti();
   const ok=['mese','pensioneLorda','netto'].filter(k=>k==='mese'?r.mese:r[k]!=null);
   $('cdNote').innerHTML=`<b>${ok.length?'Cedolino letto':'Non ho trovato le voci'}</b><br>${['mese','pensioneLorda','netto'].map(k=>`${ok.includes(k)?'✓':'✗'} ${k==='pensioneLorda'?'pensione lorda':k==='netto'?'netto':'mese'}`).join(' · ')}<br>Controlla i valori “da controllare” e salva.`;
   messaggiCed();}

@@ -14,9 +14,9 @@
 <style>@font-face{font-family:"Nunito";src:url(nunito.woff2) format("woff2");font-weight:400 800;font-style:normal;font-display:swap}</style>
 <link rel="stylesheet" href="fonts.css">
 <style>
-:root{--bg:#f1f0ee;--card:#fff;--ink:#1b1c1e;--mut:#6b6a68;--line:#e2e0dc;--pri:#2a2c30;--pri2:#3d4046;--pri-ink:#fff;--top:#17191c;--gold:#e0a93a;--err:#b0412e;--ok:#3f7a52;--sez:#5b6475;--shadow:0 1px 2px rgba(20,20,20,.05),0 4px 14px rgba(20,20,20,.05);--r:14px;--font:"Nunito",ui-rounded,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-:root[data-theme="dark"]{--bg:#0f1011;--card:#1a1b1e;--ink:#ebeae7;--mut:#a09e9a;--line:#2c2d31;--pri:#e6e4df;--pri2:#c9c7c2;--pri-ink:#16171a;--top:#0b0c0d;--shadow:none;color-scheme:dark}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1011;--card:#1a1b1e;--ink:#ebeae7;--mut:#a09e9a;--line:#2c2d31;--pri:#e6e4df;--pri2:#c9c7c2;--pri-ink:#16171a;--top:#0b0c0d;--shadow:none;color-scheme:dark}}
+:root{--bg:#f1f0ee;--card:#fff;--ink:#1b1c1e;--mut:#6b6a68;--line:#e2e0dc;--pri:#2a2c30;--pri2:#3d4046;--pri-ink:#fff;--top:#17191c;--gold:#e0a93a;--err:#a33a28;--ok:#356d47;--warn:#a8460d;--field:#8d8983;--tabmix:85%;--sezink:80%;--sez:#5b6475;--shadow:0 1px 2px rgba(20,20,20,.05),0 4px 14px rgba(20,20,20,.05);--r:14px;--font:"Nunito",ui-rounded,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+:root[data-theme="dark"]{--bg:#0f1011;--card:#1a1b1e;--ink:#ebeae7;--mut:#a09e9a;--line:#2c2d31;--pri:#e6e4df;--pri2:#c9c7c2;--pri-ink:#16171a;--top:#0b0c0d;--err:#f2857a;--ok:#74c08c;--warn:#f5a066;--field:#76757a;--tabmix:60%;--sezink:55%;--shadow:none;color-scheme:dark}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1011;--card:#1a1b1e;--ink:#ebeae7;--mut:#a09e9a;--line:#2c2d31;--pri:#e6e4df;--pri2:#c9c7c2;--pri-ink:#16171a;--top:#0b0c0d;--err:#f2857a;--ok:#74c08c;--warn:#f5a066;--field:#76757a;--tabmix:60%;--sezink:55%;--shadow:none;color-scheme:dark}}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 var(--font);-webkit-tap-highlight-color:transparent}
 body.noscroll{overflow:hidden}
@@ -391,6 +391,19 @@ button.yr{cursor:pointer}.yr>b{width:40px;flex:none}.yr .tx{flex:1;display:flex;
 .penleg{display:flex;gap:12px;font-size:12px;color:var(--mut)}.penleg i{display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--pen);vertical-align:-1px}.penleg i.l{width:14px;height:0;border-top:2px dashed var(--gold);border-radius:0;vertical-align:3px;background:none}
 .pempty{text-align:center}.pempty .acts{flex-direction:column;align-items:stretch}
 .bacon{margin:0 0 6px}.bacon a{color:var(--ink)}
+/* v23 (D-017 n. 14): contrasti (colori di 02, report del 17/11) */
+input,select,textarea,.fchip,.pchip{border-color:var(--field)}
+input:focus,select:focus,textarea:focus{border-color:var(--sez)}
+.fchip.on:not([style]),.pchip.on:not([style]){border-color:var(--sez)}
+nav.tabs button.on{color:color-mix(in srgb,var(--sez) var(--tabmix),var(--ink))}
+.sechead .badge{color:color-mix(in srgb,var(--sez) var(--sezink),var(--ink))}
+.bdg.ok{background:color-mix(in srgb,var(--ok) 18%,var(--card));color:var(--ok)}
+.bdg.warn{background:color-mix(in srgb,var(--warn) 18%,var(--card));color:var(--warn)}
+/* v23: tocchi minimi 44 × 44 px */
+nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
+.ib,.x,.eye{min-width:44px;min-height:44px}
+.sw{width:44px;height:44px}
+.gcl{margin:4px 0 8px;padding-left:20px}.gcl li{margin:3px 0}#gcModal .foot .btn{min-height:44px}
 </style>
 </head>
 <body>
@@ -518,7 +531,8 @@ button.yr{cursor:pointer}.yr>b{width:40px;flex:none}.yr .tx{flex:1;display:flex;
     <p class="muted sm" id="evSub"></p>
     <label id="evDateRow">Giorno<input type="date" id="evDate"></label>
     <div class="note" id="evStatoBox" hidden><label class="check"><input type="checkbox" id="evFatta"> Fatta (la confermo)</label></div>
-    <p class="muted sm" style="margin:0 0 6px">Apri le sezioni che ti servono: si salvano solo quelle aperte.</p>
+    <p class="muted sm" style="margin:0 0 6px">Apri le sezioni che ti servono: si salva quello che compili.</p>
+    <div class="acts" id="evFoto" hidden style="margin:0 0 8px"><button type="button" class="btn ghost sm" id="evFotoBtn">📷 Turni da foto</button></div>
     <details class="card fold sez" id="secLav"><summary><span class="st">💼 Lavoro dipendente</span><span class="sum" id="secLavSum"></span></summary><div class="fbody" id="evLav"></div></details>
     <details class="card fold sez" id="secProg"><summary><span class="st">📁 Progetti</span><span class="sum" id="secProgSum"></span></summary><div class="fbody">
     <div id="evProgNo" hidden><p class="muted sm">Non hai ancora progetti (squadre, collaborazioni…).</p><button type="button" class="btn sm" id="evProgNew">+ Nuovo progetto</button></div>
@@ -635,10 +649,10 @@ button.yr{cursor:pointer}.yr>b{width:40px;flex:none}.yr .tx{flex:1;display:flex;
       <div class="acts"><label class="btn sm filebtn">Busta paga<input type="file" id="lvDocBusta" accept="application/pdf,image/*" hidden></label><label class="btn ghost sm filebtn">Contratto<input type="file" id="lvDocContr" accept="application/pdf,image/*" hidden></label></div>
       <div id="lvDocProg" hidden><div class="bpbar"><span id="lvDocBar"></span></div><p class="muted sm" id="lvDocFase"></p></div>
       <div id="lvDocRis"></div><p class="muted sm" id="lvDocFile"></p></div></details>
-    <details class="card fold" id="lvPagaBox" open><summary><span class="st">💶 Paga</span><span class="sum" id="lvPagaSum"></span></summary><div class="fbody"><div class="g2"><label>Tipo<select id="lvPagaTipo"><option value="mensile">Mensile (lorda)</option><option value="giornaliera">Giornaliera (lorda)</option><option value="oraria">Oraria (lorda)</option></select></label><label>Importo lordo €<input id="lvPaga" type="number" inputmode="decimal" step="0.01" placeholder="vuoto = solo ore"></label>
+    <details class="card fold" id="lvPagaBox"><summary><span class="st">💶 Paga</span><span class="sum" id="lvPagaSum"></span></summary><div class="fbody"><div class="g2"><label>Tipo<select id="lvPagaTipo"><option value="mensile">Mensile (lorda)</option><option value="giornaliera">Giornaliera (lorda)</option><option value="oraria">Oraria (lorda)</option></select></label><label>Importo lordo €<input id="lvPaga" type="number" inputmode="decimal" step="0.01" placeholder="vuoto = solo ore"></label>
       <label class="s2" id="lvDivBox">Ore al mese per la paga oraria (divisore del contratto)<input id="lvDiv" type="number" inputmode="numeric" placeholder="168"></label></div>
       <p class="muted sm">Lo trovi in busta paga o nel contratto. Se lo lasci vuoto, Soldirini conta solo le ore.</p></div></details>
-    <details class="card fold" id="lvFissoBox" open><summary><span class="st">🗓️ Orario settimanale</span></summary><div class="fbody"><p class="muted sm" style="margin-top:0">Il mese si riempie da solo con questo orario: nel calendario segni solo le eccezioni.</p>
+    <details class="card fold" id="lvFissoBox"><summary><span class="st">🗓️ Orario settimanale</span></summary><div class="fbody"><p class="muted sm" style="margin-top:0">Il mese si riempie da solo con questo orario: nel calendario segni solo le eccezioni.</p>
       <div id="lvSett"></div><div class="acts"><button type="button" class="btn ghost sm" id="lvCopia">Copia il lunedì su mar–ven</button></div>
       <fieldset class="lvcal"><legend>Nel calendario mostra</legend><label class="check"><input type="radio" name="lvCalMostra" value="diversi"> Solo i giorni diversi dal solito</label><label class="check"><input type="radio" name="lvCalMostra" value="tutti"> Tutti i giorni di lavoro</label><p class="muted sm">I giorni diversi sono ferie, permessi, malattia, straordinari e orari cambiati.</p></fieldset>
       <div class="g2"><label>Dal giorno (inizio)<input type="date" id="lvDal"></label><label>Fino al (fine contratto)<input type="date" id="lvAl"></label></div></div></details>
@@ -736,6 +750,22 @@ button.yr{cursor:pointer}.yr>b{width:40px;flex:none}.yr .tx{flex:1;display:flex;
     <div class="foot"><button class="btn ghost" id="cdDel" hidden>Togli</button><button class="btn" id="cdSave">Salva cedolino</button></div></div></div></div>
 <div class="modal" id="cdArch" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="caTit">
   <div class="sheethead"><h2 id="caTit">Cedolini</h2><button class="x" id="caClose" aria-label="Chiudi">×</button></div><div id="caBody"></div></div></div>
+<div class="modal" id="gcModal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="gcTit">
+  <div class="sheethead"><h2 id="gcTit">Collegare Google Calendar?</h2><button type="button" class="x" id="gcClose" aria-label="Chiudi">×</button></div>
+  <p style="margin-top:0">Soldirini può copiare le tue attività in Google Calendar. Così le vedi anche lì, sul telefono e sul computer, e, se imposti un avviso, lo ricevi anche con Soldirini chiusa.</p>
+  <h3 class="bpgr">Cosa fa</h3><ul class="gcl"><li>Crea un calendario per ogni progetto e per ogni lavoro, chiamato “Soldirini · …”.</li>
+    <li>Ci copia attività e turni da questo mese in poi, comprese ferie, permessi e assenze: nome, giorno, orario e le note che scrivi.</li>
+    <li>Li aggiorna da solo quando cambi qualcosa in Soldirini.</li></ul>
+  <h3 class="bpgr">Cosa non fa</h3><ul class="gcl"><li>Non vede e non modifica gli altri tuoi calendari.</li>
+    <li>Non copia importi, km, spese né buste paga, né i dati per le ricevute (codice fiscale, indirizzo, auto).</li></ul>
+  <h3 class="bpgr">Da sapere</h3><ul class="gcl"><li>Le modifiche si fanno in Soldirini: se cambi un evento in Google Calendar, Soldirini lo riscrive com’era.</li>
+    <li>Quello che copia viene salvato nel tuo account Google e lo vedi solo tu, a meno che tu non condivida il calendario. Non scrivere nelle note cose che non vuoi su Google Calendar.</li>
+    <li>I giorni di malattia compaiono come “Assenza”. Puoi cambiarlo in Impostazioni.</li>
+    <li>Google ti chiederà di confermare il permesso con una sua schermata.</li></ul>
+  <h3 class="bpgr">Puoi tornare indietro quando vuoi</h3><p>Impostazioni → Google Calendar → Disattiva: scegli se tenere o eliminare i calendari. Puoi anche togliere il permesso da <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">myaccount.google.com/permissions</a>.</p>
+  <p><a href="privacy.html" class="lnkw">Leggi l’informativa privacy</a></p>
+  <p class="warn sm" id="gcNoAcc" hidden>Per usare Google Calendar devi prima accedere con Google.</p>
+  <div class="foot"><button type="button" class="btn ghost" id="gcNo">Non ora</button><button type="button" class="btn" id="gcSi">Attiva</button></div></div></div>
 <div class="modal" id="bpArch" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="baTit">
   <div class="sheethead"><h2 id="baTit">Buste paga</h2><button class="x" id="baClose" aria-label="Chiudi">×</button></div><div id="baBody"></div></div></div>
 <div class="modal" id="ftModal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="ftTit">

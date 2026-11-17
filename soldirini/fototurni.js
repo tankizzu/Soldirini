@@ -514,7 +514,7 @@ function apriFoto(lid,ym){
   const L=lavori();if(!L.length){toast('Prima aggiungi il tuo lavoro in Impostazioni.','err');return;}
   ft={lid:lid||L[0].id,ym:ym||cur,proposta:null};
   $('ftLavBox').hidden=L.length<2;$('ftLav').innerHTML=L.map(l=>`<option value="${l.id}">${esc(l.nome)}</option>`).join('');$('ftLav').value=ft.lid;
-  $('ftMese').value=ft.ym;$('ftNome').value=lav0(ft.lid).nomeTab||'';passo(1);$('ftModal').hidden=false;document.body.classList.add('noscroll');
+  $('ftMese').value=ft.ym;$('ftNome').value=lav0(ft.lid).nomeTab||'';passo(1);chiudiSezioni($('ftModal'));$('ftModal').hidden=false;document.body.classList.add('noscroll');
 }
 const lav0=id=>(D().lavori||{})[id];
 function chiudiFoto(){$('ftModal').hidden=true;$('ftFile').value='';if(['evModal','pjModal','cuModal','dayModal','listModal','confModal','lvModal','tuModal','bpModal','bpArch'].every(x=>!$(x)||$(x).hidden))document.body.classList.remove('noscroll');}

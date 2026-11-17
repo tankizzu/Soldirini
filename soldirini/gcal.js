@@ -61,9 +61,13 @@ function desiderati(){
     const giorni=new Set(Object.keys(byD));if(l.modo==='fisso')for(let d=dal;d<=fine;d=piu1(d))giorni.add(d);
     for(const d of [...giorni].sort()){const G=C.vociGiorno(l,byD[d]||[],d);
       G.voci.forEach((v,i)=>{if(v.cat==='riposo')return;
-        const nome=v.implicito?l.nome:((v.tipo?.icona?v.tipo.icona+' ':'')+v.nome+(l.modo==='turni'||lavori().length>1?' · '+l.nome:''));
+        // v23 (D-045, privacy prima di tutto): la malattia è un dato sulla salute; di base va su Google Calendar
+        // come "Assenza", senza icona e senza note. Per esteso solo se l'utente lo sceglie in Impostazioni.
+        const nascondi=v.cat==='malattia'&&!c.malattiaEstesa;
+        const dopo=(l.modo==='turni'||lavori().length>1?' · '+l.nome:'');
+        const nome=v.implicito?l.nome:nascondi?'Assenza'+dopo:((v.tipo?.icona?v.tipo.icona+' ':'')+v.nome+dopo);
         const tempi=v.da!=null&&v.a!=null?orario(d,v.da,v.a):tuttoIlGiorno(d);
-        out[evId(`l|${l.id}|${d}|${v.id||'abituale'}|${i}`)]=Object.assign({cal:'l:'+l.id,calNome:l.nome,summary:nome+(v.ore!=null&&v.da==null?` (${nf(v.ore)} h)`:''),description:v.nota||''},tempi);});}}
+        out[evId(`l|${l.id}|${d}|${v.id||'abituale'}|${i}`)]=Object.assign({cal:'l:'+l.id,calNome:l.nome,summary:nome+(v.ore!=null&&v.da==null?` (${nf(v.ore)} h)`:''),description:nascondi?'':(v.nota||'')},tempi);});}}
   return out;
 }
 // promemoria di Google Calendar: avviso sul telefono prima di ogni evento (anche ad app chiusa)
@@ -107,12 +111,30 @@ const _processQueue17=processQueue;
 processQueue=async function(){const r=await _processQueue17();await codaPasso('gcal',async()=>{await sincronizza(false);if(errore&&attivo())throw new Error(errore);});return r;};
 
 // ---------- attiva / disattiva ----------
+// v23 (D-024 punto 1): finestra di consenso con i testi di 02 corretti da 03, al posto della conferma di una riga
+function consenso(){return new Promise(res=>{const acc=!!DB.meta.account;
+  $('gcNoAcc').hidden=acc;$('gcSi').textContent=acc?'Attiva':'Accedi con Google';
+  const fine=v=>{$('gcModal').hidden=true;if([...document.querySelectorAll('.modal')].every(x=>x.hidden))document.body.classList.remove('noscroll');
+    for(const id of ['gcSi','gcNo','gcClose'])$(id).onclick=null;$('gcModal').onclick=null;res(v);};
+  $('gcSi').onclick=()=>fine(acc?'attiva':'accedi');$('gcNo').onclick=()=>fine(null);$('gcClose').onclick=()=>fine(null);
+  $('gcModal').onclick=e=>{if(e.target.id==='gcModal')fine(null);};
+  $('gcModal').hidden=false;document.body.classList.add('noscroll');$('gcModal').querySelector('.sheet').scrollTop=0;});}
+const MSG_RETE='Non riesco a raggiungere Google. Controlla la connessione e riprova.';
+const diRete=e=>!navigator.onLine||e instanceof TypeError||e?.name==='TempoErr'||/non è ancora pronto|network|fetch/i.test(String(e?.message||''));
 async function attiva(){
-  if(!DB.meta.account){toast('Prima accedi con Google.','err');return;}
-  if(!await conferma('Soldirini creerà nel tuo Google Calendar un calendario per ogni progetto e per ogni lavoro, con le attività da questo mese in poi. Potrà vedere e modificare solo questi calendari, non gli altri. Continuo?','Attiva'))return;
-  try{await chiediPermesso();}catch(e){toast(errMsg(e),'err');return;}
+  const v=await consenso();if(!v)return;
+  if(v==='accedi'){login();return;}
+  try{await chiediPermesso();}catch(e){toast(diRete(e)?MSG_RETE:'Non hai dato il permesso: Google Calendar resta spento. Puoi riprovare quando vuoi.','err');return;}
   const oggi=today();GC().cfg={attivo:true,dal:oggi.slice(0,7)+'-01',updatedAt:Date.now()};changed();
-  busy(true,'Creo i calendari…');try{const n=await sincronizza(true);toast(`Google Calendar attivo: ${n} eventi copiati.`);}catch(e){toast(errMsg(e),'err');}finally{busy(false);renderGcal();}
+  busy(true,'Creo i calendari…');try{const n=await sincronizza(true);toast(`Google Calendar attivo: ${n} ${n===1?'attività copiata':'attività copiate'}.`);}catch(e){toast(diRete(e)?MSG_RETE:errMsg(e),'err');}finally{busy(false);renderGcal();}
+}
+// v23 (D-045): scelta facoltativa "Scrivi «Malattia» nel calendario Google" (testi di 02)
+async function sceltaMalattia(on){const c=GC().cfg;if(!c)return;
+  if(on&&!await ask('<b>Scrivere “Malattia” nel calendario?</b><br>Nei calendari “Soldirini · …” i giorni di malattia avranno il nome “Malattia”. Se condividi questi calendari con qualcuno, lo vedrà anche lui.',[{t:'Annulla',v:false,cls:'ghost'},{t:'Scrivi “Malattia”',v:true}],true)){renderGcal();return;}
+  c.malattiaEstesa=!!on;c.updatedAt=Date.now();changed();
+  const msg=on?'i giorni di malattia ora si chiamano «Malattia».':'i giorni di malattia ora si chiamano «Assenza».';
+  if(haPermesso()){busy(true,'Aggiorno Google Calendar…');try{await sincronizza(true);toast('Calendario aggiornato: '+msg);}catch(e){toast(diRete(e)?MSG_RETE:errMsg(e),'err');}finally{busy(false);renderGcal();}}
+  else{renderGcal();toast('Scelta salvata: al prossimo aggiornamento del calendario '+msg);}
 }
 async function collega(){try{await chiediPermesso();busy(true,'Aggiorno Google Calendar…');const n=await sincronizza(true);toast(n?`Calendario aggiornato (${n} modifiche).`:'Calendario già aggiornato.');}catch(e){toast(errMsg(e),'err');}finally{busy(false);renderGcal();}}
 async function disattiva(){
@@ -127,7 +149,7 @@ async function disattiva(){
 // ---------- scheda nelle impostazioni ----------
 function renderGcal(){
   const b=$('gcalBody');if(!b)return;const c=cfg();const cal=Object.entries(GC()).filter(([k,r])=>k.startsWith('cal:')&&!r.deleted);
-  if(!attivo()){b.innerHTML=`<p class="muted sm" style="margin-top:0">Crea un calendario Google per ogni progetto e lavoro e lo tiene aggiornato da solo (da questo mese in poi). Così vedi tutto anche in Google Calendar, sul telefono e sul computer.</p><button class="btn" id="gcalOn">Attiva Google Calendar</button>`;return;}
+  if(!attivo()){b.innerHTML=`<p class="muted sm" style="margin-top:0">Soldirini può copiare le tue attività e i tuoi turni in Google Calendar, in un calendario “Soldirini · …” per ogni progetto e lavoro, da questo mese in poi. Non vede e non modifica gli altri tuoi calendari e non copia importi, km, spese né buste paga. Prima di attivarlo ti spiego tutto.</p><button class="btn" id="gcalOn">Attiva Google Calendar</button>`;return;}
   const ok=haPermesso()||DB.meta.gcalOk;
   b.innerHTML=`<p class="sm" style="margin-top:0"><b>Attivo</b> dal ${esc(monthName(c.dal.slice(0,7)))} · ${cal.length} ${cal.length===1?'calendario':'calendari'}${ultimo?' · aggiornato alle '+new Date(ultimo).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}):''}</p>
     ${cal.length?`<p class="muted sm">${cal.map(([,r])=>'Soldirini · '+esc(r.nome)).join('<br>')}</p>`:''}
@@ -136,11 +158,14 @@ function renderGcal(){
     <div class="acts">${!DB.meta.gcalOk?'<button class="btn sm" id="gcalLink">Collega questo telefono</button>':'<button class="btn ghost sm" id="gcalNow">Aggiorna ora</button>'}<button class="btn ghost sm" id="gcalOff">Disattiva</button></div>
     <label>Avvisami prima di ogni attività<select id="gcalAvv">${[[0,'nessun avviso'],[15,'15 minuti prima'],[30,'30 minuti prima'],[60,'1 ora prima'],[120,'2 ore prima'],[1440,'il giorno prima']].map(([v,t])=>`<option value="${v}" ${+(c.avviso||0)===v?'selected':''}>${t}</option>`).join('')}</select></label>
     <p class="muted sm">L’avviso arriva da Google Calendar sul telefono, anche con Soldirini chiusa. Gli eventi di tutto il giorno avvisano la sera prima.</p>
-    <p class="muted sm">Le modifiche si fanno in Soldirini: quelle fatte direttamente in Google Calendar vengono sovrascritte.</p>`;
+    ${lavori().length?`<label class="check" style="margin-top:10px"><input type="checkbox" id="gcalMal" ${c.malattiaEstesa?'checked':''}> Scrivi “Malattia” nel calendario Google</label>
+    <p class="muted sm" style="margin-top:2px">Di base i giorni di malattia compaiono come “Assenza”: chi vede il tuo calendario non ne conosce il motivo. Accendi questa scelta solo se vuoi leggere “Malattia”.</p>`:''}
+    <p class="muted sm">Le modifiche si fanno in Soldirini: quelle fatte direttamente in Google Calendar vengono sovrascritte.</p>
+    <p class="muted sm">Quello che copia è nel tuo account Google e lo vedi solo tu, se non condividi il calendario. <a href="privacy.html">Informativa privacy</a></p>`;
 }
 const _renderProg17=renderProgetti;
 renderProgetti=function(){_renderProg17();renderGcal();};
-document.addEventListener('change',e=>{if(e.target.id==='gcalAvv'){const c=GC().cfg;c.avviso=+e.target.value;c.updatedAt=Date.now();changed();renderGcal();toast('Avvisi aggiornati: li applico agli eventi alla prossima sincronizzazione.');}});
+document.addEventListener('change',e=>{if(e.target.id==='gcalMal'){sceltaMalattia(e.target.checked);return;}if(e.target.id==='gcalAvv'){const c=GC().cfg;c.avviso=+e.target.value;c.updatedAt=Date.now();changed();renderGcal();toast('Avvisi aggiornati: li applico agli eventi alla prossima sincronizzazione.');}});
 document.addEventListener('click',e=>{const id=e.target.id;if(id==='gcalOn')attiva();else if(id==='gcalOff')disattiva();else if(id==='gcalLink'||id==='gcalNow')collega();});
 window.GCal={desiderati,sincronizza,evId,CAL_SCOPE};
 render();

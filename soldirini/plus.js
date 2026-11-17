@@ -210,8 +210,15 @@ function soglieHtml(y){
     return `<div class="soglia ${cls}"><div class="sh"><b>${esc(s.nome)}</b><span>${eur(s.usato)} di ${eur(s.limite)}</span></div><div class="meter"><i style="width:${Math.min(100,pc).toFixed(1)}%"></i></div><small>${pc>=100?'Soglia superata: parlane con il commercialista.':pc>=80?`Sei all’${Math.round(pc)}%: ti mancano ${eur(s.limite-s.usato)}.`:`Ti mancano ${eur(s.limite-s.usato)}.`}</small></div>`;}).join('')+
     '<p class="muted sm">Importi delle soglie modificabili in Progetti → Impostazioni: verificali con il tuo commercialista.</p>';
 }
-// ---------- sezioni riducibili (aperte/chiuse ricordate) ----------
-const foldState=()=>DB.meta.fold||(DB.meta.fold={});
+// ---------- sezioni riducibili ----------
+// v23 (D-010): aprendo l'app o una pagina le sezioni sono chiuse. Si ricorda solo cosa hai aperto
+// mentre resti nella stessa pagina (i riquadri vengono ridisegnati spesso), in memoria e mai sul telefono.
+let FOLD={};const foldState=()=>FOLD;
+if(DB.meta&&DB.meta.fold){delete DB.meta.fold;try{persist();}catch(e){}}
+// chiude tutte le sezioni a comparsa dentro un elemento (pagine e finestre, all'apertura)
+window.chiudiSezioni=root=>{if(root)root.querySelectorAll('details[open]').forEach(d=>{d.open=false;});};
+let tabFold=null;const _renderFold23=render;
+render=function(){if(typeof tab!=='undefined'&&tab!==tabFold){FOLD={};tabFold=tab;chiudiSezioni($('v-'+tab));}return _renderFold23.apply(this,arguments);};
 function foldify(root,prefix){
   if(!root)return;
   for(const c of [...root.children]){
@@ -226,7 +233,7 @@ function foldify(root,prefix){
     d.appendChild(s);d.appendChild(body);c.replaceWith(d);
   }
 }
-document.addEventListener('toggle',e=>{const d=e.target;if(!d.dataset?.fold)return;foldState()[d.dataset.fold]=d.open;persist();if(d.open&&d.querySelector('#firmaCanvas'))firmaPad?.fit();},true);
+document.addEventListener('toggle',e=>{const d=e.target;if(!d.dataset?.fold)return;foldState()[d.dataset.fold]=d.open;if(d.open&&d.querySelector('#firmaCanvas'))firmaPad?.fit();},true);
 
 // ---------- grafico dell'anno ----------
 function graficoAnno(y,mesi){

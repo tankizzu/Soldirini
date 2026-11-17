@@ -16,7 +16,10 @@ const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-headers
 
 // Script che sostituisce https://accounts.google.com/gsi/client: dà sempre un token finto.
 const GSI = `window.google=window.google||{};google.accounts={oauth2:{initTokenClient(c){return {requestAccessToken(o){
-  window.__richiesteToken=(window.__richiesteToken||0)+1;setTimeout(()=>c.callback({access_token:'${TOKEN}',expires_in:3600,scope:(o&&o.scope)||c.scope}),30);}};},
+  window.__richiesteToken=(window.__richiesteToken||0)+1;
+  // prove: window.__gsiRifiuto = 'popup_closed' (schermata di Google chiusa) oppure 'access_denied' (permesso negato)
+  const r=window.__gsiRifiuto;if(r){setTimeout(()=>r==='popup_closed'?c.error_callback&&c.error_callback({type:'popup_closed'}):c.callback({error:r}),30);return;}
+  setTimeout(()=>c.callback({access_token:'${TOKEN}',expires_in:3600,scope:(o&&o.scope)||c.scope}),30);}};},
   revoke(t,cb){cb&&cb();}},id:{initialize(){},renderButton(){},prompt(){}}};`;
 
 function multipart(buf, ct) {

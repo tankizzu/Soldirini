@@ -86,7 +86,7 @@ function pagineReport(y){
     ['Totale','',nf(A.tot.ore),eur(A.tot.lordo),eur(A.tot.rit),eur(A.tot.netto),eur(A.tot.rimb),eur(r2(A.tot.netto+A.tot.rimb))]);
   const sg=soglieAnno(y).filter(s=>s.usato||s.cat==='occasionale');
   sezione('2 · Soglie',[{t:'Soglia',w:360},{t:'Compensi lordi',w:120,al:'right'},{t:'Limite',w:110,al:'right'},{t:'Stato',w:124}],
-    sg.map(s=>[esc(s.nome),eur(s.usato),eur(s.limite),s.usato>s.limite?'<b style="color:#b42318">superata</b>':`mancano ${eur(s.limite-s.usato)}`]));
+    sg.map(s=>[esc(s.nome),eur(s.usato),eur(s.limite),s.usato>s.limite?'<b style="color:var(--err)">superata</b>':`mancano ${eur(s.limite-s.usato)}`]));
   sezione(`3 · Elenco pagamenti ${y}`,[{t:'Pagato il',w:96},{t:'Committente',w:134},{t:'Mese lavorato',w:84},{t:'Voce',w:94},{t:'Lordo',w:76,al:'right'},{t:'Ritenuta',w:70,al:'right'},{t:'Netto',w:78,al:'right'},{t:'Rimborso',w:82,al:'right'}],
     items.map(i=>[quandoPag(i),esc(i.p.nome),MESI[+i.ym.slice(5)-1].slice(0,3)+' '+i.ym.slice(0,4),i.tp==='o'?'Compensi':'Rimborso spese',i.lordo?eur(i.lordo):'',i.rit?eur(i.rit):'',i.netto?eur(i.netto):'',i.rimb?eur(i.rimb):'']),
     ['Totale','','','',eur(A.tot.lordo),eur(A.tot.rit),eur(A.tot.netto),eur(A.tot.rimb)],'“previsto”: pagamento non ancora segnato, contato nel mese in cui di solito arriva.');

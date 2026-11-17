@@ -9,8 +9,8 @@ const speseDel=fn=>Object.values(SP()).filter(s=>!s.deleted&&fn(s)).sort((a,b)=>
 const CATS=[['online','📦','Online / Amazon'],['negozio','🛍️','Negozio'],['spesa','🛒','Supermercato'],['bar','☕','Bar e ristoranti'],['amici','🍻','Amici e uscite'],['trasporti','🚗','Trasporti e benzina'],['casa','🏠','Casa e bollette'],['altro','•','Altro']];
 const catDi=k=>CATS.find(c=>c[0]===k)||CATS[CATS.length-1];
 const num=v=>{const n=parseFloat(String(v??'').replace(',','.'));return isNaN(n)?0:n;};
-const pref=()=>{try{return JSON.parse(localStorage.getItem('soldirini-sez')||'{}');}catch(e){return {};}};
-const setPref=o=>{try{localStorage.setItem('soldirini-sez',JSON.stringify(Object.assign(pref(),o)));}catch(e){}};
+// v23 (D-010): le sezioni non ricordano più se erano aperte; tolgo le vecchie memorie dal telefono
+try{localStorage.removeItem('soldirini-sez');localStorage.removeItem('soldirini-foldpro');}catch(e){}
 let S={lav:null,sp:[],cat:'online'};let pick=false,modTurno=null; // stato delle sezioni mentre la finestra è aperta
 window.spesePersonali=speseDel;
 
@@ -30,11 +30,19 @@ openEv=function(dates,e,tieni){
   const modifica=!!e;
   $('secLav').hidden=modifica;$('secSpese').hidden=modifica;
   $('evProgNo').hidden=!md.noProj;$('evProgBody').hidden=!!md.noProj;
-  if(!tieni){const p=pref();$('secProg').open=modifica||(!md.noProj&&p.prog!==false);$('secLav').open=!modifica&&!!p.lav&&lavori().length>0;$('secSpese').open=!modifica&&!!p.sp;}
+  // v23 (D-010, D-017 n. 11): tutte chiuse; si apre da sola solo la sezione in modifica (attività già salvata)
+  if(!tieni){$('secProg').open=modifica;$('secLav').open=false;$('secSpese').open=false;md.progToccato=false;}
   if(!md.noProj)dopoFill();
   if(!modifica)prepRipetizione();
+  // v23 (D-043): con almeno un lavoro a turni, "Turni da foto" anche da qui
+  $('evFoto').hidden=modifica||!lavoriTurni().length;
   renderLav();renderSp();aggiornaSum();
 };
+const lavoriTurni=()=>lavori().filter(l=>l.modo==='turni');
+async function turniDaFoto(){const T=lavoriTurni();if(!T.length)return;
+  let lid=T[0].id;
+  if(T.length>1){lid=await ask('Per quale lavoro sono i turni della foto?',T.map(l=>({t:l.nome,v:l.id,cls:'ghost'})).concat([{t:'Annulla',v:null,cls:'ghost'}]));if(!lid)return;}
+  const ym=(md&&md.dates&&md.dates[0]||cur+'-01').slice(0,7);closeEv();FotoTurni.apriFoto(lid,ym);}
 
 // ================= sezione Lavoro dipendente =================
 function renderLav(){
@@ -110,11 +118,12 @@ const _saveEv16=saveEv;
 saveEv=async function(){
   if(md.id)return _saveEv16();
   letturaLav();
-  if($('secSpese').open&&$('spPImp')&&num($('spPImp').value)>0)aggiungiSp();
-  const dates=[...md.dates];const aperte={prog:$('secProg').open,lav:$('secLav').open,sp:$('secSpese').open},senzaProg=!!md.noProj;
-  const progOn=$('secProg').open&&!md.noProj;
-  const st=$('secLav').open&&S.lav&&S.lav.tipo!==undefined?S.lav:null;
-  const sp=$('secSpese').open?S.sp:[];
+  // v23 (D-017 n. 10): si salva ciò che è compilato, anche se la sezione è stata richiusa
+  if($('spPImp')&&num($('spPImp').value)>0)aggiungiSp();
+  const dates=[...md.dates];
+  const progOn=!md.noProj&&($('secProg').open||!!md.progToccato);
+  const st=S.lav&&S.lav.tipo!==undefined?S.lav:null;
+  const sp=S.sp;
   if(!progOn&&!st&&!sp.length){toast('Non c’è niente da salvare: apri una sezione e compilala.','err');return;}
   if(st){const l=lav0(st.lid),t=st.tipo?C.tipoDi(l,st.tipo):null;
     if(!t&&!(st.da&&st.a)&&!st.ore){toast('Lavoro: scrivi l’orario (dalle–alle) o le ore.','err');$('secLav').open=true;return;}
@@ -135,7 +144,6 @@ saveEv=async function(){
   if(st){window.Stip15.metti(st.lid,dates,st.tipo||null,{da:st.da,a:st.a,pausa:st.pausa,ore:st.ore,nota:st.nota});parti.push(dates.length>1?`lavoro in ${dates.length} giorni`:'lavoro');}
   if(sp.length){const now=Date.now();let i=0;for(const d of dates)for(const x of sp){const id=uid();SP()[id]=Object.assign({id,data:d,created:now+i++,updatedAt:now},x);}
     parti.push(sp.length===1?'1 spesa':`${sp.length} spese`);}
-  setPref(Object.assign(senzaProg?{}:{prog:aperte.prog},{lav:aperte.lav,sp:aperte.sp}));
   if(st||sp.length){changed();render();}
   if(parti.length>1||!progOn)toast('Salvato: '+parti.join(', ')+'.');
 };
@@ -172,14 +180,13 @@ function icone(){document.querySelectorAll('#v-pro details.fold>summary>.st').fo
 const _renderProg16=renderProgetti;
 renderProgetti=function(){_renderProg16();
   $('foldLavSum').textContent=lavori().length||'';$('foldProjSum').textContent=progetti().length||'';
-  try{const f=JSON.parse(localStorage.getItem('soldirini-foldpro')||'{}');if(f.lav!=null&&!$('foldLav').dataset.init)$('foldLav').open=f.lav;if(f.proj!=null&&!$('foldProj').dataset.init)$('foldProj').open=f.proj;}catch(e){}
-  $('foldLav').dataset.init=$('foldProj').dataset.init='1';icone();};
+  icone();};
 // dopo un nuovo progetto creato dalla finestra attività, torno lì con il progetto scelto
 const _saveProj16=saveProj;
 saveProj=function(){const nuovo=pe?.isNew,id=pe?.p?.id;const r=_saveProj16();
   if(nuovo&&prog(id)&&$('pjModal').hidden&&!$('evModal').hidden&&md&&!md.id){
     if(md.noProj){const lavOpen=$('secLav').open,spOpen=$('secSpese').open;openEv(md.dates,null,true);$('secLav').open=lavOpen;$('secSpese').open=spOpen;}
-    const x=defaultsEv(prog(id));fillEv(x);md.pid=id;$('secProg').open=true;document.body.classList.add('noscroll');}
+    const x=defaultsEv(prog(id));fillEv(x);md.pid=id;md.progToccato=true;$('secProg').open=true;document.body.classList.add('noscroll');}
   return r;};
 // dopo un nuovo lavoro, aggiorno la sezione lavoro della finestra attività
 const _render16=render;
@@ -214,9 +221,11 @@ function bind16(){
   $('evRipDur').onchange=mostraDurata;
   $('dayBox').addEventListener('click',async e=>{const b=e.target.closest('[data-spdel]');if(!b)return;const s=SP()[b.dataset.spdel];if(!s)return;
     if(!await conferma(`Eliminare la spesa di ${eur(num(s.importo))}?`,'Elimina','danger'))return;s.deleted=true;s.updatedAt=Date.now();changed();render();apriGiorno(selDay);});
-  for(const [id,k] of [['foldLav','lav'],['foldProj','proj']])$(id).addEventListener('toggle',()=>{try{const f=JSON.parse(localStorage.getItem('soldirini-foldpro')||'{}');f[k]=$(id).open;localStorage.setItem('soldirini-foldpro',JSON.stringify(f));}catch(e){}});
+  // v23: compilare qualcosa nella sezione Progetti vale come "da salvare" anche se poi la sezione si richiude
+  for(const ev of ['input','change','click'])$('secProg').addEventListener(ev,e=>{if(md&&!e.target.closest('summary')&&(ev!=='click'||e.target.closest('button')))md.progToccato=true;});
 }
 bind16();
 render();
 window.Att16={S,speseDel,fineDaMesi};
+document.addEventListener('click',e=>{if(e.target.closest('#evFotoBtn'))turniDaFoto();});
 })();

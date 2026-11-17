@@ -79,18 +79,24 @@ function baseAnno(p,anno){const per=periodo(p,anno);
 // L'app conosce solo le aliquote scritte dall'utente (non quelle deliberate dal Comune per l'anno prima): quindi è sempre una "stima".
 function accontoComunale(p,anno){const prima=baseAnno(p,+anno-1);const com=prima.per.mesi?prima.A.comunale:0;
   const importo=r2(com*0.3);return {importo,rata:r2(importo/9),stima:importo>0};}
+// v23 (04, P-5): nei cedolini dell'anno l'INPS trattiene in 11 rate (gennaio-novembre) l'addizionale regionale e il saldo
+// della comunale DELL'ANNO PRIMA; il saldo è l'addizionale comunale dell'anno prima meno l'acconto già pagato in quell'anno.
+// Se l'anno prima non c'era pensione, le rate sono zero.
+function rateAnnoPrima(p,anno){const prima=baseAnno(p,+anno-1);if(!prima.per.mesi)return {reg:0,comSaldo:0};
+  const saldo=Math.max(0,prima.A.comunale-accontoComunale(p,+anno-1).importo);
+  return {reg:r2(prima.A.regionale/11),comSaldo:r2(saldo/11)};}
 function stimaAnno(p,anno){const v=valori(anno);const B=baseAnno(p,anno);const per=B.per,pensione=B.pensione,altri=B.altri,R=B.R,I=B.I,A=B.A;
   const netto=r2(pensione-I.netta-A.regionale-A.comunale);
   // netto di un mese normale (02, mockup: 1.000 € lordi → circa 898 €): (pensione − IRPEF) / 13, senza le rate delle addizionali
   const mese=per.mesi?r2((pensione-I.netta)/(per.mesi*13/12)):0;
-  return {anno:+anno,regole:v.regole,mesi:per.mesi,giorni:per.giorni,pensione,altri,reddito:R,irpef:I,add:A,acconto:accontoComunale(p,anno),netto,nettoMese:mese,
+  return {anno:+anno,regole:v.regole,mesi:per.mesi,giorni:per.giorni,pensione,altri,reddito:R,irpef:I,add:A,acconto:accontoComunale(p,anno),rate:rateAnnoPrima(p,anno),netto,nettoMese:mese,
     // anno del pensionamento con anche uno stipendio: una sola detrazione, quindi stima prudente (D-039)
     prudente:per.mesi>0&&per.mesi<12&&!!p.detrazione};}
 // netto stimato di un mese preciso (solo andamento, 04 §3): rata normale, tredicesima a dicembre, rate delle addizionali
 function stimaMese(p,ym){const [y,m]=ym.split('-').map(Number);const S=stimaAnno(p,y);const per=periodo(p,y);
   if(m<per.primoMese||!S.mesi)return null;
   let netto=S.nettoMese*(m===12?2:1);
-  if(m<=11)netto-=S.add.rataReg+S.add.rataComSaldo;
+  if(m<=11)netto-=S.rate.reg+S.rate.comSaldo;
   if(m>=3&&m<=11)netto-=S.acconto.rata;
   return r2(netto);}
 
@@ -181,6 +187,6 @@ function confrontoAnno(cedolini,stima,anno){const C=cedolini.filter(c=>String(c.
   const diff=r2(T.confrontabile-stima),perc=stima?r2(diff/stima*100):0;
   return {totali:T,mancano,completo:true,stima:r2(stima),ricevuto:T.confrontabile,differenza:diff,percentuale:perc,avviso:Math.abs(perc)>3||Math.abs(diff)>100};}
 
-window.PenCalc={valori,irpefLorda,detrPensione,irpefNetta,addizionali,accontoComunale,periodo,stimaAnno,stimaMese,quattordicesima,fondo,
+window.PenCalc={valori,irpefLorda,detrPensione,irpefNetta,addizionali,accontoComunale,rateAnnoPrima,periodo,stimaAnno,stimaMese,quattordicesima,fondo,
   contributiAnno,contributiAttesi,controlloContributi,lordoPagamento,trattenuteTot,controlliCedolino,nettoConfrontabile,confrontoAnno,MESI,r2,n};
 })();

@@ -62,7 +62,7 @@ async function nuovo(){
   apriLavoro(nuovoLavoro(modo),true);
 }
 function apriLavoro(l,isNew){
-  lv={l:clone(l),isNew};const x=lv.l;
+  lv={l:clone(l),isNew};const x=lv.l;chiudiSezioni($('lvModal')); // v23: sezioni chiuse a ogni apertura
   $('lvTitle').textContent=isNew?'Nuovo lavoro':'Lavoro';$('lvDel').hidden=isNew;
   $('lvNome').value=x.nome;$('lvColore').value=x.colore;
   document.querySelectorAll('[name=lvModo]').forEach(r=>r.checked=r.value===x.modo);
@@ -72,7 +72,7 @@ function apriLavoro(l,isNew){
   $('lvNottDa').value=x.nott?.da||'';$('lvNottA').value=x.nott?.a||'';
   $('lvLocali').value=x.locali||'';$('lvFerieU').value=x.ferie.unita;$('lvFerieA').value=x.ferie.anno;$('lvFerieR').value=x.ferie.residuo;
   document.querySelectorAll('[name=lvCalMostra]').forEach(r=>r.checked=r.value===calMostra(x));$('lvPermU').value=x.perm.unita;$('lvPermA').value=x.perm.anno;$('lvTratt').value=x.tratt;$('lvContratto').value=x.contratto||'';
-  docRis=null;lv.pendBusta=null;lv.pendContr=null;$('lvDocRis').innerHTML='';$('lvDocProg').hidden=true;$('lvDocBox').open=!!isNew;
+  docRis=null;lv.pendBusta=null;lv.pendContr=null;$('lvDocRis').innerHTML='';$('lvDocProg').hidden=true;
   $('lvContrFile').innerHTML=x.contrattoFile?(x.contrattoFile.file?.link?`Contratto su Drive: <a href="${esc(x.contrattoFile.file.link)}" target="_blank" rel="noopener">${esc(x.contrattoFile.nome)} ↗</a>`:`Contratto “${esc(x.contrattoFile.nome)}” da caricare su Drive`):'';
   renderSett();renderTipi();aggiornaModo();apri('lvModal');
 }

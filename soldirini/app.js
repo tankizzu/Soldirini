@@ -631,7 +631,7 @@ function openProj(id){
   $('pjTipo').value=p.def?.tipo||'allenamento';
   $('pjDel').hidden=!id;
   togglePj();
-  $('pjModal').hidden=false;document.body.classList.add('noscroll');
+  chiudiSezioni($('pjModal'));$('pjModal').hidden=false;document.body.classList.add('noscroll');
 }
 function togglePj(){$('pjRimbBox').hidden=!$('pjRimb').checked;$('pjOreBox').hidden=!$('pjOre').checked;}
 function renderLuoghi(){$('pjLuoghi').innerHTML=pe.p.rimborso.luoghi.map((l,i)=>`<div class="luogo"><input value="${esc(l.nome)}" data-li="${i}" data-k="nome" placeholder="Luogo"><input inputmode="decimal" value="${l.km}" data-li="${i}" data-k="km" placeholder="km A/R"><button type="button" class="x" data-lrm="${i}">×</button></div>`).join('');}

@@ -214,8 +214,9 @@ test.describe('v22c · conferme di 04', () => {
     expect(P.accontoComunale(p, 2026)).toEqual({ importo: 31.2, rata: 3.47, stima: true }); // 30% di 104 € (0,8% di 13.000 €)
     expect(P.stimaAnno(p, 2026).acconto.importo).toBe(31.2);
     const N = P.stimaAnno(p, 2026).nettoMese;
-    expect(P.stimaMese(p, '2026-02')).toBeCloseTo(N - 9.45, 2);        // febbraio: solo il saldo comunale
-    expect(P.stimaMese(p, '2026-03')).toBeCloseTo(N - 9.45 - 3.47, 2); // da marzo anche l'acconto
+    // v23: il saldo comunale è quello dell'anno prima meno l'acconto già pagato: (104 − 31,20) / 11 = 6,62
+    expect(P.stimaMese(p, '2026-02')).toBeCloseTo(N - 6.62, 2);        // febbraio: solo il saldo comunale
+    expect(P.stimaMese(p, '2026-03')).toBeCloseTo(N - 6.62 - 3.47, 2); // da marzo anche l'acconto
   });
   test('acconto comunale zero se l\'anno prima l\'addizionale era zero (niente pensione o IRPEF zero) o non c\'è aliquota comunale', () => {
     expect(P.accontoComunale({ lordoMese: '1000', dal: '2026-01', addCom: '0,8' }, 2026).importo).toBe(0); // in pensione da quest'anno
@@ -224,5 +225,26 @@ test.describe('v22c · conferme di 04', () => {
   });
   test('T-Q2b dipendente, 30 anni, reddito 12.000 € → 586,08 € (salvaguardia nella prima fascia)', () => {
     expect(P.quattordicesima({ anno: 2026, annoNascita: 1956, tipo: 'dipendente', anniContributi: 30, reddito: 12000 }).importo).toBe(586.08);
+  });
+});
+
+// v23: compito 01-sviluppo-v23.md, punto E (04, P-5)
+test.describe('v23 · addizionali dell\'anno prima nella stima mese per mese', () => {
+  test('rata regionale e saldo comunale sul reddito dell\'anno prima; saldo = addizionale meno acconto già pagato', () => {
+    const p = { lordoMese: '1000', dal: '2020-01', addReg: '1,23', addCom: '0,8' };
+    // 2025: reddito 13.000 € → regionale 159,90 (rata 14,54); comunale 104, acconto pagato nel 2025 = 30% di 104 (stessa pensione nel 2024) = 31,20
+    expect(P.rateAnnoPrima(p, 2026)).toEqual({ reg: 14.54, comSaldo: 6.62 });
+    const N = P.stimaAnno(p, 2026).nettoMese;
+    expect(P.stimaMese(p, '2026-01')).toBeCloseTo(N - 14.54 - 6.62, 2);
+    expect(P.stimaMese(p, '2026-12')).toBeCloseTo(2 * N, 2); // dicembre: niente addizionali
+  });
+  test('primo anno di pensione: nessuna rata dell\'anno prima; il secondo anno il saldo è intero (nessun acconto pagato)', () => {
+    const p = { lordoMese: '1000', dal: '2026-01', addReg: '1,23', addCom: '0,8' };
+    expect(P.rateAnnoPrima(p, 2026)).toEqual({ reg: 0, comSaldo: 0 });
+    expect(P.stimaMese(p, '2026-01')).toBe(P.stimaAnno(p, 2026).nettoMese);
+    expect(P.rateAnnoPrima(p, 2027)).toEqual({ reg: 14.54, comSaldo: 9.45 }); // 104 / 11, perché nel 2026 non c'era acconto
+  });
+  test('anno prima con IRPEF zero: nessuna rata', () => {
+    expect(P.rateAnnoPrima({ lordoMese: '600', dal: '2020-01', addReg: '1,23', addCom: '0,8' }, 2026)).toEqual({ reg: 0, comSaldo: 0 });
   });
 });

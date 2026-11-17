@@ -114,6 +114,9 @@ test('orario fisso: "Solo i giorni diversi" è il valore iniziale (barretta); "T
   // la scelta nella finestra del lavoro
   await page.evaluate(id => { tab = 'pro'; render(); document.querySelector(`[data-lav="${id}"]`).click(); }, lid);
   await expect(page.locator('#lvModal')).toBeVisible();
+  // v23 (D-010): la sezione dell'orario parte chiusa, la apro
+  await expect(page.locator('#lvFissoBox')).not.toHaveAttribute('open', '');
+  await page.locator('#lvFissoBox > summary').click();
   await expect(page.locator('[name=lvCalMostra][value=diversi]')).toBeChecked();
   await page.locator('[name=lvCalMostra][value=tutti]').check();
   await page.click('#lvSave');
