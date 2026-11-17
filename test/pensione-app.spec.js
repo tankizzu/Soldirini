@@ -1,7 +1,7 @@
 // v22 · Pensione nell'app: busta paga (campi per la pensione, T-C6), pagina Pensione, "La mia pensione",
 // fondo pensione, cedolino (a mano e da PDF), archivio su Drive, Riepilogo e soldi rimanenti, compatibilità con la v21.
 // Tutti i dati sono inventati (nessuna busta o cedolino reale).
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./helpers/prova');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');

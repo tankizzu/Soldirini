@@ -116,7 +116,12 @@ class CalendarFinto {
 }
 
 // Collega a un contesto del browser: sito locale, Google finto, nessun'altra rete.
+// v24csp: ogni blocco della politica di sicurezza (CSP) in qualsiasi pagina finisce qui; helpers/prova.js fa fallire la prova.
+const blocchiCsp = [];
 async function collega(ctx, { drive, calendar, sito = SITO } = {}) {
+  await ctx.exposeBinding('__bloccoCsp', (fonte, b) => blocchiCsp.push(b));
+  await ctx.addInitScript(() => document.addEventListener('securitypolicyviolation', e =>
+    window.__bloccoCsp({ pagina: location.pathname, direttiva: e.effectiveDirective, bloccato: e.blockedURI, campione: e.sample })));
   await ctx.route('**/*', r => {
     const u = new URL(r.request().url());
     if (u.protocol === 'data:' || u.protocol === 'blob:') return r.continue();
@@ -137,4 +142,4 @@ async function collega(ctx, { drive, calendar, sito = SITO } = {}) {
   if (calendar) await ctx.route(/https:\/\/www\.googleapis\.com\/calendar\//, r => calendar.gestisci(r));
 }
 
-module.exports = { BASE, SITO, TOKEN, DriveFinto, CalendarFinto, collega };
+module.exports = { BASE, SITO, TOKEN, DriveFinto, CalendarFinto, collega, blocchiCsp };

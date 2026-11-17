@@ -1,7 +1,7 @@
 // v22 · Pensione: tutti i casi di prova dei report 04 (15/11/2026) applicati al file dell'app soldirini/pencalc.js.
 // Casi: T-P1…T-P9 e T-P7b, T-Q1…T-Q8, T-F1…T-F4, T-C1…T-C6 (contributi), T-K1…T-K11 e T-C1…T-C4 (cedolino).
 // Numeri inventati. Il file si carica in Node così com'è (è lo stesso che usa il telefono).
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./helpers/prova');
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');

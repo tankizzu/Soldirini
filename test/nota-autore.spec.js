@@ -1,5 +1,5 @@
 // Nota d'autore (D-012): in fondo a Impostazioni (accanto alla versione) e nella schermata di accesso; mai nei documenti.
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./helpers/prova');
 const fs = require('fs');
 const path = require('path');
 const { DriveFinto, nuovoDispositivo, accedi } = require('./helpers/app');

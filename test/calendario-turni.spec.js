@@ -1,6 +1,6 @@
 // v22 (D-034, D-038): turni a colpo d'occhio sul calendario, con lo stile proposto da 02
 // (fondo tenue + riga colorata in basso, scritta in --ink). Tutti i dati sono inventati.
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./helpers/prova');
 const { DriveFinto, nuovoDispositivo, accedi } = require('./helpers/app');
 
 // Novembre 2026: lunedì 9 un turno, martedì 10 due turni, mercoledì 11 tre turni (due lavori).

@@ -1,5 +1,5 @@
 // Coda dei caricamenti su Drive (cartelle, fogli, PDF, foto): un elemento in errore non deve bloccare gli altri.
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./helpers/prova');
 const { DriveFinto, nuovoDispositivo, accedi, aspettaSync, testoSync, sincronizza } = require('./helpers/app');
 
 const cartelle = drive => Object.values(drive.file).filter(f => f.mimeType === 'application/vnd.google-apps.folder').map(f => f.name);

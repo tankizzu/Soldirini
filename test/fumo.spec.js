@@ -1,5 +1,5 @@
 // Prova di base: l'app si apre, si accede con Google finto, si salva un'attività e arriva su Drive.
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./helpers/prova');
 const { DriveFinto, nuovoDispositivo, accedi, aspettaSync, sincronizza } = require('./helpers/app');
 
 test('apertura, accesso e sincronizzazione', async ({ browser }) => {

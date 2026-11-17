@@ -1,6 +1,6 @@
 // v21b: font e licenze. I font dei documenti non usano più i nomi originali (riservati dalle licenze),
 // Nunito è dentro l'app (niente Fontshare), Privacy e Licenze sono raggiungibili e funzionano anche offline.
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./helpers/prova');
 const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');

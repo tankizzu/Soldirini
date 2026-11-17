@@ -2,7 +2,7 @@
 // Tutti i dati sono inventati: il PDF è creato nella prova con jsPDF.
 const fs = require('fs');
 const path = require('path');
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./helpers/prova');
 const { DriveFinto, nuovoDispositivo, accedi, sincronizza } = require('./helpers/app');
 
 const APP = path.resolve(process.env.SOLDIRINI_SITO || path.join(__dirname, '..', 'soldirini')); // come helpers/google-finto.js

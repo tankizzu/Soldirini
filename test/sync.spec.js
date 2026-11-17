@@ -1,6 +1,6 @@
 // Sincronizzazione con Drive (finto): casi 5a, 5b, 5c del report 01 e Drive che non risponde.
 // "Più dispositivi" = la STESSA persona con telefono e tablet, stesso account, stesso file nel proprio Drive.
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./helpers/prova');
 const { DriveFinto, nuovoDispositivo, accedi, accediEsistente, aspettaSync, testoSync, sincronizza } = require('./helpers/app');
 
 const aggiungiSpesa = (page, nota) => page.evaluate(n => {

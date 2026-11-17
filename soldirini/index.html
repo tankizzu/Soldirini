@@ -2,6 +2,7 @@
 <html lang="it">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://accounts.google.com/gsi/client https://apis.google.com https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/ https://cdn.jsdelivr.net/npm/tesseract.js@v5.1.1/ https://cdn.jsdelivr.net/npm/tesseract.js-core@v5.1.1/; worker-src 'self' blob:; connect-src 'self' https://www.googleapis.com https://oauth2.googleapis.com https://accounts.google.com/gsi/ https://nominatim.openstreetmap.org https://router.project-osrm.org https://cdn.jsdelivr.net; img-src 'self' data: blob:; font-src 'self' data:; style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style; frame-src https://accounts.google.com/gsi/ https://docs.google.com; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Soldirini</title>
 <meta name="description" content="Rimborsi km, ore e ritenuta d'acconto per tutti i tuoi progetti, sul tuo Google Drive.">
@@ -399,6 +400,10 @@ nav.tabs button.on{color:color-mix(in srgb,var(--sez) var(--tabmix),var(--ink))}
 .sechead .badge{color:color-mix(in srgb,var(--sez) var(--sezink),var(--ink))}
 .bdg.ok{background:color-mix(in srgb,var(--ok) 18%,var(--card));color:var(--ok)}
 .bdg.warn{background:color-mix(in srgb,var(--warn) 18%,var(--card));color:var(--warn)}
+/* v24csp: diagnostica dei blocchi di sicurezza (testi di 02) */
+.cspbox{margin-top:12px;padding:12px 14px;border-radius:12px;background:color-mix(in srgb,var(--warn) 12%,var(--card))}
+.cspbox .csptit{margin:0 0 4px;font-weight:750}.cspbox .csptit span{color:var(--warn)}.cspbox p.sm{margin:4px 0}
+.csptab{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}.csptab th,.csptab td{text-align:left;padding:4px 6px;border-bottom:1px solid var(--line);vertical-align:top}.csptab td:first-child{white-space:nowrap}.csptab td:last-child{overflow-wrap:anywhere}
 /* v23: tocchi minimi 44 × 44 px */
 nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
 .ib,.x,.eye{min-width:44px;min-height:44px}
@@ -495,7 +500,7 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
         <div class="card" id="importBox" hidden><h3>Dati della vecchia app Rimborsi</h3><p class="muted sm">Su questo dispositivo ci sono le trasferte della app Rimborsi Km. Le porto in Soldirini nel progetto Bulldogs.</p><button class="btn" id="importBtn">Importa trasferte</button></div>
       </div>
       <div class="stack">
-        <div class="card"><h3>Account</h3><div id="accBox"></div>
+        <div class="card"><h3>Account</h3><div id="accBox"></div><div id="cspBox" class="cspbox" role="region" aria-label="Soldirini ha bloccato qualcosa" hidden></div>
         <details class="subfold" id="accDati"><summary>🪪 I tuoi dati (per le ricevute)</summary>
           <div class="g2">
             <label>Cognome<input id="pf-cognome" autocomplete="family-name"></label><label>Nome<input id="pf-nome" autocomplete="given-name"></label>

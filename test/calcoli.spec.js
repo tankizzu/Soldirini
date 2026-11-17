@@ -1,7 +1,7 @@
 // Calcoli: casi di prova T1–T22 del report 04 (Fisco & Calcoli, 13/11/2026), applicati alle funzioni dell'app.
 // T21 (D-009, stipendio contato quando entra) non è ancora nel codice: è segnato come "da fare".
 // Tutti i dati sono inventati.
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./helpers/prova');
 const { nuovoDispositivo } = require('./helpers/app');
 
 let page;

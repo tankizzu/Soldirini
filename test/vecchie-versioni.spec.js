@@ -1,6 +1,6 @@
 // Dati salvati da versioni precedenti: l'app li apre senza errori e non perde nessuna informazione.
 // I dati sono inventati e riproducono la forma dei file salvati dalle versioni 14, 15 e 18.
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./helpers/prova');
 const { DriveFinto, nuovoDispositivo, accediEsistente, aspettaSync, sincronizza } = require('./helpers/app');
 const VECCHI = require('./dati/vecchie-versioni');
 

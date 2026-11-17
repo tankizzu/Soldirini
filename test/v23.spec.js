@@ -1,6 +1,6 @@
 // v23 "Ordine, leggibilità e consenso" (compito 01-sviluppo-v23.md, D-010, D-017, D-024, D-043, D-045).
 // Tutti i dati sono inventati.
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./helpers/prova');
 const { DriveFinto, CalendarFinto, nuovoDispositivo, accedi } = require('./helpers/app');
 
 const oggi = () => new Date().toISOString().slice(0, 10);

@@ -1,5 +1,22 @@
 'use strict';
 // ================= Soldirini =================
+// v24csp (D-048): un altro sito non può mostrare Soldirini dentro un suo riquadro per ingannare i tocchi
+// (con il solo <meta> la CSP non permette frame-ancestors). Dentro un riquadro la pagina resta nascosta.
+const IN_RIQUADRO=(()=>{try{return window.top!==window.self;}catch(e){return true;}})();
+if(IN_RIQUADRO)document.documentElement.style.display='none';
+// v24csp: blocchi della politica di sicurezza (CSP), solo in memoria (mai su Drive né nel telefono).
+// Si tengono ora, tipo (direttiva) e solo il nome del sito: niente indirizzo completo, campione di codice o file sorgente.
+const CSP_BLOCCHI=[];let cspTotale=0;
+function cspDaDove(u){
+  if(!u)return 'in linea';
+  if(/^(inline|eval|wasm-eval|data|blob|trusted-types-sink|trusted-types-policy)$/.test(u))return {inline:'in linea',eval:'eval','wasm-eval':'eval'}[u]||u;
+  try{const x=new URL(u);return x.protocol==='data:'?'data':x.protocol==='blob:'?'blob':x.host||x.protocol.replace(':','');}catch(e){return 'altro';}
+}
+document.addEventListener('securitypolicyviolation',e=>{
+  cspTotale++;CSP_BLOCCHI.unshift({ora:Date.now(),dir:String(e.effectiveDirective||e.violatedDirective||'').split(' ')[0],da:cspDaDove(e.blockedURI)});
+  if(CSP_BLOCCHI.length>20)CSP_BLOCCHI.length=20;
+  try{renderCsp();}catch(err){}
+});
 const CFG={
   CLIENT_ID:'1065907133263-mi5uke963ickepji7mv0cja048asl5q8.apps.googleusercontent.com',
   API_KEY:'AIzaSyCW_oQK4jbdIiCPZuVmdkQKvYvTvVs7fZM',
@@ -459,6 +476,36 @@ async function pdfOre(ym){
 
 // ================= Interfaccia =================
 let cur=today().slice(0,7),tab='cal',selDay=today(),multi=false,selected=new Set(),filtro='';
+// v24csp: diagnostica in Impostazioni → Account (testi di 02), visibile solo se c'è stato un blocco
+function cspCosa(d){d=d||'';
+  if(/^script-src/.test(d))return 'un programma';if(/^connect-src/.test(d))return 'un collegamento a un sito';if(/^img-src/.test(d))return 'un\'immagine';
+  if(/^(font-src|style-src)/.test(d))return 'un carattere o uno stile';if(/^(frame-src|child-src)/.test(d))return 'una finestra di un altro sito';
+  if(/^worker-src/.test(d))return 'un\'attività in sottofondo';return 'un contenuto';}
+function telefonoBreve(){const u=navigator.userAgent||'';
+  const nav=(/Edg\/(\d+)/.exec(u)&&'Edge '+/Edg\/(\d+)/.exec(u)[1])||(/SamsungBrowser\/(\d+)/.exec(u)&&'Samsung Internet '+/SamsungBrowser\/(\d+)/.exec(u)[1])
+    ||(/(?:Chrome|CriOS)\/(\d+)/.exec(u)&&'Chrome '+/(?:Chrome|CriOS)\/(\d+)/.exec(u)[1])||(/(?:Firefox|FxiOS)\/(\d+)/.exec(u)&&'Firefox '+/(?:Firefox|FxiOS)\/(\d+)/.exec(u)[1])
+    ||(/Version\/(\d+)[.\d]* .*Safari/.exec(u)&&'Safari '+/Version\/(\d+)/.exec(u)[1])||'navigatore sconosciuto';
+  const so=(/Android (\d+)/.exec(u)&&'Android '+/Android (\d+)/.exec(u)[1])||(/(?:iPhone|CPU) OS (\d+)/.exec(u)&&'iOS '+/OS (\d+)/.exec(u)[1])
+    ||(/Windows/.test(u)&&'Windows')||(/Mac OS X/.test(u)&&'macOS')||(/Linux/.test(u)&&'Linux')||'sistema sconosciuto';
+  return nav+' · '+so;}
+const cspOra=t=>new Date(t).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+function cspTesto(){return [`Soldirini ${typeof APP_VERSIONE!=='undefined'?APP_VERSIONE:''} – blocchi di sicurezza`,
+  ...CSP_BLOCCHI.map(b=>`${cspOra(b.ora)} · ${b.dir} · ${b.da}`),'Telefono: '+telefonoBreve()].join('\n');}
+function renderCsp(){
+  const b=$('cspBox');if(!b)return;
+  if(!cspTotale){b.hidden=true;b.innerHTML='';return;}
+  const aperti=!!b.querySelector('details[open]');
+  b.hidden=false;
+  b.innerHTML=`<p class="csptit"><span aria-hidden="true">⚠</span> Soldirini ha bloccato qualcosa</p>
+    <p class="sm">Per proteggere i tuoi dati, da quando hai aperto l'app Soldirini ha impedito ${cspTotale===1?'un caricamento':cspTotale+' caricamenti'} che non riconosce. Di solito non cambia nulla per te.</p>
+    <p class="sm"><b>Se una funzione non va</b> (per esempio accesso a Google, lettura di una foto o di un PDF, calcolo dei km), tocca <i>Copia i dettagli</i> e mandali all'autore dell'app: trovi il contatto nell'<a href="privacy.html">informativa privacy</a>.</p>
+    <div class="acts"><button type="button" class="btn ghost sm" id="cspCopia">Copia i dettagli</button></div>
+    <details class="subfold" ${aperti?'open':''}><summary>Mostra i dettagli</summary>
+      <table class="csptab"><thead><tr><th>Ora</th><th>Cosa</th><th>Da dove</th></tr></thead><tbody>
+      ${CSP_BLOCCHI.slice(0,10).map(x=>`<tr><td>${cspOra(x.ora)}</td><td>${esc(cspCosa(x.dir))}</td><td>${esc(x.da)}</td></tr>`).join('')}</tbody></table></details>`;
+}
+document.addEventListener('click',async e=>{if(!e.target.closest('#cspCopia'))return;
+  try{await navigator.clipboard.writeText(cspTesto());toast('Dettagli copiati.');}catch(err){toast('Non riesco a copiare i dettagli: tieni premuto su “Mostra i dettagli” e fai una foto della scheda.','err');}});
 function toast(msg,kind){const t=$('toast');t.textContent=msg;t.className='toast show'+(kind?' '+kind:'');clearTimeout(toast.t);toast.t=setTimeout(()=>t.className='toast',kind==='err'?6000:3000);}
 function busy(on,msg){$('busy').hidden=!on;if(msg)$('busyMsg').textContent=msg;}
 // accesso fatto ma nessuna cartella Soldirini ancora scelta (né file dati conosciuto)

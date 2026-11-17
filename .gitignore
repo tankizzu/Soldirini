@@ -3,3 +3,4 @@ test/node_modules/
 test/risultati/
 test/playwright-report/
 __pycache__/
+test/.tesseract/
