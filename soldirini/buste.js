@@ -20,7 +20,7 @@
       (data.words||[]).forEach(p=>pezzi.push({t:p.text,x0:p.bbox.x0,y0:p.bbox.y0+pag*10000,x1:p.bbox.x1,y1:p.bbox.y1+pag*10000}));};
     if(/pdf/i.test(file.type)||/\.pdf$/i.test(file.name)){
       prog&&prog(0.1,'Apro il PDF…');
-      const lib=await pdfJs(),doc=await lib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;
+      const lib=await pdfJs(),doc=await lib.getDocument({data:new Uint8Array(await file.arrayBuffer()),isEvalSupported:false}).promise;
       for(let n=1;n<=Math.min(doc.numPages,3);n++){
         const pag=await doc.getPage(n),vp=pag.getViewport({scale:1}),tc=await pag.getTextContent();const prima=pezzi.length;
         tc.items.forEach(it=>{if(!it.str||!it.str.trim())return;const hh=Math.abs(it.transform[3])||it.height||8,x=it.transform[4],y=vp.height-it.transform[5];
@@ -182,7 +182,7 @@
     let pezzi;
     if(isPdf){
       prog&&prog(0.1,'Apro il PDF…');
-      const lib=await pdfJs(),doc=await lib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;pezzi=[];
+      const lib=await pdfJs(),doc=await lib.getDocument({data:new Uint8Array(await file.arrayBuffer()),isEvalSupported:false}).promise;pezzi=[];
       for(let n=1;n<=Math.min(doc.numPages,maxPag);n++){const pag=await doc.getPage(n),vp=pag.getViewport({scale:1}),tc=await pag.getTextContent();
         prog&&prog(0.1+0.6*n/Math.min(doc.numPages,maxPag),'Leggo la pagina '+n+'…');
         tc.items.forEach(it=>{if(!it.str||!it.str.trim())return;const hh=Math.abs(it.transform[3])||8;pezzi.push({t:it.str,x0:it.transform[4],x1:it.transform[4]+(it.width||0),y0:vp.height-it.transform[5]-hh+(n-1)*10000,y1:vp.height-it.transform[5]+(n-1)*10000});});}

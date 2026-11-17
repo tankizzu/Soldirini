@@ -8,7 +8,7 @@ async function pdfLib(){if(!window.PDFLib)await loadScript('lib/pdf-lib.min.js')
 
 // testo del PDF con la posizione di ogni pezzo (coordinate PDF: punti, origine in basso a sinistra)
 async function pdfLeggi(b64,maxPag=4){
-  const L=await pdfJs();const doc=await L.getDocument({data:new Uint8Array(b64ToBuf(b64))}).promise;const pagine=[];
+  const L=await pdfJs();const doc=await L.getDocument({data:new Uint8Array(b64ToBuf(b64)),isEvalSupported:false}).promise;const pagine=[];
   for(let n=1;n<=Math.min(doc.numPages,maxPag);n++){const pg=await doc.getPage(n);const vp=pg.getViewport({scale:1});const tc=await pg.getTextContent();
     const items=tc.items.filter(i=>i.str&&i.str.trim()).map(i=>{const [a,b,c,d,e,f]=i.transform;return {s:i.str,x:e,y:f,w:i.width,h:Math.hypot(c,d)||Math.hypot(a,b)||10};});
     pagine.push({n:n-1,w:vp.width,h:vp.height,items,pg});}

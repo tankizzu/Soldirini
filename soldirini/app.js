@@ -298,6 +298,7 @@ async function sync(interactive){
     if(DB.meta.seq===seq0)DB.meta.synced=seq0;
     await processQueue();
     DB.meta.lastSync=Date.now();lastErr='';persist();
+    migraLogo();
   }catch(e){lastErr=errMsg(e);if(e instanceof AuthErr)needLogin=true;
     if(e instanceof IllegErr){if((!datiIllegibili||interactive)&&typeof ask==='function')ask(MSG_ILLEGGIBILE,[{t:'Ho capito',v:true}]);datiIllegibili=true;}
     console.warn(e);}
@@ -326,6 +327,21 @@ async function setupRoot(where){
 const tplCache={};
 async function tpl(name){if(!tplCache[name]){const r=await fetch('tpl/'+name);if(!r.ok)throw new Error('Modello mancante: '+name);tplCache[name]=await r.arrayBuffer();}return tplCache[name].slice(0);}
 let LOGO_BULLDOGS=null;
+// v23b: il logo "@bulldogs" diventa un'immagine salvata nei dati del progetto, come un logo caricato a mano:
+// così viaggia con i dati su Drive e il file pubblico logo-bulldogs.jpg si potrà togliere. Lo stesso contenuto di prima
+// (stessa immagine, stessa conversione), quindi ricevute e documenti restano identici. Una volta sola: dopo, il valore non è più "@bulldogs".
+let migraLogoCorsa=null;
+function migraLogo(){
+  if(migraLogoCorsa)return migraLogoCorsa;
+  if(!progetti().some(p=>p.rimborso&&p.rimborso.logo==='@bulldogs'))return Promise.resolve(0);
+  return migraLogoCorsa=(async()=>{try{
+    if(!LOGO_BULLDOGS){const r=await fetch('logo-bulldogs.jpg');if(!r.ok)throw new Error('logo non trovato ('+r.status+')');const b=await r.blob();
+      LOGO_BULLDOGS=await new Promise((ok,ko)=>{const fr=new FileReader();fr.onload=()=>ok(fr.result);fr.onerror=()=>ko(fr.error);fr.readAsDataURL(b);});}
+    let n=0;const now=Date.now();
+    for(const p of progetti())if(p.rimborso&&p.rimborso.logo==='@bulldogs'){p.rimborso.logo=LOGO_BULLDOGS;p.updatedAt=now;n++;}
+    if(n)changed();return n;
+  }catch(e){console.warn('Logo del progetto non copiato, riprovo più tardi:',e);return 0;}finally{migraLogoCorsa=null;}})();
+}
 async function logoSrc(p){const l=p.rimborso.logo;if(l==='@bulldogs'){if(!LOGO_BULLDOGS){const b=await (await fetch('logo-bulldogs.jpg')).blob();LOGO_BULLDOGS=await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(b);});}return LOGO_BULLDOGS;}return l||null;}
 async function ensureFolder(p){
   if(p.cartella?.id&&await exists(p.cartella.id))return p.cartella.id;
@@ -685,7 +701,7 @@ function importOld(){
   const S=o.settings?.data||{};
   let p=progetti().find(x=>/bulldog/i.test(x.nome));
   const now=Date.now();
-  if(!p){p=Object.assign(nuovoProgetto(),clone(BULLDOGS));D().progetti[p.id]=p;DB.meta.queue['folder|'+p.id]=now;}
+  if(!p){p=Object.assign(nuovoProgetto(),clone(BULLDOGS));D().progetti[p.id]=p;DB.meta.queue['folder|'+p.id]=now;setTimeout(migraLogo,0);}
   if(S.assoc)p.rimborso.assoc=Object.assign({},p.rimborso.assoc,S.assoc);
   for(const k of ['occasione','mansione','squadra'])if(S[k])p.rimborso[k]=S[k];
   if(S.origin)p.rimborso.origine=S.origin;if(S.rate)p.rimborso.tariffa=S.rate;if(S.rateDate)p.rimborso.tariffaData=S.rateDate;

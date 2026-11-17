@@ -710,7 +710,7 @@ function zoom(src){$('zoomImg').src=src;$('zoom').hidden=false;}
   if(q.get('tab'))tab=q.get('tab');
   render();
   if(q.get('nuovo'))openEv([today()]);
-  prepGis();promemoria();
+  prepGis();promemoria();migraLogo();
   if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
   if(!DEMO&&DB.meta.account)setTimeout(()=>sync(false),600);
 })();

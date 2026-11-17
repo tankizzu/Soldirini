@@ -130,7 +130,7 @@ function stimaTasse(y){
 async function leggiCU(file){
   if(!window.pdfjsLib){await loadScript('lib/pdf.min.js');}
   pdfjsLib.GlobalWorkerOptions.workerSrc='lib/pdf.worker.min.js';
-  const pdf=await pdfjsLib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;
+  const pdf=await pdfjsLib.getDocument({data:new Uint8Array(await file.arrayBuffer()),isEvalSupported:false}) /* v23b: CVE-2024-4367 */.promise;
   const it=[];for(let n=1;n<=Math.min(pdf.numPages,10);n++){const pg=await pdf.getPage(n);const c=await pg.getTextContent();
     for(const x of c.items){const s=(x.str||'').trim();if(s)it.push({s,x:x.transform[4],y:x.transform[5],w:x.width||0,p:n});}}
   const testo=it.map(i=>i.s).join(' ');
