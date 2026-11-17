@@ -176,7 +176,7 @@ function saveCU(){
   delete x.trovati;x.updatedAt=Date.now();(D().cu||(D().cu={}))[x.id]=x;
   logStorico('CU',`Certificazione Unica ${x.anno} ${x.comm||(prog(x.pid)?.nome)||''} salvata`);
   closeCU();changed();render();toast('Certificazione Unica salvata');
-  if(x._file&&!DEMO&&navigator.onLine&&tokenOk()&&D().root?.id){const f=x._file;delete x._file;uploadNew({name:`CU ${x.anno} ${x.comm||'lavoro dipendente'}.pdf`,parents:[D().root.id],mimeType:'application/pdf'},f,'application/pdf').then(r=>{x.fileLink=r.webViewLink;x.updatedAt=Date.now();changed();}).catch(()=>{});}
+  if(x._file&&navigator.onLine&&tokenOk()&&D().root?.id){const f=x._file;delete x._file;uploadNew({name:`CU ${x.anno} ${x.comm||'lavoro dipendente'}.pdf`,parents:[D().root.id],mimeType:'application/pdf'},f,'application/pdf').then(r=>{x.fileLink=r.webViewLink;x.updatedAt=Date.now();changed();}).catch(()=>{});}
   delete x._file;
 }
 async function delCU(){if(!await conferma('Elimino questa Certificazione Unica dall’app?','Elimina','danger'))return;D().cu[cuEd.id]={id:cuEd.id,deleted:true,updatedAt:Date.now()};closeCU();changed();render();}

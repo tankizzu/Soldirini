@@ -16,15 +16,6 @@ function ask(msg,btns,html){return new Promise(res=>{const m=$('dlg');if(html)$(
   m.hidden=false;$('dlgBtns').onclick=e=>{const x=e.target.closest('[data-i]');if(!x)return;m.hidden=true;res(btns[+x.dataset.i].v);};});}
 const conferma=(msg,ok='Sì',cls='')=>ask(msg,[{t:'Annulla',v:false,cls:'ghost'},{t:ok,v:true,cls}]);
 
-// ---------- demo: niente Google ----------
-if(DEMO){
-  login=async function(){toast('Questa è la demo: usa dati di esempio e non si collega a Google.');};
-  sync=async function(){renderSync();};
-  prepGis=async function(){};
-  const _rs=renderSync;
-  renderSync=function(){const c=$('sync');if(!c)return;c.textContent='Demo';c.className='chip sync warn';c.title='Versione di prova con dati di esempio';};
-}
-
 // ---------- spese con foto ----------
 function speseMese(pid,ym){
   const s={pedaggi:0,altro:0,altroTipi:new Set(),pasti:0,pastiN:0,pern:0,pernN:0,foto:[],voci:[]};
@@ -324,7 +315,7 @@ pdfRimborso=async function(pid,ym,invia){
   try{const f=await pdfRimbBytes(pid,ym);busy(false);
     if(invia){const [y,m]=ym.split('-');await inviaPdf(f,p,`Rimborso spese ${monthName(ym)} – ${[D().profilo.nome,D().profilo.cognome].filter(Boolean).join(' ')}`,`Buongiorno,\nin allegato la ricevuta di rimborso spese e la nota chilometrica di ${monthName(ym)} (totale ${eur(d.tot)}).\n\nGrazie,\n${[D().profilo.nome,D().profilo.cognome].filter(Boolean).join(' ')}`);}
     else{download(f.bytes,f.name,'application/pdf');toast('PDF scaricato');}
-    if(!DEMO&&navigator.onLine&&tokenOk()&&D().root?.id){try{await uploadPdf(`pdf|${pid}|${ym}`,f.name,await ensureFolder(p),f.bytes);}catch(e){toast('PDF pronto. Su Drive non è andato: '+errMsg(e),'err');}}
+    if(navigator.onLine&&tokenOk()&&D().root?.id){try{await uploadPdf(`pdf|${pid}|${ym}`,f.name,await ensureFolder(p),f.bytes);}catch(e){toast('PDF pronto. Su Drive non è andato: '+errMsg(e),'err');}}
   }catch(e){toast(errMsg(e),'err');}finally{busy(false);render();}
 };
 const _pagineOre=pagineOre;
@@ -343,23 +334,6 @@ async function pdfOreProj(ym,pid,invia){
     if(invia)await inviaPdf(f,p,`Prospetto ore ${monthName(ym)} – ${[D().profilo.nome,D().profilo.cognome].filter(Boolean).join(' ')}`,`Buongiorno,\nin allegato il prospetto delle ore di ${monthName(ym)}: lordo ${eur(lor)}, netto ${eur(net)} dopo la ritenuta d'acconto.\n\nGrazie,\n${[D().profilo.nome,D().profilo.cognome].filter(Boolean).join(' ')}`);
     else{download(f.bytes,f.name,'application/pdf');toast('PDF scaricato');}
   }catch(e){toast(errMsg(e),'err');}finally{busy(false);}
-}
-
-// ---------- Excel scaricabili (nella demo al posto dei Fogli Google) ----------
-async function xlsxRimborsi(pid,y){
-  const p=prog(pid);const yms=[...new Set(eventi().filter(e=>e.pid===pid&&e.data.startsWith(y)&&((e.rimborso&&kmOf(e)>0)||(e.spese||[]).length)).map(e=>e.data.slice(0,7)))].sort();
-  if(!yms.length){toast('Nessuna trasferta nel '+y,'err');return;}
-  busy(true,'Preparo i file Excel…');
-  try{const mesi=yms.map(ym=>({ym,d:docData(pid,ym)}));const c=(D().profilo.cognome||'Soldirini').trim();
-    download(await MODELLI.ricevute(await tpl('ricevuta.xlsx'),mesi,await logoSrc(p)),`${c} - Ricevute rimborso ${y} - ${p.nome}.xlsx`,XLSX_MIME);
-    await new Promise(r=>setTimeout(r,400));
-    download(await MODELLI.note(await tpl('nota.xlsx'),mesi),`${c} - Nota Riepilogativa ${y} - ${p.nome}.xlsx`,XLSX_MIME);
-  }catch(e){toast(errMsg(e),'err');}finally{busy(false);}
-}
-async function xlsxOre(y){
-  const mesi=oreMesi(y);if(!mesi.length){toast('Nessuna ora segnata nel '+y,'err');return;}
-  busy(true,'Preparo il file Excel…');
-  try{download(await MODELLI.ore(await tpl('ore.xlsx'),y,mesi,intestazione()),`Ritenuta d'acconto ${y}.xlsx`,XLSX_MIME);}catch(e){toast(errMsg(e),'err');}finally{busy(false);}
 }
 
 // ---------- modelli Excel personalizzati ----------
@@ -455,7 +429,7 @@ async function uploadFoto(){
 const _processQueue=processQueue;
 processQueue=async function(){await uploadFoto();return _processQueue();};
 async function fotoPiena(x){
-  if(!x.fotoId||DEMO||!navigator.onLine||!tokenOk())return x.foto;
+  if(!x.fotoId||!navigator.onLine||!tokenOk())return x.foto;
   try{const r=await gfetch('GET',`${DRIVE}/files/${x.fotoId}?alt=media`,{raw:true});const b=await r.blob();return await new Promise(res=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.readAsDataURL(b);});}catch(e){return x.foto;}
 }
 async function xlsxCustom(pid,y){
@@ -477,8 +451,8 @@ renderDoc=function(){
       h+=`<div class="card pc" style="--c:${p.colore}"><h3><i></i>${esc(p.nome)} · modello personalizzato</h3>
         <div class="kv"><span>Attività</span><b>${righe.length}</b></div><div class="kv"><span>Km</span><b>${nf(v.km,1)} · ${eur(v.rimb_km)}</b></div>${v.lordo?`<div class="kv"><span>Compensi netti</span><b>${eur(v.netto)}</b></div>`:''}
         <div class="kv big"><span>Totale</span><b>${eur(v.tot)}</b></div>
-        <div class="acts"><button class="btn" data-xcust="${p.id}" ${righe.length?'':'disabled'}>Scarica Excel ${y}</button>${DEMO?'':fileLink(D().files[`cust|${p.id}|${y}`],'x','Foglio Google')+(p.cartella?.link?`<a class="btn ghost sm" href="${esc(p.cartella.link)}" target="_blank" rel="noopener">Cartella ↗</a>`:'')}${payBtn(`${p.id}|${cur}|r`,v.tot_rimb)}</div>
-        <p class="muted sm">Compilato sul file Excel della società${p.modello.nome?' (“'+esc(p.modello.nome)+'”)':''}, un foglio per mese. ${DEMO?'Nella versione completa diventa un Foglio Google nella cartella del progetto.':'Il Foglio Google si aggiorna da solo alla sincronizzazione.'}</p></div>`;
+        <div class="acts"><button class="btn" data-xcust="${p.id}" ${righe.length?'':'disabled'}>Scarica Excel ${y}</button>${fileLink(D().files[`cust|${p.id}|${y}`],'x','Foglio Google')+(p.cartella?.link?`<a class="btn ghost sm" href="${esc(p.cartella.link)}" target="_blank" rel="noopener">Cartella ↗</a>`:'')}${payBtn(`${p.id}|${cur}|r`,v.tot_rimb)}</div>
+        <p class="muted sm">Compilato sul file Excel della società${p.modello.nome?' (“'+esc(p.modello.nome)+'”)':''}, un foglio per mese. ${'Il Foglio Google si aggiorna da solo alla sincronizzazione.'}</p></div>`;
       continue;
     }
     if(p.rimborso.attivo){
@@ -505,7 +479,7 @@ renderDoc=function(){
             <label>Calcolata il<input data-x="tariffaData" value="${esc(x.tariffaData)}"></label>
           </div></details>
         <div class="acts"><button class="btn" data-pdf="${p.id}" ${d.tot?'':'disabled'}>Scarica PDF</button><button class="btn ghost" data-inv="${p.id}" ${d.tot?'':'disabled'}>Invia</button>
-          ${DEMO?`<button class="btn ghost sm" data-xrimb="${p.id}">Excel ${y}</button>`:fileLink(D().files[`rimb|${p.id}|${y}`],'ric','Ricevute')+fileLink(D().files[`rimb|${p.id}|${y}`],'nota','Nota')+fileLink(D().files[`pdf|${p.id}|${cur}`],'pdf','PDF su Drive')+(p.cartella?.link?`<a class="btn ghost sm" href="${esc(p.cartella.link)}" target="_blank" rel="noopener">Cartella ↗</a>`:'')}${payBtn(key,d.tot)}</div>
+          ${fileLink(D().files[`rimb|${p.id}|${y}`],'ric','Ricevute')+fileLink(D().files[`rimb|${p.id}|${y}`],'nota','Nota')+fileLink(D().files[`pdf|${p.id}|${cur}`],'pdf','PDF su Drive')+(p.cartella?.link?`<a class="btn ghost sm" href="${esc(p.cartella.link)}" target="_blank" rel="noopener">Cartella ↗</a>`:'')}${payBtn(key,d.tot)}</div>
         <p class="muted sm">Il PDF contiene ricevuta${D().profilo.firma?' firmata':''}, nota km${sp.foto.length?' e le foto degli scontrini':''}.${D().profilo.firma?'':' Aggiungi la tua firma in Progetti → I tuoi dati.'}</p></div>`;
     }
     if(p.ore.attivo){
@@ -519,10 +493,10 @@ renderDoc=function(){
   if(progetti().some(p=>p.ore.attivo)){
     const om=oreMesi(y).find(m=>m.ym===cur);
     h+=`<div class="card pc" style="--c:#a16207"><h3><i></i>Ritenuta d'acconto · tutti i progetti</h3><p class="muted sm">Un unico prospetto del mese e il file dell’anno con un foglio per mese e il TOTALE per progetto.</p>
-      <div class="acts"><button class="btn" data-pdfore="1" ${om?'':'disabled'}>PDF del mese</button>${DEMO?`<button class="btn ghost sm" data-xore="1">Excel ${y}</button>`:fileLink(D().files[`ore|${y}`],'ore','Foglio ritenuta '+y)}</div></div>`;
+      <div class="acts"><button class="btn" data-pdfore="1" ${om?'':'disabled'}>PDF del mese</button>${fileLink(D().files[`ore|${y}`],'ore','Foglio ritenuta '+y)}</div></div>`;
   }
   if(!h)h='<p class="muted">Crea un progetto per vedere qui i documenti.</p>';
-  const root=D().root;if(!DEMO&&root?.link)h+=`<p class="muted sm">Tutti i file sono nella cartella <a href="${esc(root.link)}" target="_blank" rel="noopener">Soldirini ↗</a>${root.dove?' ('+esc(root.dove)+')':''}.</p>`;
+  const root=D().root;if(root?.link)h+=`<p class="muted sm">Tutti i file sono nella cartella <a href="${esc(root.link)}" target="_blank" rel="noopener">Soldirini ↗</a>${root.dove?' ('+esc(root.dove)+')':''}.</p>`;
   $('docList').innerHTML=h;
   foldify($('docList'),'doc');
 };
@@ -573,7 +547,6 @@ const _renderProgetti=renderProgetti;
 renderProgetti=function(){
   _renderProgetti();
   $('projList').insertAdjacentHTML('afterbegin',progetti().map(acaBanner).filter(Boolean).length?`<div class="note">Una o più tariffe ACI vanno aggiornate per il ${nowY()}: apri il progetto e cambia “Tariffa ACI”.</div>`:'');
-  if(DEMO)$('accBox').innerHTML=`<p>Questa è la <b>demo</b>: i dati sono di esempio e restano solo su questo dispositivo. Nella versione vera qui accedi con Google.</p><button class="btn ghost" id="demoReset">Ricomincia la demo</button>`;
   foldify(document.querySelector('#v-pro .two > .stack:last-child'),'pro');
   initFirma();renderFirma();renderImpost();
 };
@@ -603,55 +576,6 @@ delProj=async function(){
   closeProj();changed();render();toast('Progetto eliminato');
 };
 
-// ---------- dati di esempio ----------
-async function scontrinoFinto(tit,imp,data){
-  const c=document.createElement('canvas');c.width=360;c.height=520;const g=c.getContext('2d');
-  g.fillStyle='#e9e4da';g.fillRect(0,0,360,520);g.save();g.translate(180,260);g.rotate(-0.04);g.fillStyle='#fffdf7';g.shadowColor='rgba(0,0,0,.25)';g.shadowBlur=12;g.fillRect(-130,-230,260,460);g.restore();
-  g.fillStyle='#222';g.textAlign='center';g.font='bold 22px monospace';g.fillText(tit.toUpperCase(),180,90);g.font='15px monospace';g.fillText('ESEMPIO S.R.L.',180,118);g.fillText('P.IVA 00000000000',180,140);
-  g.textAlign='left';g.fillText(parseYmd(data).toLocaleDateString('it-IT'),70,190);g.fillText('ORE 18:42',220,190);
-  g.fillText('-'.repeat(26),62,220);g.fillText(tit,70,250);g.textAlign='right';g.fillText(nf(imp,2),290,250);g.textAlign='left';g.fillText('-'.repeat(26),62,280);
-  g.font='bold 20px monospace';g.fillText('TOTALE',70,320);g.textAlign='right';g.fillText('€ '+nf(imp,2),290,320);
-  g.textAlign='center';g.font='13px monospace';g.fillText('SCONTRINO DI ESEMPIO',180,400);g.fillText('(demo Soldirini)',180,420);
-  return c.toDataURL('image/jpeg',0.7);
-}
-async function seedDemo(){
-  const now=Date.now();const t=new Date();const ym=(o)=>{const d=new Date(t.getFullYear(),t.getMonth()+o,1);return `${d.getFullYear()}-${pad(d.getMonth()+1)}`;};
-  const data=emptyData();
-  data.profilo={cognome:'ROSSI',nome:'Mario',natoA:'ROMA',dataNascita:'1990-05-12',residenza:'Rignano Flaminio',via:'Via Roma, 1',cf:'RSSMRA90E12H501X',auto:{modello:'Ford Fiesta 1.5',targa:'AB123CD'},updatedAt:now};
-  DB.data=data;
-  const P1=Object.assign(nuovoProgetto(),clone(BULLDOGS),{nome:'Bulldogs Under15',email:'segreteria@esempio.it'});P1.rimborso.tariffaAnno=nowY();data.progetti[P1.id]=P1;
-  const P2=nuovoProgetto({nome:'Explora',colore:'#c2410c',email:'amministrazione@esempio.it'});P2.rimborso.attivo=false;P2.ore.attivo=true;P2.ore.categoria='occasionale';P2.def={tipo:'lavoro'};data.progetti[P2.id]=P2;
-  const P3=nuovoProgetto({nome:'Clinic Basket Formello',colore:'#7c3aed'});P3.ore.attivo=true;P3.ore.categoria='sportivo';P3.def={tipo:'lavoro'};
-  Object.assign(P3.rimborso,{attivo:true,origine:'Rignano Flaminio',tariffa:0.3802,tariffaData:'15-01-25',tariffaAnno:nowY()-1,occasione:'Clinic',mansione:'Istruttore',assoc:{riga1:'Spett.le',nome:'Associazione Sportiva Dilettantistica',nomeBig:'FORMELLO',via:'Via dello Sport 1',citta:'FORMELLO (RM)',cf:'00000000000'},luoghi:[{id:'fo',nome:'Palazzetto Formello',km:44.6}]});data.progetti[P3.id]=P3;
-  const tplB=await (await fetch('tpl/esempio-polisportiva.xlsx')).arrayBuffer();
-  const P4=nuovoProgetto({nome:'Polisportiva Esempio',colore:'#0369a1'});Object.assign(P4.rimborso,{origine:'Rignano Flaminio',tariffa:0.40,tariffaData:'01-01-26',tariffaAnno:nowY(),luoghi:[{id:'cv',nome:'Palestra Civita Castellana',km:24.2}]});
-  P4.modello={tipo:'custom',nome:'esempio-polisportiva.xlsx',file:bufToB64(tplB),map:{campi:{B3:'nome_completo',B4:'cf',B5:'mese',B31:'data_firma'},tab:{row:9,cols:{t_data:'A',t_desc:'B',t_itin:'C',t_km:'D',t_imp:'E'}}}};
-  data.progetti[P4.id]=P4;
-  const add=(pid,d,o)=>{const p=data.progetti[pid];const e=Object.assign({id:uid(),pid,data:d,tipo:p.def.tipo,titolo:'',squadra:'',rimborso:false,ore:false,fasce:[],created:now,updatedAt:now,spese:[]},o);data.eventi[e.id]=e;return e;};
-  const so=P1.rimborso.luoghi[0],sa=P1.rimborso.luoghi[1];
-  // allenamenti ricorrenti martedì e giovedì, da due mesi fa a fine stagione
-  const serie=uid();const tdy=today();const start=ym(-2)+'-01';
-  for(const d of datesRipetute(start,finStagione(t),[1,3])){const e=add(P1.id,d,{tipo:'allenamento',rimborso:true,luogoId:so.id,luogo:so.nome,km:so.km,serie});
-    const giorniFa=(parseYmd(tdy)-parseYmd(d))/864e5;if(d>tdy||giorniFa<5)e.stato='previsto';}
-  // partite del sabato
-  const sab=datesRipetute(start,tdy,[5]).filter((_,i)=>i%2===0);const fotoPark=await scontrinoFinto('Parcheggio',2,sab[1]||tdy);
-  sab.forEach((d,i)=>add(P1.id,d,{tipo:i%3===1?'amichevole':'partita',titolo:['LPC Sacrofano','Lions Castelnuovo','Virtus Fiano','Basket Morlupo'][i%4],rimborso:true,luogoId:sa.id,luogo:sa.nome,km:sa.km,
-    spese:i===1?[{id:uid(),tipo:'parcheggio',importo:2,foto:fotoPark}]:[]}));
-  // Explora: domeniche con mattina e pomeriggio
-  const dom=datesRipetute(start,tdy,[6]);dom.forEach((d,i)=>add(P2.id,d,{tipo:'lavoro',titolo:'Turno museo',ore:true,fasce:i%3===2?[{da:'14:30',a:'19:00'}]:[{da:'9:45',a:'14:00'},{da:'14:30',a:'19:00'}],tariffa:13.75,rit:20}));
-  add(P2.id,ym(-1)+'-18',{tipo:'altro',titolo:'Evento SATYR Games',ore:true,fisso:150,tariffa:13.75,rit:20});
-  // Clinic Formello: compenso fisso + km + pasto
-  for(const g of ['-08','-22']){const d=ym(-1)+g;add(P3.id,d,{tipo:'lavoro',titolo:'Clinic minibasket',ore:true,fisso:80,tariffa:0,rit:20,rimborso:true,luogoId:'fo',luogo:'Palazzetto Formello',km:44.6,
-    spese:g==='-08'?[{id:uid(),tipo:'pasto',importo:12.5,foto:await scontrinoFinto('Pranzo',12.5,d)},{id:uid(),tipo:'pedaggio',importo:3.2,foto:await scontrinoFinto('Pedaggio',3.2,d)}]:[]});}
-  // Polisportiva (modello personalizzato)
-  for(const d of datesRipetute(ym(-1)+'-01',tdy,[2]).slice(0,7))add(P4.id,d,{tipo:'allenamento',squadra:'Esordienti',rimborso:true,luogoId:'cv',luogo:'Palestra Civita Castellana',km:24.2});
-  // pagamenti
-  const pg=data.pagamenti;const mk=(pid,m,t,on)=>pg[`${pid}|${m}|${t}`]={pagato:on,data:on?ym(m===ym(-2)?-1:0)+'-05':'',updatedAt:now};
-  mk(P1.id,ym(-2),'r',true);mk(P2.id,ym(-2),'o',true);mk(P1.id,ym(-1),'r',true);
-  DB.meta.seq=0;DB.meta.queue={};DB.meta.skipWelcome=true;DB.meta.demoSeed=now;DB.meta.lastPid=P1.id;
-  persist();
-}
-
 // ---------- eventi interfaccia nuovi ----------
 function bindPlus(){
   $('confList').addEventListener('click',e=>{const a=e.target.closest('[data-cok]'),b=e.target.closest('[data-cno]');if(a)confermaEv([a.dataset.cok],true);if(b)confermaEv([b.dataset.cno],false);});
@@ -677,8 +601,6 @@ function bindPlus(){
     if(g('data-inv'))pdfRimborso(g('data-inv'),cur,true);
     if(g('data-pdfp'))pdfOreProj(cur,g('data-pdfp'),false);
     if(g('data-invo'))pdfOreProj(cur,g('data-invo'),true);
-    if(g('data-xrimb'))xlsxRimborsi(g('data-xrimb'),cur.slice(0,4));
-    if(g('data-xore'))xlsxOre(cur.slice(0,4));
     if(g('data-xcust'))xlsxCustom(g('data-xcust'),cur.slice(0,4));
     if(g('data-pag'))chiediPagamento(g('data-pag'));
     if(g('data-unpag'))chiediPagamento(g('data-unpag'));};
@@ -696,7 +618,6 @@ function bindPlus(){
   $('promem').onchange=async()=>{const I=impost();if($('promem').checked&&'Notification' in window&&Notification.permission!=='granted'){const r=await Notification.requestPermission();if(r!=='granted'){$('promem').checked=false;toast('Il telefono non ha dato il permesso per le notifiche.','err');return;}}
     I.promemoria=$('promem').checked;I.updatedAt=Date.now();changed();toast(I.promemoria?'Ti avviso la sera, quando apri Soldirini, delle attività da confermare.':'Promemoria spento');};
   $('soglieEd').addEventListener('change',e=>{const i=e.target.dataset.sg;if(i==null)return;const I=impost();I.soglie[+i].limite=+String(e.target.value).replace(',','.')||0;I.updatedAt=Date.now();changed();toast('Soglia aggiornata');});
-  $('accBox').addEventListener('click',async e=>{if(e.target.id==='demoReset'&&await conferma('Ricomincio la demo da capo con i dati di esempio?','Ricomincia')){await seedDemo();cur=today().slice(0,7);selDay=today();tab='cal';render();toast('Demo ricominciata');}});
   $('zoom').onclick=()=>$('zoom').hidden=true;
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)promemoria();});
 }
@@ -705,12 +626,11 @@ function zoom(src){$('zoomImg').src=src;$('zoom').hidden=false;}
 // ================= avvio =================
 (async()=>{
   bind();bindPlus();applyTema();
-  if(DEMO&&!DB.meta.demoSeed){try{await seedDemo();}catch(e){console.error(e);toast('Non riesco a preparare i dati di esempio: '+errMsg(e),'err');}}
   const q=new URLSearchParams(location.search);
   if(q.get('tab'))tab=q.get('tab');
   render();
   if(q.get('nuovo'))openEv([today()]);
-  prepGis();promemoria();migraLogo();
+  prepGis();promemoria();
   if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
-  if(!DEMO&&DB.meta.account)setTimeout(()=>sync(false),600);
+  if(DB.meta.account)setTimeout(()=>sync(false),600);
 })();

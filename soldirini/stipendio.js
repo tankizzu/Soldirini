@@ -54,7 +54,6 @@ function renderLavori(){
   const L=lavori();
   $('lavList').innerHTML=L.map(l=>`<button class="card prow" data-lav="${l.id}" style="--c:${l.colore}"><i></i><span><b>${esc(l.nome||'Lavoro')}</b><small>${l.modo==='fisso'?'orario fisso':'a turni'} · ${l.paga.importo!==''?`paga ${l.paga.tipo==='mensile'?'mensile':'oraria'} ${eur(+l.paga.importo)}`:'paga da impostare'}</small></span><span class="chev">›</span></button>`).join('')
     ||'<p class="muted sm">Se sei dipendente, aggiungi qui il tuo lavoro: a orario fisso oppure a turni. Soldirini calcola ore, straordinari e una stima dello stipendio.</p>';
-  $('stfBox').hidden=!(window.__stf);
 }
 let lv=null; // lavoro in modifica
 async function nuovo(){
@@ -223,13 +222,14 @@ function cardMese(l,ym){
     ${busta?`<div class="kv"><span>Busta paga</span><b>${busta.netto!==''?'netto '+eur(+busta.netto):''}${busta.lordo!==''?' · lordo '+eur(+busta.lordo):''}</b></div>${diff!=null&&Math.abs(diff)>=1?`<p class="sm ${diff<0?'warn':'muted'}">${diff<0?'In busta ci sono '+eur(-diff)+' in meno della stima: controlla straordinari e ore.':'In busta ci sono '+eur(diff)+' in più della stima.'}</p>`:''}`:''}
     ${sal.length?`<p class="muted sm">Saldi: ${sal.join(' · ')}</p>`:''}
     <p class="muted sm">Stima: per i valori esatti fa fede la busta paga.</p>
+    ${(window.Entrate?Entrate.rigaStato(`lav|${l.id}|${ym}`):'')}
     <div class="acts"><button class="btn sm" data-bpnew="${l.id}">${busta?'Sostituisci busta':'Carica busta paga'}</button><button class="btn ghost sm" data-bparch="${l.id}">Archivio buste</button>${l.modo==='turni'?`<button class="btn ghost sm" data-ftopen="${l.id}">📷 Turni da foto</button>`:''}</div></div>`;
 }
 function cardAnno(l,y){
   const righe=[];let tl=0,to=0,tb=0;const B=busteDi(l.id);
   for(let m=1;m<=12;m++){const ym=`${y}-${pad(m)}`;const M=C.calcolaMese(l,turniDi(l.id),ym);const b=B[`${l.id}|${ym}`];if(!M.T.lav&&!M.T.pagate&&!b)continue;
     tl+=M.lordo||0;to+=M.T.lav;tb+=b&&b.netto!==''?+b.netto:0;
-    righe.push(`<div class="kv"><span>${MESI[m-1][0].toUpperCase()+MESI[m-1].slice(1)}</span><b>${nOre(M.T.lav)} ore${M.lordo!=null?' · '+eur(M.lordo):''}${b&&b.netto!==''?' · busta '+eur(+b.netto):''}</b></div>`);}
+    righe.push(`<div class="kv"><span>${MESI[m-1][0].toUpperCase()+MESI[m-1].slice(1)}</span><b>${nOre(M.T.lav)} ore${M.lordo!=null?' · '+eur(M.lordo):''}${b&&b.netto!==''?' · busta '+eur(+b.netto):''}</b></div>`+(ym<=today().slice(0,7)?(window.Entrate?Entrate.rigaStato(`lav|${l.id}|${ym}`):''):''));}
   return `<div class="card lavcard" style="--c:${l.colore}"><h3><i></i>${esc(l.nome)} · ${y}</h3>${righe.join('')||'<p class="muted">Niente in questo anno.</p>'}
     <div class="kv big"><span>Totale</span><b>${nOre(r2(to))} ore${tl?' · lordo stimato '+eur(r2(tl)):''}</b></div>${tb?`<div class="kv"><span>Netto dalle buste</span><b>${eur(r2(tb))}</b></div>`:''}
     <div class="acts"><button class="btn ghost sm" data-bparch="${l.id}">Archivio buste</button></div></div>`;
@@ -393,45 +393,6 @@ async function salvaSenzaMese(j){const x=molte[j];const m=$('bpFixM'+j).value;if
   const btn=document.querySelector(`[data-bpfix="${j}"]`);btn.closest('.bai').querySelector('.bdg').outerHTML='<small class="bdg ok">✓ salvata</small>';btn.parentElement.remove();
   if(DB.meta.account&&navigator.onLine)caricaPendenti(true).catch(()=>{});}
 
-// ================= importazione da Strafobico (stesso sito: i dati sono leggibili da qui) =================
-const STF_COL={1:'#7986CB',2:'#33B679',3:'#8E24AA',4:'#E67C73',5:'#F6BF26',6:'#F4511E',7:'#039BE5',8:'#616161',9:'#3F51B5',10:'#0B8043',11:'#D50000'};
-async function cercaStrafobico(){
-  try{if(!indexedDB.databases)return null;const L=await indexedDB.databases();if(!L.some(d=>d.name==='strafobico'))return null;
-    const db=await new Promise((ok,ko)=>{const r=indexedDB.open('strafobico');r.onsuccess=()=>ok(r.result);r.onerror=()=>ko(r.error);r.onupgradeneeded=()=>{r.transaction.abort();ko(new Error('vuoto'));};});
-    if(!db.objectStoreNames.contains('kv')){db.close();return null;}
-    const D0=await new Promise(ok=>{const t=db.transaction('kv').objectStore('kv').get('dati');t.onsuccess=()=>ok(t.result);t.onerror=()=>ok(null);});db.close();
-    return D0&&(D0.turni?.length||Object.keys(D0.buste||{}).length)?D0:null;}catch(e){return null;}
-}
-function daStrafobico(S,nome){
-  const CATM={'lavoro':'lavoro','ore variabili':'variabile','retribuita':'retribuita','non retribuita':'nonretr','riposo':'riposo'};
-  const n=v=>{const x=parseFloat(String(v??'').replace(',','.'));return isNaN(x)?'':String(x);};
-  const hm=v=>{const m=String(v??'').match(/(\d{1,2})[:.,h]?(\d{2})?/);return m?pad(+m[1]%24)+':'+(m[2]||'00'):'';};
-  const l=nuovoLavoro('turni');l.nome=nome||'Lavoro (da Strafobico)';const I=S.imp||{};
-  l.tipi=(S.tipi||[]).filter(r=>r&&r[0]).map(r=>{let cat=CATM[String(r[5]||'').trim().toLowerCase()]||'lavoro';if(cat==='retribuita'&&/^ferie\b/i.test(r[0]))cat='ferie';if(cat==='retribuita'&&/permess|rol/i.test(r[0]))cat='permesso';if(cat==='retribuita'&&/malatt/i.test(r[0]))cat='malattia';
-    return {id:uid(),nome:String(r[0]).trim(),sigla:String(r[1]||'').trim(),da:hm(r[2]),a:hm(r[3]),pausa:n(r[4]),cat,ore:n(r[6]),colore:STF_COL[Math.round(+r[7])]||'#888888',icona:String(r[8]||'').trim()};});
-  l.paga={tipo:'oraria',importo:n(I.paga),divisore:168};l.oreMese=n(I.oreMese);
-  l.magg={stra:n(I.pStra),nott:'',fest:n(I.pFest),dom:/^s/i.test(I.domenica||'')?n(I.pFest):''};l.locali=I.locali||'';
-  l.ferie={unita:/^ore/i.test(I.ferieUnita||'')?'ore':'giorni',anno:n(I.ferieAnno),residuo:n(I.ferieResiduo)};l.perm={unita:/^g/i.test(I.permUnita||'')?'giorni':'ore',anno:''};
-  l.tratt=I.tratt!==''&&I.tratt!=null?n(I.tratt):'';
-  const byName={};for(const t of l.tipi){byName[t.nome.toLowerCase()]=t;if(t.sigla)byName[t.sigla.toLowerCase()]=byName[t.sigla.toLowerCase()]||t;}
-  const turni=[];const now=Date.now();
-  for(const t of S.turni||[]){if(!/^\d{4}-\d{2}-\d{2}$/.test(t.date||'')||!t.tipo)continue;const tp=byName[String(t.tipo).trim().toLowerCase()];
-    turni.push({id:uid(),lid:l.id,data:t.date,tipo:tp?tp.id:null,da:t.inizio!==''&&t.inizio!=null&&(!tp||hm(t.inizio)!==tp.da)?hm(t.inizio):'',a:t.fine!==''&&t.fine!=null&&(!tp||hm(t.fine)!==tp.a)?hm(t.fine):'',
-      pausa:t.pausa===''||t.pausa==null?'':n(t.pausa),ore:t.oreMan===''||t.oreMan==null?'':n(t.oreMan),nota:t.note||'',updatedAt:now});}
-  const buste=[];for(const [ym,b] of Object.entries(S.buste||{})){if(!/^\d{4}-\d{2}$/.test(ym))continue;
-    buste.push({lid:l.id,mese:ym,lordo:n(b.lordo),trattenute:n(b.trattenute),netto:n(b.netto),ferie:n(b.ferie),rol:n(b.rol),exfest:n(b.exfest),unitaFerie:b.unita||l.ferie.unita,unitaPerm:b.unitaPermessi||'ore',
-      file:b.link?{id:b.fileId||'',link:b.link,name:'Busta paga (Strafobico)'}:null,daCaricare:false,deleted:false,updatedAt:now});}
-  return {l,turni,buste};
-}
-async function importaStrafobico(){
-  const S=window.__stf||await cercaStrafobico();if(!S){toast('Su questo telefono non trovo dati di Strafobico.','err');return;}
-  if(!await conferma(`Ho trovato su questo telefono i dati di Strafobico: ${S.turni?.length||0} turni e ${Object.keys(S.buste||{}).length} buste paga. Li copio in Soldirini come nuovo lavoro? Strafobico non viene modificato.`,'Importa'))return;
-  const {l,turni,buste}=daStrafobico(S,'');
-  LAV()[l.id]=l;for(const t of turni)TUR()[t.id]=t;for(const b of buste)BUS()[`${l.id}|${b.mese}`]=b;
-  DB.meta.stfImportato=Date.now();changed();render();
-  toast(`Importati ${turni.length} turni, ${l.tipi.length} tipi di turno e ${buste.length} buste paga. Controlla le impostazioni del lavoro.`);
-  apriLavoro(l,false);
-}
 
 // ================= v16: compila il lavoro dai documenti (contratto o busta) =================
 let docRis=null;
@@ -494,7 +455,7 @@ async function salvaDocInAttesa(lid){
 const _renderProg15=renderProgetti;
 renderProgetti=function(){_renderProg15();renderLavori();};
 function bind15(){
-  $('lavNew').onclick=nuovo;$('stfBtn').onclick=importaStrafobico;
+  $('lavNew').onclick=nuovo;
   $('lavList').addEventListener('click',e=>{const b=e.target.closest('[data-lav]');if(b)apriLavoro(lav(b.dataset.lav),false);});
   $('lvClose').onclick=()=>chiudi('lvModal');$('lvSave').onclick=salvaLavoro;$('lvDel').onclick=eliminaLavoro;
   $('lvModal').addEventListener('change',e=>{if(e.target.name==='lvModo'||e.target.id==='lvPagaTipo'){leggiTipi();aggiornaModo();renderTipi();}if(['cat','aggiunta'].includes(e.target.dataset?.k)){leggiTipi();renderTipi();}});
@@ -537,7 +498,6 @@ renderCal=function(){_renderCal15b();const b=$('multiTurno');if(b){b.hidden=!lav
 const _apriBusta=apriBusta;apriBusta=function(lid,mese,es){_apriBusta(lid,mese,es);$('bpDel').hidden=!es;};
 
 bind15();
-cercaStrafobico().then(S=>{if(S&&!DB.meta.stfImportato){window.__stf=S;renderLavori();}});
 render();
-window.Stip15={nuovoLavoro,daStrafobico,cercaStrafobico,caricaPendenti,metti,apriTurno,apriBusta,apriArchivio,cardMese};
+window.Stip15={nuovoLavoro,caricaPendenti,metti,apriTurno,apriBusta,apriArchivio,cardMese};
 })();

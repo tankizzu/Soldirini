@@ -1,10 +1,10 @@
 // Soldirini funziona anche senza rete.
 // Quando cambi i file su GitHub, aumenta il numero di versione qui sotto.
-const VERSIONE = 'soldirini-24csp';
-const FILE = ['./', 'index.html', 'app.js', 'plus.js', 'tasse.js', 'ui.js', 'word.js', 'pdfdoc.js', 'stipcalc.js', 'pencalc.js', 'buste.js', 'stipendio.js', 'attivita.js', 'fototurni.js', 'gcal.js', 'soldi.js', 'risparmi.js', 'pensione.js', 'animazioni.js', 'xlsx.js', 'modelli.js', 'docs.js', 'fonts.css', 'nunito.woff2', 'manifest.json', 'privacy.html',
+const VERSIONE = 'soldirini-24';
+const FILE = ['./', 'index.html', 'app.js', 'plus.js', 'tasse.js', 'ui.js', 'word.js', 'pdfdoc.js', 'stipcalc.js', 'pencalc.js', 'buste.js', 'stipendio.js', 'attivita.js', 'fototurni.js', 'gcal.js', 'soldi.js', 'risparmi.js', 'pensione.js', 'entrate.js', 'animazioni.js', 'xlsx.js', 'modelli.js', 'docs.js', 'fonts.css', 'nunito.woff2', 'manifest.json', 'privacy.html',
   'licenze/', 'licenze/index.html', 'licenze/OFL-Nunito.txt', 'licenze/OFL-Carlito.txt', 'licenze/LICENSE-Liberation.txt', 'licenze/GUST-FONT-LICENSE.txt', 'licenze/LPPL-1.3c.txt',
   'licenze/LICENSE-jszip.txt', 'licenze/MIT-pako.txt', 'licenze/MIT-jspdf.txt', 'licenze/MIT-html2canvas.txt', 'licenze/MIT-pdf-lib.txt', 'licenze/Apache-2.0.txt',
-  'soldirini-tonda-192.png', 'soldirini-tonda-512.png', 'soldirini-quadrata-192.png', 'soldirini-quadrata-512.png', 'logo-bulldogs.jpg',
+  'soldirini-tonda-192.png', 'soldirini-tonda-512.png', 'soldirini-quadrata-192.png', 'soldirini-quadrata-512.png',
   'lib/jszip.min.js', 'lib/jspdf.umd.min.js', 'lib/html2canvas.min.js', 'lib/pdf.min.js', 'lib/pdf.worker.min.js', 'lib/pdf-lib.min.js', 'tpl/ricevuta.xlsx', 'tpl/nota.xlsx', 'tpl/ore.xlsx'];
 
 self.addEventListener('install', e => {

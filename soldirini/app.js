@@ -44,12 +44,11 @@ const min=t=>{const m=/^(\d{1,2})[:.](\d{2})$/.exec(String(t||'').trim());return
 const normT=t=>{const v=min(t);return v==null?'':`${Math.floor(v/60)}:${pad(v%60)}`;};
 
 // ---------------- dati ----------------
-const DEMO=false;
-const STORE=DEMO?'soldirini-demo-v1':'soldirini-v1';
+const STORE='soldirini-v1'; // v24 (D-070): codice della demo tolto
 const emptyData=()=>({v:1,pagamenti:{},impost:{soglie:null,tema:'auto',promemoria:false,updatedAt:0},profilo:{cognome:'',nome:'',natoA:'',dataNascita:'',residenza:'',via:'',cf:'',auto:{modello:'',targa:''},updatedAt:0},progetti:{},eventi:{},mesi:{},files:{},root:null});
 let DB=(()=>{try{return JSON.parse(localStorage.getItem(STORE)||'null');}catch(e){return null;}})()||{};
 DB.data=DB.data||emptyData();
-DB.meta=Object.assign({dataId:null,seq:0,synced:0,lastSync:0,queue:{},account:null,importedOld:false},DB.meta||{});
+DB.meta=Object.assign({dataId:null,seq:0,synced:0,lastSync:0,queue:{},account:null},DB.meta||{});
 function persist(){try{localStorage.setItem(STORE,JSON.stringify(DB));}catch(e){toast('Memoria del telefono piena: non riesco a salvare.','err');}}
 const D=()=>DB.data;
 const progetti=(all)=>Object.values(D().progetti).filter(p=>all||!p.deleted).sort((a,b)=>(a.ordine??0)-(b.ordine??0)||a.nome.localeCompare(b.nome));
@@ -69,10 +68,6 @@ function nuovoProgetto(o={}){
     ore:{attivo:false,tariffa:'',ritenuta:20,fasce:[]},
     def:{tipo:'allenamento'},updatedAt:Date.now()},o);
 }
-const BULLDOGS={nome:'Bulldogs Rignano',colore:'#4a5f8a',
-  rimborso:{attivo:true,origine:'Rignano Flaminio',tariffa:0.3979,tariffaData:'11-10-26',occasione:'Istruttore Settore Under15',mansione:'Coach',squadra:'Under15',
-    assoc:{riga1:'Spett.le',nome:'Associazione Sportiva Dilettantistica',nomeBig:'BULLDOGS',via:'VIA TOSCANINI 11 A3',citta:'RIGNANO FLAMINIO (RM)',cf:'96581030580'},
-    luoghi:[{id:'so',nome:"Palestra Sant'Oreste, via Begues",km:13.7},{id:'sa',nome:'Palestra Sacrofano',km:38.4},{id:'cn',nome:'Palestra Castelnuovo',km:26.5}],logo:'@bulldogs'}};
 
 // ---------------- calcoli ----------------
 const oreFasce=f=>r2((f||[]).reduce((s,x)=>{const a=min(x.da),b=min(x.a);return s+(a!=null&&b!=null&&b>a?(b-a)/60:0);},0));
@@ -167,7 +162,7 @@ function logout(){
   if(DB.meta.seq>DB.meta.synced&&!confirm('Ci sono modifiche non ancora salvate su Drive. Uscendo le perdi. Continuo?'))return;
   try{if(TOK?.access&&window.google?.accounts?.oauth2)google.accounts.oauth2.revoke(TOK.access,()=>{});}catch(e){}
   TOK=null;localStorage.removeItem('soldirini-tok');
-  DB={data:emptyData(),meta:{dataId:null,seq:0,synced:0,lastSync:0,queue:{},account:null,importedOld:DB.meta.importedOld,skipWelcome:true}};persist();render();
+  DB={data:emptyData(),meta:{dataId:null,seq:0,synced:0,lastSync:0,queue:{},account:null,skipWelcome:true}};persist();render();
 }
 const errMsg=e=>(e&&e.message)||String(e);
 
@@ -315,7 +310,6 @@ async function sync(interactive){
     if(DB.meta.seq===seq0)DB.meta.synced=seq0;
     await processQueue();
     DB.meta.lastSync=Date.now();lastErr='';persist();
-    migraLogo();
   }catch(e){lastErr=errMsg(e);if(e instanceof AuthErr)needLogin=true;
     if(e instanceof IllegErr){if((!datiIllegibili||interactive)&&typeof ask==='function')ask(MSG_ILLEGGIBILE,[{t:'Ho capito',v:true}]);datiIllegibili=true;}
     console.warn(e);}
@@ -343,23 +337,9 @@ async function setupRoot(where){
 // --- coda: cartelle dei progetti e Fogli Google ---
 const tplCache={};
 async function tpl(name){if(!tplCache[name]){const r=await fetch('tpl/'+name);if(!r.ok)throw new Error('Modello mancante: '+name);tplCache[name]=await r.arrayBuffer();}return tplCache[name].slice(0);}
-let LOGO_BULLDOGS=null;
-// v23b: il logo "@bulldogs" diventa un'immagine salvata nei dati del progetto, come un logo caricato a mano:
-// così viaggia con i dati su Drive e il file pubblico logo-bulldogs.jpg si potrà togliere. Lo stesso contenuto di prima
-// (stessa immagine, stessa conversione), quindi ricevute e documenti restano identici. Una volta sola: dopo, il valore non è più "@bulldogs".
-let migraLogoCorsa=null;
-function migraLogo(){
-  if(migraLogoCorsa)return migraLogoCorsa;
-  if(!progetti().some(p=>p.rimborso&&p.rimborso.logo==='@bulldogs'))return Promise.resolve(0);
-  return migraLogoCorsa=(async()=>{try{
-    if(!LOGO_BULLDOGS){const r=await fetch('logo-bulldogs.jpg');if(!r.ok)throw new Error('logo non trovato ('+r.status+')');const b=await r.blob();
-      LOGO_BULLDOGS=await new Promise((ok,ko)=>{const fr=new FileReader();fr.onload=()=>ok(fr.result);fr.onerror=()=>ko(fr.error);fr.readAsDataURL(b);});}
-    let n=0;const now=Date.now();
-    for(const p of progetti())if(p.rimborso&&p.rimborso.logo==='@bulldogs'){p.rimborso.logo=LOGO_BULLDOGS;p.updatedAt=now;n++;}
-    if(n)changed();return n;
-  }catch(e){console.warn('Logo del progetto non copiato, riprovo più tardi:',e);return 0;}finally{migraLogoCorsa=null;}})();
-}
-async function logoSrc(p){const l=p.rimborso.logo;if(l==='@bulldogs'){if(!LOGO_BULLDOGS){const b=await (await fetch('logo-bulldogs.jpg')).blob();LOGO_BULLDOGS=await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(b);});}return LOGO_BULLDOGS;}return l||null;}
+// v24 (D-049): il file logo-bulldogs.jpg è tolto. Dalla 23b il logo è salvato nei dati del progetto;
+// un valore '@bulldogs' rimasto (telefono mai aggiornato alla 23b) vale "nessun logo", senza errori.
+async function logoSrc(p){const l=p&&p.rimborso&&p.rimborso.logo;return typeof l==='string'&&l.startsWith('data:image/')?l:null;}
 async function ensureFolder(p){
   if(p.cartella?.id&&await exists(p.cartella.id))return p.cartella.id;
   const parent=p.parent?.id||D().root?.id;if(!parent)throw new Error('Manca la cartella Soldirini.');
@@ -672,13 +652,11 @@ function renderProgetti(){
   const a=DB.meta.account,root=D().root;
   $('accBox').innerHTML=a?`<p>Collegato come <b>${esc(a.email)}</b></p>${root?`<p class="muted sm">Cartella: <a href="${esc(root.link||'#')}" target="_blank" rel="noopener">Soldirini ↗</a> ${root.dove?'in '+esc(root.dove):''}</p>`:''}<div class="acts"><button class="btn ghost" id="syncNow">Sincronizza ora</button><button class="btn ghost" id="logout">Esci</button></div>`
     :`<p>Accedi con Google per salvare tutto sul tuo Drive e usarla su più dispositivi.</p><button class="btn google" id="loginBtn2">Accedi con Google</button>`;
-  $('importBox').hidden=!oldData()||DB.meta.importedOld;
 }
 let pe=null; // progetto in modifica
 function openProj(id){
   const p=id?clone(prog(id)):nuovoProgetto();pe={p,isNew:!id};
   $('pjTitle').textContent=id?'Modifica progetto':'Nuovo progetto';
-  $('pjPreset').hidden=!!id;
   $('pjNome').value=p.nome;
   $('pjColori').innerHTML=COLORI.map(c=>`<button type="button" class="sw ${c===p.colore?'on':''}" data-col="${c}" style="background:${c}" aria-label="colore"></button>`).join('');
   $('pjDove').innerHTML=p.cartella?.id?`<p class="sm">Cartella su Drive: <a href="${esc(p.cartella.link||'#')}" target="_blank" rel="noopener">${esc(p.cartella.nome)} ↗</a></p>`:
@@ -725,13 +703,6 @@ function saveProj(){
 }
 let delProj; // v21: versione originale tolta (non usata); definita in plus.js
 function closeProj(){$('pjModal').hidden=true;document.body.classList.remove('noscroll');}
-function applyPreset(k){
-  if(k!=='bulldogs')return;
-  const keep={id:pe.p.id,ordine:pe.p.ordine};
-  pe.p=Object.assign(nuovoProgetto(),clone(BULLDOGS),keep);if(progetti().some(p=>p.colore===pe.p.colore&&p.id!==pe.p.id))pe.p.colore=nuovoProgetto().colore;
-  openProjFill();
-}
-function openProjFill(){const p=pe.p;const isNew=pe.isNew;D().progetti.__tmp=p;openProj('__tmp');delete D().progetti.__tmp;pe.isNew=isNew;pe.p.id=p.id;$('pjTitle').textContent='Nuovo progetto';$('pjDel').hidden=true;$('pjPreset').hidden=false;}
 function saveProfilo(){
   const pr=D().profilo;for(const k of ['cognome','nome','natoA','dataNascita','residenza','via','cf'])pr[k]=$('pf-'+k).value.trim();
   pr.auto={modello:$('pf-modello').value.trim(),targa:$('pf-targa').value.trim()};pr.updatedAt=Date.now();
@@ -741,35 +712,6 @@ function saveProfilo(){
   changed();toast('Dati personali salvati');
 }
 
-// ---- importa dalla vecchia app Rimborsi (stesso indirizzo github.io) ----
-function oldData(){try{const o=JSON.parse(localStorage.getItem('rimborsi-pwa-v1')||'null');return o&&o.mesi&&Object.keys(o.mesi).length?o:null;}catch(e){return null;}}
-function importOld(){
-  const o=oldData();if(!o)return;
-  const S=o.settings?.data||{};
-  let p=progetti().find(x=>/bulldog/i.test(x.nome));
-  const now=Date.now();
-  if(!p){p=Object.assign(nuovoProgetto(),clone(BULLDOGS));D().progetti[p.id]=p;DB.meta.queue['folder|'+p.id]=now;setTimeout(migraLogo,0);}
-  if(S.assoc)p.rimborso.assoc=Object.assign({},p.rimborso.assoc,S.assoc);
-  for(const k of ['occasione','mansione','squadra'])if(S[k])p.rimborso[k]=S[k];
-  if(S.origin)p.rimborso.origine=S.origin;if(S.rate)p.rimborso.tariffa=S.rate;if(S.rateDate)p.rimborso.tariffaData=S.rateDate;
-  const placeMap={};for(const pl of (S.places||[])){let l=p.rimborso.luoghi.find(x=>x.nome===pl.name);if(!l){l={id:uid(),nome:pl.name,km:pl.km};p.rimborso.luoghi.push(l);}placeMap[pl.id]=l;}
-  p.updatedAt=now;
-  const pr=D().profilo;
-  if(S.p&&!pr.cognome){Object.assign(pr,{cognome:S.p.cognome||'',natoA:S.p.natoA||'',dataNascita:S.p.dataNascita||'',residenza:S.p.residenza||'',via:S.p.via||'',cf:S.p.cf||''});pr.auto=Object.assign({},S.auto||{});pr.updatedAt=now;}
-  let n=0;const years=new Set();
-  for(const M of Object.values(o.mesi)){
-    for(const en of (M.entries||[])){
-      const l=placeMap[en.placeId];
-      const e={id:'old'+(en.id||uid()),pid:p.id,data:en.date,tipo:en.type||'allenamento',titolo:en.type==='allenamento'?'':(en.opp||''),squadra:en.type==='allenamento'&&en.team&&en.team!==S.squadra?en.team:'',
-        rimborso:true,luogoId:l?.id||'',luogo:l?.nome||'',km:en.km!=null&&en.km!==''?+en.km:(l?.km||0),ore:false,fasce:[],created:en.created||now,updatedAt:now};
-      if(!D().eventi[e.id]){D().eventi[e.id]=e;n++;years.add(e.data.slice(0,4));}
-    }
-    const x=M.extra||{};
-    D().mesi[meseKey(p.id,M.id)]={pedaggi:x.pedaggi||0,altro:x.altro||0,altroDesc:x.altroDesc||'',pernN:x.pernN||'',pernEur:x.pernEur||0,pastiN:x.pastiN||'',pastiEur:x.pastiEur||0,allegati:x.allegati||'',dataFirma:x.dataFirma||'',tariffa:M.rate||p.rimborso.tariffa,tariffaData:M.rateDate||p.rimborso.tariffaData,updatedAt:now};
-  }
-  years.forEach(y=>markExport([`rimb|${p.id}|${y}`]));
-  DB.meta.importedOld=true;changed();render();toast(`Importate ${n} trasferte nel progetto ${p.nome}`);
-}
 
 // ---- backup ----
 function backup(){download(new TextEncoder().encode(JSON.stringify(D(),null,1)),`soldirini-backup-${today()}.json`,'application/json');}
@@ -823,11 +765,10 @@ function bind(){
   $('projList').addEventListener('click',e=>{const b=e.target.closest('[data-proj]');if(b)openProj(b.dataset.proj);});
   $('pfSave').onclick=e=>saveProfilo(e);
   $('accBox').addEventListener('click',e=>{if(e.target.id==='syncNow')sync(true);if(e.target.id==='logout')logout();if(e.target.id==='loginBtn2')login();});
-  $('importBtn').onclick=e=>importOld(e);$('backupBtn').onclick=e=>backup(e);
+  $('backupBtn').onclick=e=>backup(e);
   // finestra progetto
   $('pjClose').onclick=e=>closeProj(e);$('pjSave').onclick=e=>saveProj(e);$('pjDel').onclick=e=>delProj(e);
   $('pjModal').addEventListener('click',e=>{if(e.target.id==='pjModal')closeProj();});
-  $('pjPreset').addEventListener('click',e=>{const b=e.target.closest('[data-preset]');if(b){readProj();applyPreset(b.dataset.preset);}});
   $('pjColori').addEventListener('click',e=>{const b=e.target.closest('[data-col]');if(!b)return;pe.p.colore=b.dataset.col;document.querySelectorAll('#pjColori .sw').forEach(x=>x.classList.toggle('on',x===b));});
   $('pjRimb').onchange=togglePj;$('pjOre').onchange=togglePj;
   $('pjNome').addEventListener('input',()=>{const s=$('pjDove').querySelector('b');if(s&&!pe.p.cartella){const t=$('pjDove').querySelector('p');t.firstChild.textContent=`La cartella “${$('pjNome').value.trim()||'nome progetto'}” verrà creata in: `;}});

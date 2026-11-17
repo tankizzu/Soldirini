@@ -4,12 +4,14 @@ const { expect } = require('@playwright/test');
 const { BASE, DriveFinto, CalendarFinto, collega } = require('./google-finto');
 
 // Apre un nuovo dispositivo (contesto del browser separato: memoria del telefono propria).
-async function nuovoDispositivo(browser, { drive, calendar, stato, telefono = true, sito } = {}) {
+// ora: data e ora fisse del telefono (orologio finto di Playwright), es. '2026-11-17T10:00:00+01:00'
+async function nuovoDispositivo(browser, { drive, calendar, stato, telefono = true, sito, ora } = {}) {
   const ctx = await browser.newContext({
     reducedMotion: 'reduce', serviceWorkers: 'block', locale: 'it-IT', timezoneId: 'Europe/Rome',
     ...(telefono ? { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true } : {})
   });
   await collega(ctx, { drive, calendar, sito });
+  if (ora) await ctx.clock.setFixedTime(new Date(ora));
   if (stato) await ctx.addInitScript(([k, v]) => { if (!sessionStorage.getItem('__statoMesso')) { localStorage.setItem(k, v); sessionStorage.setItem('__statoMesso', '1'); } }, ['soldirini-v1', JSON.stringify(stato)]);
   const page = await ctx.newPage();
   const errori = [];

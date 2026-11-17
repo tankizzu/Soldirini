@@ -50,7 +50,7 @@ function secMia(p,y){const S=P.stimaAnno(p,y);const mesi=mesiPensione(p,y).rever
   const righe=mesi.map(ym=>{const c=cedDi(ym);const m=+ym.slice(5);
     if(c&&n(c.netto)!=null){const st=c.lettura?.manuale?'Scritto a mano':c.daControllare?.length?'Cedolino · <span class="dc">da controllare</span>':'Cedolino ✓';
       return `<button class="yr" data-cdm="${ym}"><b>${Mc(m).slice(0,3)}</b><span class="tx">Netto accreditato<small>${st}</small></span><span class="am">${eu(c.netto)}</span></button>`;}
-    const s=P.stimaMese(p,ym);return `<button class="yr manca" data-cdm="${ym}"><b>${Mc(m).slice(0,3)}</b><span class="tx">Manca il cedolino<small>Stima ${eu(s)}</small></span><span class="am">—</span></button>`;}).join('');
+    const s=P.stimaMese(p,ym);return `<button class="yr manca" data-cdm="${ym}"><b>${Mc(m).slice(0,3)}</b><span class="tx">Manca il cedolino<small>Stima ${eu(s)}</small></span><span class="am">—</span></button>`;}).map((h,i)=>h+(window.Entrate?Entrate.rigaStato(`pen|${mesi[i]}`):'')).join('');
   const ric=r2(cedolini().filter(c=>c.mese.startsWith(y+'-')).reduce((a,c)=>a+z(c.netto),0));
   const q=P.quattordicesima({anno:y,annoNascita:p.annoNascita,anniContributi:p.anniContributi,tipo:p.prima,reddito:S.reddito,dal:p.dal});
   const q14=q.importo>0?`Quattordicesima probabile: ${eu(q.importo)}, a ${q.mese===12?'dicembre':'luglio'}. La decide l’INPS.`:q.importo===null?'Quattordicesima probabile, ridotta in dodicesimi dal mese del tuo compleanno, a dicembre. La decide l’INPS.':'';
@@ -154,7 +154,7 @@ renderRiepilogo=function(){_renderRiePen();const p=profilo();let box=$('riePen')
       if(m===12)extra+='<p class="muted sm">A dicembre arriva anche la tredicesima.</p>';
       if(q.importo>0&&q.mese===m)extra+=`<p class="muted sm">Quattordicesima probabile: ${eu(q.importo)}. La decide l’INPS.</p>`;}
     box.innerHTML=`<div class="card pencard" data-fid="pen" data-sum="${eu(x.v)}${x.stima?' · stima':''}"><h3>🏛️ Pensione · ${MESI[m-1]}${x.stima?' <span class="stima">stima</span>':''}</h3>${corpo}${extra}
-      <div class="acts">${c?`<button class="btn ghost sm" data-cdm="${cur}">Apri il cedolino</button>`:`<button class="btn sm" data-cdm="${cur}">Carica il cedolino</button>`}<button class="btn ghost sm" data-pengo="pagina">Pagina Pensione</button></div></div>`;}
+      ${(window.Entrate?Entrate.rigaStato(`pen|${cur}`):'')}<div class="acts">${c?`<button class="btn ghost sm" data-cdm="${cur}">Apri il cedolino</button>`:`<button class="btn sm" data-cdm="${cur}">Carica il cedolino</button>`}<button class="btn ghost sm" data-pengo="pagina">Pagina Pensione</button></div></div>`;}
   foldify(box,'pen');
 };
 

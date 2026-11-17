@@ -228,19 +228,25 @@ test('cedolino da PDF: voci lette "da controllare", altre trattenute senza descr
   expect(errori).toEqual([]);
 });
 
-test('Riepilogo: riga "Pensione · mese" con la stima, poi il netto del cedolino; conta nei soldi rimanenti (D-040)', async ({ browser }) => {
+// v24 (D-009, E-2, sostituisce D-040 punto 2): la pensione conta nei soldi rimanenti solo quando è segnata "Entrata".
+// Prima della v24: entrate 898,11 (stima) e rimanenti 905 (cedolino) senza nessuna voce entrata.
+test('Riepilogo: riga "Pensione · mese" con la stima, poi il netto del cedolino; nei soldi rimanenti conta quando entra (v24)', async ({ browser }) => {
   const { page } = await nuovoDispositivo(browser, { drive: new DriveFinto() });
   await accedi(page); await profilo(page);
   await page.evaluate(m => { cur = m; rieMode = 'mese'; tab = 'rie'; render(); }, mesePassato);
   const card = page.locator('#riePen .pencard');
   await expect(card.locator('summary')).toContainText('898,11 €');
   await expect(card.locator('summary')).toContainText('stima');
-  expect(await page.evaluate(m => contiMese(m).entrate, mesePassato)).toBe(898.11);
-  await expect(page.locator('#rieTot .hero')).toContainText('Pensione (stima)');
+  expect(await page.evaluate(m => contiMese(m).entrate, mesePassato)).toBe(0); // in attesa: non conta
+  await expect(page.locator('#rieTot .hero')).toContainText('Pensione');
   await page.evaluate(m => { D().cedolini = { [m]: { mese: m, pensioneLorda: '1000', irpef: '95', netto: '905', updatedAt: Date.now() } }; changed(); render(); }, mesePassato);
   await expect(card.locator('summary')).toContainText('905,00 €');
   await expect(card.locator('summary')).not.toContainText('stima');
+  expect(await page.evaluate(m => contiMese(m).rimanenti, mesePassato)).toBe(0);
+  // segnata "Entrata" nel suo mese con l'importo proposto dal cedolino: conta
+  await page.evaluate(m => { D().entrate = { [`pen|${m}`]: { entrato: true, data: m + '-05', importo: 905, updatedAt: Date.now() } }; changed(); render(); }, mesePassato);
   expect(await page.evaluate(m => contiMese(m).rimanenti, mesePassato)).toBe(905);
+  await expect(card).toContainText('✓ Entrata il 05/');
 });
 
 test('L\'anno in breve: 12 barre con la linea della stima; confronto solo con 12 cedolini', async ({ browser }) => {

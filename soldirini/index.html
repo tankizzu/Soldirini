@@ -404,6 +404,13 @@ nav.tabs button.on{color:color-mix(in srgb,var(--sez) var(--tabmix),var(--ink))}
 .cspbox{margin-top:12px;padding:12px 14px;border-radius:12px;background:color-mix(in srgb,var(--warn) 12%,var(--card))}
 .cspbox .csptit{margin:0 0 4px;font-weight:750}.cspbox .csptit span{color:var(--warn)}.cspbox p.sm{margin:4px 0}
 .csptab{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}.csptab th,.csptab td{text-align:left;padding:4px 6px;border-bottom:1px solid var(--line);vertical-align:top}.csptab td:first-child{white-space:nowrap}.csptab td:last-child{overflow-wrap:anywhere}
+/* v24 (D-009): voci "In arrivo", righe di stato "In attesa / ✓ Entrato", finestra "È entrato" */
+.hero .rim small.dm{display:block;font-size:11.5px;margin-top:-2px}.hero .rim small.hl{display:block;opacity:.85;border-top:1px solid rgba(255,255,255,.18);margin-top:6px;padding-top:6px}.hero .rim small.hl+small.hl{border:0;margin-top:0;padding-top:2px}
+.inarr h3{display:flex;justify-content:space-between;align-items:baseline;gap:8px}.inarr .ir{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px dashed var(--line)}.inarr .ir:last-child{border:0}
+.ir .tx,.enst .tx{flex:1;display:flex;flex-direction:column;font-size:14px;min-width:0}.ir .tx small,.enst .tx small{color:var(--mut)}.ir small.w{color:var(--warn);font-weight:700}
+.enst{display:flex;align-items:center;gap:8px;width:100%;padding:8px 0;margin-top:6px;border-top:1px dashed var(--line);background:none;border-left:0;border-right:0;border-bottom:0;color:var(--ink);font:inherit;text-align:left;min-height:44px}
+button.enst{cursor:pointer}.enst b{white-space:nowrap}.enst.ok .tx{color:var(--ok)}
+#enData.bad{border-color:var(--err)}.sm.err{color:var(--err);font-weight:650}.sm.warn{color:var(--warn)}
 /* v23: tocchi minimi 44 × 44 px */
 nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
 .ib,.x,.eye{min-width:44px;min-height:44px}
@@ -493,11 +500,9 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
         <details class="card fold" id="foldPen"><summary><span class="st">Pensione</span><span class="sum" id="foldPenSum"></span></summary><div class="fbody"><div id="penImp"></div></div></details>
         <details class="card fold" id="foldProj"><summary><span class="st">Progetti</span><span class="sum" id="foldProjSum"></span></summary><div class="fbody">
           <div id="projList"></div><div class="acts"><button class="btn sm" id="projNew">+ Nuovo progetto</button></div></div></details>
-        <details class="card fold" id="foldFix"><summary><span class="st">Pagamenti fissi</span><span class="sum" id="foldFixSum"></span></summary><div class="fbody">
-          <p class="muted sm" style="margin-top:0">Mutuo, rate, abbonamenti (Netflix, Disney+…): si tolgono dai soldi rimanenti nel giorno di addebito.</p>
-          <div id="fixList"></div><div class="acts"><button class="btn sm" id="fixNew">+ Nuovo pagamento fisso</button></div></div></details>
-        <div class="card" id="stfBox" hidden><h3>Dati di Strafobico</h3><p class="muted sm">Su questo telefono c’è Strafobico con turni e buste paga. Puoi copiarli qui come nuovo lavoro (Strafobico non viene toccato).</p><button class="btn" id="stfBtn">Importa da Strafobico</button></div>
-        <div class="card" id="importBox" hidden><h3>Dati della vecchia app Rimborsi</h3><p class="muted sm">Su questo dispositivo ci sono le trasferte della app Rimborsi Km. Le porto in Soldirini nel progetto Bulldogs.</p><button class="btn" id="importBtn">Importa trasferte</button></div>
+        <details class="card fold" id="foldFix"><summary><span class="st">Uscite fisse</span><span class="sum" id="foldFixSum"></span></summary><div class="fbody">
+          <p class="muted sm" style="margin-top:0">Mutuo, rate, abbonamenti (Netflix, Disney+…): contano nei soldi rimanenti di ogni mese, già dal primo giorno del mese.</p>
+          <div id="fixList"></div><div class="acts"><button class="btn sm" id="fixNew">+ Nuova uscita fissa</button></div></div></details>
       </div>
       <div class="stack">
         <div class="card"><h3>Account</h3><div id="accBox"></div><div id="cspBox" class="cspbox" role="region" aria-label="Soldirini ha bloccato qualcosa" hidden></div>
@@ -581,7 +586,15 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
     </div>
     <div class="blk"><label>Note<input id="evNote" placeholder="facoltative"></label></div>
     </div></div></details>
-    <details class="card fold sez" id="secSpese"><summary><span class="st">🛒 Spese del giorno</span><span class="sum" id="secSpeseSum"></span></summary><div class="fbody" id="evSpP"></div></details>
+    <details class="card fold sez" id="secSpese"><summary><span class="st">🛒 Spese giornaliere</span><span class="sum" id="secSpeseSum"></span></summary><div class="fbody" id="evSpP"></div></details>
+    <details class="card fold sez" id="secFix"><summary><span class="st">💳 Uscita fissa</span><span class="sum" id="secFixSum"></span></summary><div class="fbody" id="evFix">
+      <p class="muted sm" style="margin-top:0">Conta nei soldi rimanenti di ogni mese, già dal primo giorno del mese.</p>
+      <div class="tuchips" id="evFixCats"></div>
+      <div class="g2"><label class="s2">Nome<input id="evFixNome" placeholder="es. Netflix, Affitto, Rata auto"></label>
+        <label>Importo €<input id="evFixImp" inputmode="decimal" placeholder="0,00"></label><label>Giorno di addebito<input id="evFixGiorno" type="number" inputmode="numeric" min="1" max="31" placeholder="1–31"></label>
+        <label>Dal mese<input id="evFixDal" type="month"></label><label>Durata<select id="evFixDur"><option value="">senza fine</option><option value="rate">numero di rate</option><option value="al">fino al mese</option></select></label>
+        <label id="evFixRateL" hidden>Rate<input id="evFixRate" type="number" inputmode="numeric" min="1"></label><label id="evFixAlL" hidden>Fino al mese<input id="evFixAl" type="month"></label></div>
+      <p class="sm err" id="evFixErr" hidden></p><p class="muted sm" id="evFixCorto" hidden>Nei mesi più corti si paga l’ultimo giorno del mese.</p></div></details>
     <div class="foot"><button class="btn danger" id="evDel">Elimina</button><button class="btn ghost" id="evDup">Copia</button><button class="btn" id="evSave">Salva</button></div>
   </div>
 </div>
@@ -590,7 +603,6 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
 <div class="modal" id="pjModal" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="pjTitle">
     <div class="sheethead"><h2 id="pjTitle">Nuovo progetto</h2><button class="x" id="pjClose" aria-label="Chiudi">×</button></div>
-    <div id="pjPreset" hidden></div>
     <label>Nome (squadra, società, lavoro…)<input id="pjNome" placeholder="es. Basket Under15, Lavoro al museo"></label>
     <label style="margin-top:8px">Di solito mi pagano<select id="pjRitardo"><option value="0">nello stesso mese</option><option value="1">il mese dopo</option><option value="2">dopo 2 mesi</option><option value="3">dopo 3 mesi</option></select></label>
     <p class="muted sm" style="margin:4px 0 0">Serve per contare ogni lavoro nell’anno giusto (es. dicembre pagato a gennaio). Se segni la data di pagamento, vale quella.</p>
@@ -791,14 +803,15 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
     <div class="foot"><button class="btn ghost" id="ftAnnulla">Annulla</button><button class="btn" id="ftSalva">Conferma e salva</button></div></div>
 </div></div>
 <div class="modal" id="fxModal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="fxTit">
-  <div class="sheethead"><h2 id="fxTit">Pagamento fisso</h2><button class="x" id="fxClose" aria-label="Chiudi">×</button></div>
+  <div class="sheethead"><h2 id="fxTit">Uscita fissa</h2><button class="x" id="fxClose" aria-label="Chiudi">×</button></div>
   <div class="tuchips" id="fxCats"></div>
   <div class="g2"><label class="s2">Nome<input id="fxNome" placeholder="es. Netflix, Mutuo casa, Rata auto"></label>
     <label>Importo €<input id="fxImp" inputmode="decimal" placeholder="0,00"></label><label>Giorno di addebito<input id="fxGiorno" type="number" inputmode="numeric" min="1" max="31" placeholder="1–31"></label>
     <label>Dal mese<input id="fxDal" type="month"></label><label>Durata<select id="fxDur"><option value="">senza fine</option><option value="rate">numero di rate</option><option value="al">fino al mese</option></select></label>
     <label id="fxRateL" hidden>Rate<input id="fxRate" type="number" inputmode="numeric" min="1"></label><label id="fxAlL" hidden>Fino al mese<input id="fxAl" type="month"></label>
     <label class="s2">Nota<input id="fxNota"></label></div>
-  <div class="foot"><button class="btn ghost" id="fxDel">Elimina</button><button class="btn" id="fxSave">Salva</button></div></div></div>
+  <p class="muted sm" id="fxFineNota" hidden></p>
+  <div class="foot"><button class="btn ghost" id="fxDel">Elimina</button><button class="btn ghost" id="fxFine" hidden>Termina da questo mese</button><button class="btn" id="fxSave">Salva</button></div></div></div>
 <div class="modal" id="obModal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="obTit">
   <div class="sheethead"><h2 id="obTit">Obiettivo</h2><button class="x" id="obClose" aria-label="Chiudi">×</button></div>
   <div class="g2"><label class="s2">Nome<input id="obNome" placeholder="es. Vacanze, Fondo emergenze, Auto"></label><label>Quanto €<input id="obTarget" inputmode="decimal"></label><label>Entro<input id="obEntro" type="month"></label></div>
@@ -808,6 +821,13 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
   <div class="seg" id="mvTipo"><button data-t="in" class="on">Metto da parte</button><button data-t="out">Prelevo</button></div>
   <div class="g2" style="margin-top:10px"><label>Importo €<input id="mvImp" inputmode="decimal"></label><label>Data<input id="mvData" type="date"></label><label class="s2">Obiettivo<select id="mvOb"></select></label><label class="s2">Nota<input id="mvNota"></label></div>
   <div class="foot"><button class="btn ghost" id="mvDel">Elimina</button><button class="btn" id="mvSave">Salva</button></div></div></div>
+<div class="modal" id="enModal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="enTit">
+  <div class="sheethead"><h2 id="enTit">Entrato</h2><button class="x" id="enClose" aria-label="Chiudi">×</button></div>
+  <p class="muted sm" id="enSub" style="margin-top:0"></p>
+  <label id="enImpL">Quanto è entrato<input id="enImp" inputmode="decimal" placeholder="0,00" autocomplete="off"></label>
+  <p class="muted sm" id="enImpNota" style="margin:4px 0 0"></p><p class="sm warn" id="enImpAvv" style="margin:4px 0 0"></p>
+  <label id="enDataL">Quando è entrato<input id="enData" type="date"></label><p class="sm" id="enDataMsg" style="margin:4px 0 0" aria-live="polite"></p>
+  <div class="foot"><button class="btn ghost danger" id="enNo" hidden>Non entrato</button><button class="btn ghost" id="enAnn">Annulla</button><button class="btn" id="enSave">Salva</button></div></div></div>
 <div class="modal" id="dlg" hidden><div class="sheet dlg" role="alertdialog" aria-modal="true"><p id="dlgMsg"></p><div class="acts" id="dlgBtns"></div></div></div>
 <div class="modal" id="cuModal" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="cuTitle">
@@ -862,6 +882,7 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
 <script src="soldi.js"></script>
 <script src="risparmi.js"></script>
 <script src="pensione.js"></script>
+<script src="entrate.js"></script>
 <script src="animazioni.js"></script>
 </body>
 </html>

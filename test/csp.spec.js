@@ -107,7 +107,7 @@ test.describe('CSP · diagnostica in Impostazioni → Account', () => {
     await expect(page.locator('#toast')).toHaveText('Dettagli copiati.');
     const testo = await page.evaluate(() => window.__copiato);
     const righe = testo.split('\n');
-    expect(righe[0]).toBe('Soldirini 24csp – blocchi di sicurezza');
+    expect(righe[0]).toBe(`Soldirini ${await page.evaluate(() => APP_VERSIONE)} – blocchi di sicurezza`);
     expect(righe[1]).toMatch(/^\d\d:\d\d · script-src-attr · in linea$/);
     expect(righe[2]).toMatch(/^\d\d:\d\d · connect-src · sito-estraneo\.test$/);
     expect(righe[3]).toMatch(/^Telefono: Chrome \d+ · (Android \d+|Linux|Windows|macOS)$/);

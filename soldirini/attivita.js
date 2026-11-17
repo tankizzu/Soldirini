@@ -36,6 +36,7 @@ openEv=function(dates,e,tieni){
   if(!modifica)prepRipetizione();
   // v23 (D-043): con almeno un lavoro a turni, "Turni da foto" anche da qui
   $('evFoto').hidden=modifica||!lavoriTurni().length;
+  if(window.FissaEv&&!tieni)FissaEv.prepara(md.dates,modifica); // tornando dalla creazione di un progetto restano i campi compilati
   renderLav();renderSp();aggiornaSum();
 };
 const lavoriTurni=()=>lavori().filter(l=>l.modo==='turni');
@@ -124,7 +125,9 @@ saveEv=async function(){
   const progOn=!md.noProj&&($('secProg').open||!!md.progToccato);
   const st=S.lav&&S.lav.tipo!==undefined?S.lav:null;
   const sp=S.sp;
-  if(!progOn&&!st&&!sp.length){toast('Non c’è niente da salvare: apri una sezione e compilala.','err');return;}
+  const fx=!!(window.FissaEv&&FissaEv.compilata()); // v24 (D-060): uscita fissa da qui
+  if(fx&&!FissaEv.valida())return;
+  if(!progOn&&!st&&!sp.length&&!fx){toast('Non c’è niente da salvare: apri una sezione e compilala.','err');return;}
   if(st){const l=lav0(st.lid),t=st.tipo?C.tipoDi(l,st.tipo):null;
     if(!t&&!(st.da&&st.a)&&!st.ore){toast('Lavoro: scrivi l’orario (dalle–alle) o le ore.','err');$('secLav').open=true;return;}
     if(t&&(t.cat==='variabile'||t.cat==='permesso'||t.aggiunta||t.cat==='nonretr')&&!(t.da&&t.a)&&t.ore===''&&!(st.da&&st.a)&&!st.ore){toast('Lavoro: scrivi quante ore.','err');$('secLav').open=true;return;}}
@@ -144,7 +147,8 @@ saveEv=async function(){
   if(st){window.Stip15.metti(st.lid,dates,st.tipo||null,{da:st.da,a:st.a,pausa:st.pausa,ore:st.ore,nota:st.nota});parti.push(dates.length>1?`lavoro in ${dates.length} giorni`:'lavoro');}
   if(sp.length){const now=Date.now();let i=0;for(const d of dates)for(const x of sp){const id=uid();SP()[id]=Object.assign({id,data:d,created:now+i++,updatedAt:now},x);}
     parti.push(sp.length===1?'1 spesa':`${sp.length} spese`);}
-  if(st||sp.length){changed();render();}
+  if(fx){FissaEv.salva();parti.push('uscita fissa');}
+  if(st||sp.length||fx){changed();render();}
   if(parti.length>1||!progOn)toast('Salvato: '+parti.join(', ')+'.');
 };
 
@@ -154,7 +158,7 @@ apriGiorno=function(d){_apriGiorno16(d);renderSpeseGiorno(d);};
 function renderSpeseGiorno(d){
   let box=$('daySpese');if(!box){box=document.createElement('div');box.id='daySpese';$('dayBox').appendChild(box);}
   const L=speseDel(s=>s.data===d);const tot=L.reduce((a,s)=>a+num(s.importo),0);
-  box.innerHTML=L.length?`<div class="tubox"><div class="tuh"><b>🛒 Spese del giorno</b><small class="muted">${eur(tot)}</small></div>${L.map(s=>{const c=catDi(s.cat);return `<div class="sprow"><span>${c[1]}</span><span class="tx"><b>${esc(c[2])}</b>${s.nota?`<small>${esc(s.nota)}</small>`:''}</span><b>${eur(num(s.importo))}</b><button type="button" class="x" data-spdel="${s.id}" aria-label="Elimina spesa">×</button></div>`;}).join('')}</div>`:'';
+  box.innerHTML=L.length?`<div class="tubox"><div class="tuh"><b>🛒 Spese giornaliere</b><small class="muted">${eur(tot)}</small></div>${L.map(s=>{const c=catDi(s.cat);return `<div class="sprow"><span>${c[1]}</span><span class="tx"><b>${esc(c[2])}</b>${s.nota?`<small>${esc(s.nota)}</small>`:''}</span><b>${eur(num(s.importo))}</b><button type="button" class="x" data-spdel="${s.id}" aria-label="Elimina spesa">×</button></div>`;}).join('')}</div>`:'';
   if(tot){const ds=$('daySum');if(ds&&!ds.querySelector('[data-sptot]'))ds.insertAdjacentHTML('beforeend',`<span data-sptot><b>${eur(r2(tot))}</b> spesi</span>`);}
 }
 const _renderCal16=renderCal;
@@ -170,7 +174,7 @@ renderRiepilogo=function(){_renderRie16();
   (anno?$('rieAnno'):$('rieCards')).insertAdjacentHTML('beforeend',h);};
 
 // ================= impostazioni: icone colorate per ogni sezione (v17) =================
-const ICONE=[[/^lavoro dipendente/i,'💼','#1c7ed6'],[/^progetti/i,'📁','#e8590c'],[/^google calendar/i,'📅','#2f9e44'],[/^dati di strafobico/i,'🔄','#7048e8'],[/vecchia app/i,'📦','#868e96'],
+const ICONE=[[/^lavoro dipendente/i,'💼','#1c7ed6'],[/^progetti/i,'📁','#e8590c'],[/^google calendar/i,'📅','#2f9e44'],
   [/^account/i,'👤','#0ca678'],[/^i tuoi dati/i,'🪪','#7048e8'],[/^la tua firma/i,'✍️','#c2255c'],[/^aspetto/i,'🎨','#f59f00'],[/^promemoria/i,'🔔','#e8590c'],[/^blocco/i,'🔒','#495057'],
   [/^cestino/i,'🗑️','#c92a2a'],[/^storico/i,'🕘','#1098ad'],[/^copia di sicurezza/i,'💾','#1c7ed6']];
 function icone(){document.querySelectorAll('#v-pro details.fold>summary>.st').forEach(st=>{if(st.querySelector('.ic'))return;const t=st.textContent.trim();const m=ICONE.find(x=>x[0].test(t));

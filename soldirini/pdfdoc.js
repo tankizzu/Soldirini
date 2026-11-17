@@ -153,7 +153,7 @@ scegliDaDrive=async function(tipo){
     const v=await ask('Sul telefono è più comodo il selettore del telefono: tocca “Apri selettore”, poi nel menu (☰) scegli Drive e il tuo file (Word, PDF o Excel).',[{t:'Annulla',v:null,cls:'ghost'},{t:'Google Drive',v:'drive',cls:'ghost'},{t:'Apri selettore',v:'tel'}]);
     if(!v)return null;if(v==='tel'){$('pjWordFile').click();return null;}
   }
-  if(DEMO||!DB.meta.account)throw new Error('Per scegliere da Drive accedi prima con Google (Impostazioni → Account).');
+  if(!DB.meta.account)throw new Error('Per scegliere da Drive accedi prima con Google (Impostazioni → Account).');
   if(!navigator.onLine)throw new Error('Serve la connessione per aprire Google Drive.');
   const tok=await getToken(true);await loadScript('https://apis.google.com/js/api.js');await new Promise((res,rej)=>gapi.load('picker',{callback:res,onerror:rej}));
   const mimes=[DOCX_MIME,GDOC,'application/pdf',XLSX_MIME,GSHEET,'application/msword','application/vnd.ms-excel'];

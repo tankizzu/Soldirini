@@ -135,10 +135,19 @@ test.describe('lavoro dipendente (stipcalc)', () => {
     const p = await page.evaluate(() => StipCalc.trattenute({}, { a: { mese: '2026-10', lordo: '2000', netto: '1500' } }).p);
     expect(Math.round(p * 100)).toBe(25);
   });
-  test.fixme('T21 D-009: stipendio di ottobre accreditato a novembre conta a novembre', async () => {});
+  test('T21 D-009: stipendio di ottobre accreditato a novembre conta a novembre', async () => {
+    const r = await conDati(() => {
+      const l = Stip15.nuovoLavoro('fisso'); l.nome = 'Ditta di prova'; D().lavori = { [l.id]: l };
+      D().entrate = { [`lav|${l.id}|2026-10`]: { entrato: true, data: '2026-11-10', importo: 1500, updatedAt: 1 } };
+      return [contiMese('2026-10').lav.v, contiMese('2026-11').lav.v];
+    });
+    expect(r).toEqual([0, 1500]);
+  });
 });
 
-test('soldi rimanenti del mese (comportamento v19, prima di D-009)', async () => {
+// v24 (D-009, E-2): lo stipendio conta solo quando è segnato "Entrato", nel mese della data di entrata.
+// Prima della v24 questa prova si aspettava lav 1.500 e rimanenti 1.485,50 senza nessuna voce entrata.
+test('soldi rimanenti del mese: lo stipendio conta quando entra (v24, D-009)', async () => {
   const c = await conDati(() => {
     const l = Stip15.nuovoLavoro('fisso'); l.nome = 'Ditta di prova'; l.paga.importo = '1500'; l.dal = '2026-01-01';
     for (const d of [1, 2, 3, 4, 5]) l.settimana[d] = { da: '09:00', a: '17:00', pausa: '60' };
@@ -146,11 +155,15 @@ test('soldi rimanenti del mese (comportamento v19, prima di D-009)', async () =>
     const s = uid(); (D().spesePers || (D().spesePers = {}))[s] = { id: s, data: '2026-03-03', cat: 'bar', importo: '4.5', nota: '', created: 1, updatedAt: Date.now() };
     const f = uid(); D().fissi = D().fissi || {}; D().fissi['fx:' + f] = { nome: 'Abbonamento', cat: 'altro', importo: '10', giorno: '5', dal: '2026-01', updatedAt: Date.now() };
     DB.meta.seq++;
-    const r = contiMese('2026-03'); return { lav: r.lav.v, sp: r.sp, fTot: r.fTot, entrate: r.entrate, rimanenti: r.rimanenti };
+    const prima = contiMese('2026-03');
+    D().entrate = { [`lav|${l.id}|2026-03`]: { entrato: true, data: '2026-03-27', importo: 1500, updatedAt: Date.now() } };
+    const r = contiMese('2026-03');
+    return { prima: [prima.lav.v, prima.entrate, prima.rimanenti], lav: r.lav.v, sp: r.sp, fTot: r.fTot, entrate: r.entrate, rimanenti: r.rimanenti };
   });
+  expect(c.prima).toEqual([0, 0, -14.5]); // in attesa: non conta (E-2); uscite fisse e spese sì
   expect(c.lav).toBe(1500);
   expect(c.sp).toBe(4.5);
   expect(c.fTot).toBe(10);
   expect(c.entrate).toBe(1500);
-  expect(c.rimanenti).toBe(1485.5);
+  expect(c.rimanenti).toBe(1485.5); // segnato "Entrato" a marzo: come prima della v24
 });

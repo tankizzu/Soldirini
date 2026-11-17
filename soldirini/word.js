@@ -133,7 +133,7 @@ function cardWord(p){
     <div class="kv"><span>Competenze (lordo)</span><b>${eur(v._n.lordo)}</b></div><div class="kv"><span>Ritenuta d'acconto</span><b>− ${eur(v._n.rit)}</b></div>${v._n.inps?`<div class="kv"><span>Ritenuta INPS</span><b>− ${eur(v._n.inps)}</b></div>`:''}
     <div class="kv big"><span>Netto a pagare</span><b>${eur(v._n.netto)}</b></div>
     <label style="margin-top:8px">Data del documento<input type="date" data-wdata="${p.id}" value="${today()}"></label>
-    <div class="acts"><button class="btn" data-wdoc="${p.id}">Scarica Word</button><button class="btn ghost" data-winv="${p.id}">Invia</button>${!DEMO&&DB.meta.account?`<button class="btn ghost sm" data-wdrive="${p.id}">Salva su Drive (+ PDF)</button>`:''}${fileLink(D().files[`doc|${p.id}|${S.sort().join(',')}`],'docx','Word su Drive')}${fileLink(D().files[`doc|${p.id}|${S.sort().join(',')}`],'pdf','PDF su Drive')}</div>`:''}
+    <div class="acts"><button class="btn" data-wdoc="${p.id}">Scarica Word</button><button class="btn ghost" data-winv="${p.id}">Invia</button>${DB.meta.account?`<button class="btn ghost sm" data-wdrive="${p.id}">Salva su Drive (+ PDF)</button>`:''}${fileLink(D().files[`doc|${p.id}|${S.sort().join(',')}`],'docx','Word su Drive')}${fileLink(D().files[`doc|${p.id}|${S.sort().join(',')}`],'pdf','PDF su Drive')}</div>`:''}
   </div>`;
 }
 async function azioneWord(pid,tipo){
@@ -203,7 +203,7 @@ async function scegliDaDrive(tipo){
     if(!v)return null;
     if(v==='tel'){$(tipo==='word'?'pjWordFile':'pjModFile').click();return null;}
   }
-  if(DEMO||!DB.meta.account)throw new Error('Per scegliere da Drive accedi prima con Google (Impostazioni → Account).');
+  if(!DB.meta.account)throw new Error('Per scegliere da Drive accedi prima con Google (Impostazioni → Account).');
   if(!navigator.onLine)throw new Error('Serve la connessione per aprire Google Drive.');
   const tok=await getToken(true);
   await loadScript('https://apis.google.com/js/api.js');
