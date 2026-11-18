@@ -3,22 +3,69 @@
 // Calendario a schermo pieno: tocco = riepilogo del giorno, doppio tocco = nuova attività,
 // pressione lunga = selezione di più giorni. Documenti e Tasse sono sottopagine di Riepilogo.
 
-const APP_VERSIONE='24b';
-const SUB={doc:'rie',tas:'rie'}; // sottopagina -> scheda madre
+const APP_VERSIONE='24b.1';
+const SUB={tas:'rie'}; // sottopagina -> scheda madre
+// 24b.1 (D-098): pagine di dettaglio del Riepilogo, una per casella del riquadro (Documenti è dentro "Rimborsi spese")
+const PAG_RIE={dfx:'Uscite fisse',dsp:'Spese giornaliere',dlav:'Lavoro dipendente',drim:'Rimborsi spese',drit:'Ritenuta d’acconto',dinc:'Ancora da incassare'};
+for(const k in PAG_RIE)SUB[k]='rie';
 const sheets=['dayModal','listModal','confModal'];
 function chiudiSheets(){for(const id of sheets)$(id).hidden=true;if($('evModal').hidden&&$('pjModal').hidden&&$('cuModal').hidden)document.body.classList.remove('noscroll');}
 function apriSheet(id){chiudiSheets();$(id).hidden=false;document.body.classList.add('noscroll');}
 
 // ---------- navigazione ----------
 function vaiA(t){
+  if(t==='doc')t='drim';
   const da=tab;tab=t;chiudiSheets();render();scrollTo(0,0);
   if(SUB[t]&&!SUB[da])history.pushState({sub:t},'');
 }
 addEventListener('popstate',()=>{if(SUB[tab]){tab=SUB[tab];render();scrollTo(0,0);}});
 
 const _render8=render;
+// 24b.1 (D-098, mockup 02 tornata 23 §2): testata scura delle pagine, con l'icona e lo stesso importo della casella toccata
+const TESTA={dfx:['💳',(m,a,y,f)=>a?`Uscite fisse ${y}${f?', fino a '+f:''}`:`Uscite fisse di ${m}`],dsp:['🛒',(m,a,y)=>a?`Spese giornaliere ${y}`:`Spese giornaliere di ${m}`],
+  dlav:['💼',(m,a,y)=>a?`Entrato da lavoro dipendente nel ${y}`:`Entrato da lavoro dipendente a ${m}`],pen:['🏛️',(m,a,y)=>a?`Pensione ${y}`:`Pensione di ${m}`],
+  drim:['🧾',(m,a,y)=>a?`Rimborsi spese ${y}`:`Rimborsi spese di ${m}`],drit:['📄',(m,a,y)=>a?`Ritenuta d’acconto ${y}`:`Ritenuta d’acconto di ${m}`],
+  dinc:['⏳',(m,a)=>a?'Ancora da incassare (tutto l’anno)':'Ancora da incassare']};
+// documenti dei progetti (prima in Documenti): rimborsi in "Rimborsi spese", ore, ritenuta e documento della società in "Ritenuta d'acconto".
+// È lo stesso #docList (con i suoi pulsanti), spostato nella pagina aperta; le schede dell'altra pagina restano nascoste.
+const docDi=c=>{const t=(c.querySelector('summary .st,h3')?.textContent||'');return /· rimborso spese$|· modello personalizzato$/.test(t.trim())?'drim':/· ore e ritenuta$|tutti i progetti$/.test(t.trim())||/^doc:word-/.test(c.dataset.fold||'')||c.dataset.fid?.startsWith('word-')?'drit':'';};
+function docPerPagina(){const L=$('docList');if(!L||(tab!=='drim'&&tab!=='drit'))return;const anno=rieMode==='anno';L.hidden=anno;
+  for(const c of L.children){const d=docDi(c);c.hidden=!!d&&d!==tab;}}
+// vista Anno di Rimborsi e Ritenuta: un mese per riga; il tocco porta al mese nella vista Mese, senza un passo in più nella cronologia
+function mesiDoc(){document.querySelectorAll('.mesibox').forEach(b=>b.innerHTML='');const box=document.querySelector('#v-'+tab+' .mesibox');if(!box||rieMode!=='anno')return;
+  const y=cur.slice(0,4),A=aggrega(y),k=tab==='drim'?'rimb':'rit';let righe='';
+  for(let m=1;m<=12;m++){const r=A.mesi[m-1];if(!r.n||!r[k])continue;const np=Object.values(riepilogo(`${y}-${pad(m)}`).per).filter(t=>t.n&&t[k]).length;
+    righe+=`<button type="button" class="mrow" data-mese="${y}-${pad(m)}"><span class="tx"><b>${MESI[m-1][0].toUpperCase()+MESI[m-1].slice(1)}</b><small>${np===1?'1 progetto':np+' progetti'}</small></span><b>${eur(r[k])}</b></button>`;}
+  box.innerHTML=`<div class="card mesi"><h3>Mese per mese</h3>${righe||'<p class="muted">Niente in questo anno.</p>'}<p class="muted sm">Tocca un mese per i documenti di quel mese.</p></div>`;}
+document.addEventListener('click',e=>{const b=e.target.closest('.mesibox [data-mese]');if(b){cur=b.dataset.mese;rieMode='mese';render();scrollTo(0,0);}});
+// chiunque ridisegni i documenti (anche word.js e pdfdoc.js dopo un salvataggio), le schede restano nella pagina giusta
+new MutationObserver(docPerPagina).observe($('docList'),{childList:true});
+// la docList va nella pagina aperta (prima del contenitore dei mesi o del segnaposto)
+function spostaDoc(){const L=$('docList');if(!L)return;if(tab==='drim'&&L.parentElement.id!=='v-drim')$('rieMesi').before(L);
+  if(tab==='drit'&&L.parentElement.id!=='v-drit'){$('v-drit').querySelector('.docposto').before(L);}}
+// scheda principale aperta all'arrivo nella pagina (02, Decisione 4: consiglio); le altre sezioni restano chiuse (D-010)
+const PRINC={dfx:'#rieFix>details',dlav:'#rieLav>details',pen:'#riePen>details',dinc:'#rieInc>details:first-child',
+  drim:'#docList>details:not([hidden])',drit:'#docList>details:not([hidden])'};
+let entrata='';
+function apriPrincipale(){if(entrata===tab)return;entrata=tab;const q=PRINC[tab];if(!q)return;
+  document.querySelectorAll('#v-'+tab+' '+q).forEach(d=>{if(tab==='drit'&&!/ore e ritenuta$/.test(d.querySelector('summary .st')?.textContent.trim()||''))return;
+    if(tab==='drim'&&!/rimborso spese$/.test(d.querySelector('summary .st')?.textContent.trim()||''))return;d.open=true;});}
+window.apriSezione=(dentro,titolo)=>{requestAnimationFrame(()=>{const d=[...document.querySelectorAll(dentro+' details')].find(x=>x.querySelector('summary .st')?.textContent.startsWith(titolo));if(d){d.open=true;d.scrollIntoView({block:'start'});}});};
 render=function(){
+  if(tab==='doc')tab='drim'; // nome vecchio della pagina Documenti
   _render8();
+  if(PAG_RIE[tab]||tab==='pen'){
+    renderRiepilogo(); // stessi conti e stesse sezioni del Riepilogo
+    if(tab==='drim'||tab==='drit'){spostaDoc();renderDoc();docPerPagina();}mesiDoc();
+    const anno=rieMode==='anno',y=cur.slice(0,4),m=MESI[+cur.slice(5)-1],per=anno?y:monthName(cur);
+    document.querySelectorAll('#v-'+tab+' .pgper').forEach(x=>x.textContent=per);
+    const t=TESTA[tab],V=window.VALORI_RIE||{},ora=today().slice(0,7);
+    const fino=anno&&+y===+ora.slice(0,4)?MESI[(V.mesi||+ora.slice(5))-1]:'';
+    const box=$('v-'+tab).querySelector('.testa');if(box&&t)box.innerHTML=`<span class="ic" aria-hidden="true">${t[0]}</span><div><small>${t[1](m,anno,y,fino)}</small><b>${eur(V[tab]||0)}</b></div>`;
+    apriPrincipale();
+  }else entrata='';
+  // 02 (Decisione 2, consiglio): il pulsante Pensione resta solo per chi non ha né lavoro dipendente né profilo pensione
+  const bp=document.querySelector('#v-rie .subnav [data-goto="pen"]');if(bp)bp.hidden=!!((typeof lavori==='function'&&lavori().length)||(window.Pensione&&Pensione.profilo()));
   if(SUB[tab])document.querySelector(`.tabs button[data-tab="${SUB[tab]}"]`)?.classList.add('on');
   if(tab==='cal')requestAnimationFrame(adattaCalendario);
 };

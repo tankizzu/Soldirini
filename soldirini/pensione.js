@@ -119,33 +119,42 @@ function secFutura(){return sez('futura','Pensione futura','',`${avv(5,penAnno)}
 
 function renderPensione(){
   if(tabPrima!=='pen')aperte=new Set(); // le sezioni partono chiuse a ogni apertura della pagina
-  const y=penAnno;$('penTitle').textContent='Pensione '+y;const p=profilo();
+  const y=penAnno=+cur.slice(0,4);const p=profilo(); // 24b.1 (D-098): l'anno è quello della pagina (frecce ‹ › in alto)
   const conBuste=lavori().length>0||contribBuste().some(b=>n(b.contribLav)!=null);const conProg=progetti().length>0;
   const fondoUsato=Object.values(FON()).some(f=>f&&!f.deleted);
   const S=[];
   if(p){S.push(secMia(p,y),secAnno(p,y));}
-  if(conBuste)S.push(secContributi());
-  if(fondoUsato||(!p&&(conBuste||conProg)))S.push(secFondo(y));
-  if(!p&&(conBuste||conProg||fondoUsato))S.push(secFutura());
+  // 24b.1 (02 §3): chi ha un lavoro dipendente trova contributi, fondo e pensione futura in "Lavoro dipendente" (sempre in un solo posto)
+  const lav=lavori().length>0;
+  if(conBuste&&!lav)S.push(secContributi());
+  if(!lav&&(fondoUsato||(!p&&(conBuste||conProg))))S.push(secFondo(y));
+  if(!lav&&!p&&(conBuste||conProg||fondoUsato))S.push(secFutura());
   $('penBody').innerHTML=S.length?S.join(''):`<div class="card pempty"><p>Qui vedi i contributi letti dalle buste paga, il fondo pensione e, se sei in pensione, quanto ti arriva ogni mese.</p>
     <div class="acts"><button class="btn" data-penedit="1">Sono in pensione</button><button class="btn ghost" data-fpedit="${y}">Ho un fondo pensione</button><button class="btn ghost" data-pengo="lav">Ho buste paga da caricare</button></div></div>`;
 }
+// 24b.1 (D-098 punto 5): per chi non è in pensione, contributi versati, fondo pensione e pensione futura stanno anche nella
+// pagina "Lavoro dipendente" (stesse sezioni e stessi calcoli della pagina Pensione), per l'anno mostrato nel Riepilogo
+function renderPensioneLav(){const box=$('penLav');if(!box)return;
+  if(tabPrima!=='dlav')aperte=new Set();
+  // chi ha anche la pensione (02 §3, telefono 5): qui contributi e fondo; "La mia pensione" e "L'anno in breve" restano nella pagina Pensione
+  const p=profilo();if(!lavori().length){box.innerHTML='';return;}
+  const y=+cur.slice(0,4);penAnno=y;
+  const S=[secContributi(),secFondo(y)];if(!p)S.push(secFutura());
+  box.innerHTML=S.length?`<h3 class="pgsez">Per la pensione · ${y}</h3>`+S.join(''):'';}
 const _renderPen=render;
-render=function(){_renderPen();if(tab==='pen')renderPensione();tabPrima=tab;};
+render=function(){_renderPen();if(tab==='pen')renderPensione();if(tab==='dlav')renderPensioneLav();tabPrima=tab;};
 
 // ================= Riepilogo: riga "Pensione · mese" =================
 const _renderRiePen=renderRiepilogo;
 renderRiepilogo=function(){_renderRiePen();const p=profilo();let box=$('riePen');
-  if(!box){box=document.createElement('div');box.id='riePen';box.className='cards';($('rieLav')||$('rieTot')).after(box);}
-  if($('rieLav')&&box.previousElementSibling!==$('rieLav'))$('rieLav').after(box);
+  // 24b.1 (D-098): il contenitore è in cima alla pagina "Pensione"
   const anno=rieMode==='anno',y=cur.slice(0,4);
   const ced=cedolini().some(c=>c.mese.startsWith(anno?y+'-':cur));
   if(!p&&!ced){box.innerHTML='';return;}
   if(anno){let tot=0,stima=false;const righe=[];
     for(let m=1;m<=12;m++){const ym=ymDi(y,m);const x=pensioneMese(ym);if(!x.v)continue;tot+=x.v;stima=stima||x.stima;
       righe.push(kv(Mc(m),`${eu(x.v)}${x.stima?' <span class="stima">stima</span>':''}`));}
-    box.innerHTML=`<div class="card pencard" data-fid="pen" data-sum="${eu(tot)}"><h3>🏛️ Pensione ${y}</h3>${righe.join('')||'<p class="muted">Niente in questo anno.</p>'}${kv('Totale'+(stima?' (con stime)':''),eu(tot),'big')}
-      <div class="acts"><button class="btn ghost sm" data-pengo="pagina">Pagina Pensione</button></div></div>`;}
+    box.innerHTML=`<div class="card pencard" data-fid="pen" data-sum="${eu(tot)}"><h3>🏛️ Pensione ${y}</h3>${righe.join('')||'<p class="muted">Niente in questo anno.</p>'}${kv('Totale'+(stima?' (con stime)':''),eu(tot),'big')}</div>`;}
   else{const x=pensioneMese(cur);const m=+cur.slice(5);if(!x.v&&!x.ced){box.innerHTML='';return;}
     const c=x.ced;let corpo;
     if(c)corpo=`${kv('Lordo del pagamento',eu(n(c.lordoPagamento)??P.lordoPagamento(c)))}${P.trattenuteTot(c)?kv('Trattenute','− '+eu(P.trattenuteTot(c))):''}${kv('Netto accreditato',eu(c.netto),'big')}`;
@@ -154,7 +163,7 @@ renderRiepilogo=function(){_renderRiePen();const p=profilo();let box=$('riePen')
       if(m===12)extra+='<p class="muted sm">A dicembre arriva anche la tredicesima.</p>';
       if(q.importo>0&&q.mese===m)extra+=`<p class="muted sm">Quattordicesima probabile: ${eu(q.importo)}. La decide l’INPS.</p>`;}
     box.innerHTML=`<div class="card pencard" data-fid="pen" data-sum="${eu(x.v)}${x.stima?' · stima':''}"><h3>🏛️ Pensione · ${MESI[m-1]}${x.stima?' <span class="stima">stima</span>':''}</h3>${corpo}${extra}
-      ${(window.Entrate?Entrate.rigaStato(`pen|${cur}`):'')}<div class="acts">${c?`<button class="btn ghost sm" data-cdm="${cur}">Apri il cedolino</button>`:`<button class="btn sm" data-cdm="${cur}">Carica il cedolino</button>`}<button class="btn ghost sm" data-pengo="pagina">Pagina Pensione</button></div></div>`;}
+      ${(window.Entrate?Entrate.rigaStato(`pen|${cur}`):'')}<div class="acts">${c?`<button class="btn ghost sm" data-cdm="${cur}">Apri il cedolino</button>`:`<button class="btn sm" data-cdm="${cur}">Carica il cedolino</button>`}</div></div>`;}
   foldify(box,'pen');
 };
 
@@ -311,7 +320,9 @@ processQueue=async function(){const r=await _processQueuePen();await codaPasso('
 
 // ---------- collegamenti ----------
 function vaiPensione(sezione){for(const id of MOD.concat(['bpArch']))if($(id)&&!$(id).hidden)chiudi(id);
-  if(tab!=='pen')vaiA('pen');if(sezione){aperte.add(sezione);renderPensione();document.querySelector(`[data-sez="${sezione}"]`)?.scrollIntoView({block:'start'});}}
+  // 24b.1 (D-098 punto 5): chi lavora e non è in pensione trova contributi, fondo e pensione futura in "Lavoro dipendente"
+  const dove=lavori().length&&['contributi','fondo','futura'].includes(sezione)?'dlav':'pen';
+  if(tab!==dove)vaiA(dove);if(sezione){aperte.add(sezione);if(dove==='pen')renderPensione();else renderPensioneLav();document.querySelector(`#v-${dove} [data-sez="${sezione}"]`)?.scrollIntoView({block:'start'});}}
 function bind(){
   document.addEventListener('click',e=>{const t=e.target.closest('[data-penedit],[data-fpedit],[data-cdnew],[data-cdm],[data-cdarch],[data-pengo],[data-penapri],#caTutti,#cdFine,[data-cdfix],[data-crrm]');if(!t)return;
     if(t.dataset.penapri){e.preventDefault();vaiPensione(t.dataset.penapri);return;}
@@ -326,8 +337,7 @@ function bind(){
     if(t.id==='cdFine'){chiudi('cdModal');return;}
     if(t.dataset.cdfix){salvaSenzaMese(+t.dataset.cdfix);return;}
     if(t.dataset.crrm!=null){leggiCrediti();cd.crediti.splice(+t.dataset.crrm,1);renderCrediti();messaggiCed();}});
-  $('penBody').addEventListener('toggle',e=>{const d=e.target;if(d.dataset?.sez){if(d.open)aperte.add(d.dataset.sez);else aperte.delete(d.dataset.sez);}},true);
-  $('penPrev').onclick=()=>{penAnno--;render();};$('penNext').onclick=()=>{penAnno++;render();};
+  for(const b of ['penBody','penLav'])$(b).addEventListener('toggle',e=>{const d=e.target;if(d.dataset?.sez){if(d.open)aperte.add(d.dataset.sez);else aperte.delete(d.dataset.sez);}},true);
   $('penClose').onclick=()=>chiudi('penModal');$('penSave').onclick=salvaProfilo;$('penDel').onclick=togliProfilo;
   $('penModal').addEventListener('input',aggiornaProfilo);$('penModal').addEventListener('change',aggiornaProfilo);
   $('fpClose').onclick=()=>chiudi('fpModal');$('fpSave').onclick=salvaFondo;$('fpDel').onclick=togliFondo;

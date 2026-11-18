@@ -69,12 +69,13 @@ test('busta paga: gruppo "Per la pensione", controllo C-2 sotto il campo, contri
   await page.evaluate(lid => Stip15.apriArchivio(lid), lid);
   await expect(page.locator('#baBody .bacon')).toContainText('Contributi 2026: 229,75 € · 1 busta');
   await page.click('#baBody .bacon a');
-  await expect(page.locator('#v-pen')).toBeVisible();
-  await expect(page.locator('[data-sez=contributi]')).toHaveAttribute('open', '');
-  await expect(page.locator('[data-sez=contributi] .yr').first()).toContainText('1 busta, ne mancano 11');
+  // 24b.1 (D-098 punto 5): chi lavora e non è in pensione trova le sezioni della pensione nella pagina "Lavoro dipendente"
+  await expect(page.locator('#v-dlav')).toBeVisible();
+  await expect(page.locator('#v-dlav [data-sez=contributi]')).toHaveAttribute('open', '');
+  await expect(page.locator('#v-dlav [data-sez=contributi] .yr').first()).toContainText('1 busta, ne mancano 11');
   // dipendente non pensionato: contributi, fondo, pensione futura; niente "La mia pensione"
-  await expect(page.locator('#penBody details')).toHaveCount(3);
-  await expect(page.locator('[data-sez=futura] a').first()).toHaveAttribute('href', /inps\.it.*la-mia-pensione-futura/);
+  await expect(page.locator('#penLav details')).toHaveCount(3);
+  await expect(page.locator('#v-dlav [data-sez=futura] a').first()).toHaveAttribute('href', /inps\.it.*la-mia-pensione-futura/);
   expect(errori).toEqual([]);
 });
 
@@ -143,7 +144,8 @@ test('pagina Pensione: stato vuoto, poi per il pensionato le sezioni, chiuse a o
   await accedi(page);
   await page.evaluate(() => { tab = 'rie'; render(); });
   await page.click('[data-goto=pen]');
-  await expect(page.locator('#penTitle')).toHaveText('Pensione ' + anno);
+  await expect(page.locator('#v-pen .monthbar h2')).toHaveText('Pensione');
+  await expect(page.locator('#v-pen .pgper')).toContainText(String(anno)); // 24b.1: periodo con le frecce ‹ › come le altre pagine
   await expect(page.locator('#penBody .pempty')).toContainText('Qui vedi i contributi letti dalle buste paga');
   await profilo(page);
   await expect(page.locator('#penBody details')).toHaveCount(2);
@@ -156,7 +158,9 @@ test('pagina Pensione: stato vuoto, poi per il pensionato le sezioni, chiuse a o
   await expect(page.locator('[data-sez=mia] .yr.manca').first()).toContainText('Manca il cedolino');
   await expect(page.locator('[data-sez=mia]')).toContainText('Quattordicesima probabile: 504,00 €, a luglio. La decide l’INPS.');
   await page.click('#v-pen .back');
-  await page.click('[data-goto=pen]');
+  // 24b.1 (02, Decisione 2): con il profilo il pulsante Pensione sotto il riquadro non c'è più; si entra dalla casella "Pensione"
+  await expect(page.locator('#v-rie .subnav [data-goto=pen]')).toBeHidden();
+  await page.evaluate(() => vaiA('pen'));
   await expect(page.locator('[data-sez=mia]')).not.toHaveAttribute('open', '');
 });
 
@@ -254,8 +258,8 @@ test('L\'anno in breve: 12 barre con la linea della stima; confronto solo con 12
   await accedi(page); await profilo(page);
   await page.evaluate(() => { D().cedolini = {}; for (let m = 1; m <= 12; m++) { const k = `2025-${String(m).padStart(2, '0')}`;
     D().cedolini[k] = { mese: k, pensioneLorda: '1000', netto: m === 12 ? '1800' : '890', crediti: m === 12 ? [{ tipo: '13', importo: '1000' }] : [], updatedAt: 1 }; } changed(); });
-  await page.evaluate(() => { tab = 'pen'; render(); });
-  await page.click('#penPrev');
+  await page.evaluate(() => { rieMode = 'anno'; tab = 'pen'; render(); });
+  await page.click('#v-pen .pgPrev');
   await page.locator('[data-sez=anno] summary').click();
   await expect(page.locator('[data-sez=anno] .pb span')).toHaveCount(12);
   await expect(page.locator('[data-sez=anno] svg polyline')).toHaveCount(1);

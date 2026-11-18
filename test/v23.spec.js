@@ -33,18 +33,20 @@ test.describe('A · sezioni chiuse a ogni apertura', () => {
   test('Riepilogo: i riquadri partono chiusi, restano aperti durante la visita e si richiudono riaprendo l\'app', async ({ browser }) => {
     const { page } = await nuovoDispositivo(browser, { drive: new DriveFinto() });
     await accedi(page); await conLavoro(page, 'fisso', 'Ufficio di prova');
-    await page.click('nav [data-tab=rie]');
-    await expect(page.locator('#v-rie details.fold').first()).toBeVisible();
-    expect(await aperte(page, '#v-rie')).toBe(0);
-    await page.locator('#v-rie details.fold > summary').first().click();
-    expect(await aperte(page, '#v-rie')).toBe(1);
+    // 24b.1 (D-098): le sezioni del lavoro sono nella pagina "Lavoro dipendente" del Riepilogo
+    await page.click('nav [data-tab=rie]'); await page.evaluate(() => vaiA('dlav'));
+    // 24b.1 (02, Decisione 4): all'arrivo è aperta solo la scheda principale della pagina (il lavoro); le altre sezioni partono chiuse
+    await expect(page.locator('#v-dlav details.fold').first()).toBeVisible();
+    expect(await aperte(page, '#v-dlav')).toBe(1); await expect(page.locator('#rieLav > details').first()).toHaveAttribute('open', '');
+    await page.locator('#penLav details > summary').first().click();
+    expect(await aperte(page, '#v-dlav')).toBe(2);
     await page.evaluate(() => render());
-    expect(await aperte(page, '#v-rie')).toBe(1);
+    expect(await aperte(page, '#v-dlav')).toBe(2);
     // una vecchia memoria (versioni precedenti) viene tolta all'avvio
     await page.evaluate(() => { DB.meta.fold = { 'rie:x': true }; persist(); localStorage.setItem('soldirini-sez', '{"lav":true}'); });
     await page.reload(); await page.waitForFunction(() => typeof Pensione === 'object');
-    await page.click('nav [data-tab=rie]');
-    expect(await aperte(page, '#v-rie')).toBe(0);
+    await page.click('nav [data-tab=rie]'); await page.evaluate(() => vaiA('dlav'));
+    expect(await aperte(page, '#v-dlav')).toBe(1);
     expect(await page.evaluate(() => [DB.meta.fold ?? null, localStorage.getItem('soldirini-sez')])).toEqual([null, null]);
   });
 

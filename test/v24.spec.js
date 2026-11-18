@@ -38,8 +38,8 @@ test.describe('v24 · finestra "È entrato" e "In arrivo"', () => {
     await expect(rim.locator('b')).toHaveText('1150,00 €');
     await expect(rim.locator('.det')).toHaveText('Entrate 1800,00 € · Uscite 650,00 €');
     await rim.click();
-    await expect(page.locator('#heroDet > div').nth(0)).toHaveText('Uscite fisse570,00 €');
-    await expect(page.locator('#heroDet > div').nth(1)).toHaveText('Spese giornaliere80,00 €');
+    await expect(page.locator('#heroDet > *').nth(0)).toHaveText('Uscite fisse570,00 €, apri la pagina');
+    await expect(page.locator('#heroDet > *').nth(1)).toHaveText('Spese giornaliere80,00 €, apri la pagina');
     await expect(page.locator('#rieTot .hero')).not.toContainText('Pagamenti fissi');
     await expect(page.locator('#rieFix summary .st')).toHaveText('💳 Uscite fisse');
     await expect(page.locator('#rieFix .kv span').filter({ hasText: 'Affitto' })).toContainText('addebitata il 3');
@@ -151,7 +151,7 @@ test.describe('v24 · vista Anno (E-13 a)', () => {
     const rim = page.locator('#rieTot .hero .rim');
     await expect(rim.locator('.tit')).toHaveText('Soldi rimanenti'); // D-092
     await expect(rim.locator('.dm')).toHaveText('somma dei mesi da gennaio a novembre');
-    await expect(page.locator('#heroDet > div').last()).toHaveText('Uscite fisse ancora da addebitare entro dicembre570,00 €Non contate nei soldi rimanenti: dicembre non è ancora iniziato.');
+    await expect(page.locator('#heroDet > *').last()).toHaveText('Uscite fisse ancora da addebitare entro dicembre570,00 €Non contate nei soldi rimanenti: dicembre non è ancora iniziato., apri la pagina Uscite fisse');
     await expect(page.locator('#rieFix .kv').filter({ hasText: 'dicembre 2026' })).toContainText('non ancora contato');
     await expect(page.locator('#rieFix .kv.big')).toContainText('Totale fino a novembre');
     await vaiRie(page, '2025-06', 'anno');

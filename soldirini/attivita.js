@@ -165,16 +165,17 @@ const _renderCal16=renderCal;
 renderCal=function(){_renderCal16();const per={};for(const s of speseDel(s=>s.data.startsWith(cur)))per[s.data]=(per[s.data]||0)+num(s.importo);
   document.querySelectorAll('#grid [data-day]').forEach(b=>{const v=per[b.dataset.day];if(v)b.querySelector('.evs').insertAdjacentHTML('beforeend',`<span class="ev sp" style="--c:#8a8f98">🛒 ${nf(v,v%1?2:0)} €</span>`);});};
 const _renderRie16=renderRiepilogo;
-renderRiepilogo=function(){_renderRie16();
+renderRiepilogo=function(){_renderRie16();$('rieSpese').innerHTML='';
   const y=cur.slice(0,4);const anno=rieMode==='anno';const L=speseDel(s=>anno?s.data.startsWith(y):s.data.startsWith(cur));if(!L.length)return;
   const tot=L.reduce((a,s)=>a+num(s.importo),0);const per={};for(const s of L)per[s.cat]=(per[s.cat]||0)+num(s.importo);
   const righe=Object.entries(per).sort((a,b)=>b[1]-a[1]).map(([k,v])=>{const c=catDi(k);return `<div class="kv"><span>${c[1]} ${esc(c[2])}</span><b>${eur(r2(v))}</b></div>`;}).join('');
   let mesi='';if(anno){const pm={};for(const s of L){const m=s.data.slice(0,7);pm[m]=(pm[m]||0)+num(s.importo);}mesi='<p class="muted sm">Per mese</p>'+Object.keys(pm).sort().map(m=>`<div class="kv"><span>${esc(monthName(m))}</span><b>${eur(r2(pm[m]))}</b></div>`).join('');}
-  const h=`<div class="card"><h3>🛒 Spese personali${anno?' '+y:''}</h3>${righe}<div class="kv big"><span>Totale</span><b>${eur(r2(tot))}</b></div>${mesi}</div>`;
-  (anno?$('rieAnno'):$('rieCards')).insertAdjacentHTML('beforeend',h);};
+  const h=`<div class="card"><h3>🛒 Spese giornaliere${anno?' '+y:''}</h3>${righe}<div class="kv big"><span>Totale</span><b>${eur(r2(tot))}</b></div>${mesi}</div>`;
+  $('rieSpese').insertAdjacentHTML('beforeend',h);}; // 24b.1 (D-098): nella pagina "Spese giornaliere" (mese e anno)
 
 // ================= impostazioni: icone colorate per ogni sezione (v17) =================
-const ICONE=[[/^lavoro dipendente/i,'💼','#1c7ed6'],[/^progetti/i,'📁','#e8590c'],[/^google calendar/i,'📅','#2f9e44'],
+// 24b.1 (D-098 punti 6-7): icone anche per Pensione (simbolo e colore della pagina Pensione, mockup 02 della v22) e per Uscite fisse (mockup 02 della tornata 23)
+const ICONE=[[/^lavoro dipendente/i,'💼','#1c7ed6'],[/^pensione/i,'🏛️','#5d6b7a'],[/^uscite fisse/i,'💳','#495057'],[/^progetti/i,'📁','#e8590c'],[/^google calendar/i,'📅','#2f9e44'],
   [/^account/i,'👤','#0ca678'],[/^i tuoi dati/i,'🪪','#7048e8'],[/^la tua firma/i,'✍️','#c2255c'],[/^aspetto/i,'🎨','#f59f00'],[/^promemoria/i,'🔔','#e8590c'],[/^blocco/i,'🔒','#495057'],
   [/^cestino/i,'🗑️','#c92a2a'],[/^storico/i,'🕘','#1098ad'],[/^copia di sicurezza/i,'💾','#1c7ed6']];
 function icone(){document.querySelectorAll('#v-pro details.fold>summary>.st').forEach(st=>{if(st.querySelector('.ic'))return;const t=st.textContent.trim();const m=ICONE.find(x=>x[0].test(t));

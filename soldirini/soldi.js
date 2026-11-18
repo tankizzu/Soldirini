@@ -48,26 +48,29 @@ renderRiepilogo=function(){_renderRie18();
   const anno=rieMode==='anno',y=cur.slice(0,4);const hero=$('rieTot').querySelector('.hero');if(!hero)return;
   const {tot}=anno?aggrega(y):riepilogo(cur);const daInc=r2(dovuti().filter(d=>!d.pag).reduce((a,d)=>a+d.imp,0));
   const C=anno?contiAnno(y):contiMese(cur);const lavV=anno?C.lav:C.lav.v,penV=anno?C.pen:C.pen.v;
-  const cella=(t,v,cls='',nota='')=>({h:c=>`<div class="${[cls,c].filter(Boolean).join(' ')}"><small>${t}</small><b>${v}</b>${nota?`<small class="nota">${nota}</small>`:''}</div>`});
+  // 24b.1 (D-098 punto 3): ogni casella del riquadro aperto porta alla sua pagina di dettaglio (data-vai = scheda)
+  const cella=(t,v,cls='',nota='',pag='')=>({h:c=>{const k=[cls,c,pag?'hcel':''].filter(Boolean).join(' '),dentro=`<small>${t}</small><b>${v}</b>${nota?`<small class="nota">${nota}</small>`:''}`;
+    return pag?`<button type="button" class="${k}" data-vai="${pag}">${dentro}<span class="vh">, apri la pagina${/lungo/.test(k)?' Uscite fisse':''}</span></button>`:`<div class="${k}">${dentro}</div>`;}});
   // vista Anno: resta "somma dei mesi da gennaio a …"; vista Mese senza "del mese" (D-085)
   const ora=today().slice(0,7);const sotto=!anno?'':+y<+ora.slice(0,4)?'somma dei mesi da gennaio a dicembre':+y===+ora.slice(0,4)?`somma dei mesi da gennaio a ${MESI[C.mesi-1]}`:'l’anno non è ancora iniziato';
   // 24.2b: ordine e testi di 02 (report 02-ux-riquadro-riducibile §1); le regole su quando compare ogni casella restano quelle di prima
-  const caselle=[fissi().length?cella('Uscite fisse',eur(C.fTot)):null,
-    C.sp||!anno?cella('Spese giornaliere',eur(C.sp)):null,
-    lavori().length?cella('Lavoro dipendente',eur(lavV)):null,
-    penV||(window.Pensione&&Pensione.profilo())?cella('Pensione',eur(penV)):null,
-    anno?cella('Incassato dai progetti',eur(r2(tot.netto+tot.rimb))):null,
-    cella('Rimborsi spese',eur(tot.rimb)),cella('Ritenuta d’acconto',eur(tot.rit)),cella('Ancora da incassare',eur(daInc))].filter(Boolean);
+  const caselle=[fissi().length?cella('Uscite fisse',eur(C.fTot),'','','dfx'):null,
+    C.sp||!anno?cella('Spese giornaliere',eur(C.sp),'','','dsp'):null,
+    lavori().length?cella('Lavoro dipendente',eur(lavV),'','','dlav'):null,
+    penV||(window.Pensione&&Pensione.profilo())?cella('Pensione',eur(penV),'','','pen'):null,
+    anno?cella('Incassato dai progetti',eur(r2(tot.netto+tot.rimb)),'','','dinc'):null, // 02 (Decisione 3, consiglio): "Mese per mese (incassi)"
+    cella('Rimborsi spese',eur(tot.rimb),'','','drim'),cella('Ritenuta d’acconto',eur(tot.rit),'','','drit'),cella('Ancora da incassare',eur(daInc),'','','dinc')].filter(Boolean);
   // con due colonne, se l'ultima casella resta sola occupa tutta la larghezza (classe "dispari")
   const det=caselle.map((c,i)=>c.h(i===caselle.length-1&&caselle.length%2?'dispari':'')).join('')+
-    (anno&&C.fResto?cella('Uscite fisse ancora da addebitare entro dicembre',eur(C.fResto),'lungo','Non contate nei soldi rimanenti: dicembre non è ancora iniziato.').h():'');
+    (anno&&C.fResto?cella('Uscite fisse ancora da addebitare entro dicembre',eur(C.fResto),'lungo','Non contate nei soldi rimanenti: dicembre non è ancora iniziato.','dfx').h():'');
   // D-092: anche nella vista Anno il titolo è "Soldi rimanenti"; sotto zero il segno è "−" (02)
   const imp=eur(C.rimanenti).replace(/^-/,'−');
-  hero.innerHTML=`<button type="button" class="rim${C.rimanenti<0?' neg':''}" aria-controls="heroDet"><small class="tit">Soldi rimanenti</small>${sotto?`<small class="dm">${sotto}</small>`:''}<b>${imp}</b><small class="det">Entrate ${eur(C.entrate)} · Uscite ${eur(C.usciti)}</small><span class="vh">, dettagli</span><span class="hchev" aria-hidden="true">▾</span></button><div id="heroDet" class="heroDet">${det}</div>`;
+  hero.innerHTML=`<button type="button" class="rim${C.rimanenti<0?' neg':''}" aria-controls="heroDet"><small class="tit">Soldi rimanenti</small>${sotto?`<small class="dm">${sotto}</small>`:''}<b>${imp}</b><small class="det">Entrate ${eur(C.entrate)} · Uscite ${eur(C.usciti)}</small><span class="vh">, dettagli</span></button><div id="heroDet" class="heroDet">${det}</div>`;
   heroStato(hero);
+  // 24b.1 (D-098, 02 §2): la testata di ogni pagina mostra lo stesso importo della sua casella
+  window.VALORI_RIE={dfx:C.fTot,dsp:C.sp,dlav:lavV,pen:penV,drim:tot.rimb,drit:tot.rit,dinc:daInc,mesi:C.mesi};
   // uscite fisse del mese (D-065: "Uscite fisse" ovunque; righe "addebitata il N" / "addebito il N")
-  let box=$('rieFix');if(!box){box=document.createElement('div');box.id='rieFix';box.className='cards';($('rieLav')||$('rieTot')).after(box);}
-  if($('rieLav')&&box.previousElementSibling!==$('rieLav'))$('rieLav').after(box);
+  const box=$('rieFix'); // 24b.1 (D-098): nella pagina "Uscite fisse"
   const F=anno?[]:fissiDel(cur);
   if(!F.length&&!(anno&&fissi().length)){box.innerHTML='';return;}
   const t=today();
@@ -178,7 +181,8 @@ function bind18(){
   try{occhio(localStorage.getItem('soldirini-occhio')==='1');}catch(e){}
   swipe($('v-cal'),()=>$('next').click(),()=>$('prev').click());
   swipe($('rieTot'),()=>$('rNext').click(),()=>$('rPrev').click());
-  $('rieTot').addEventListener('click',e=>{const h=e.target.closest('.hero');if(!h||!h.querySelector('#heroDet')||e.target.closest('[data-b]'))return;heroAperto=!heroAperto;heroStato(h);});
+  $('rieTot').addEventListener('click',e=>{const pg=e.target.closest('[data-vai]');if(pg){vaiA(pg.dataset.vai);if(pg.textContent.startsWith('Incassato dai progetti'))apriSezione('#rieAnno','Mese per mese');return;} // 24b.1 (D-098)
+    const h=e.target.closest('.hero');if(!h||!h.querySelector('#heroDet')||e.target.closest('[data-b]'))return;heroAperto=!heroAperto;heroStato(h);});
   $('filtri').addEventListener('click',e=>{if(e.target.closest('#calBtn')){popAperto=!popAperto;filtriPop();e.stopImmediatePropagation();}},true);
   $('filtri').addEventListener('change',e=>{const t=e.target;if(t.name==='cf'){filtro=t.value;render();return;}
     if(t.dataset.cv){t.checked?nascosti.delete(t.dataset.cv):nascosti.add(t.dataset.cv);salvaNascosti();render();}});

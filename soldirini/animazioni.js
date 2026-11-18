@@ -12,14 +12,15 @@ for(const [id,d] of [['prev',-1],['next',1],['rPrev',-1],['rNext',1]])$(id)?.add
 const vecchi=new Map();let ultima='';
 const leggi=t=>{const s=t.replace(/[^\d,-]/g,'').replace(',','.');const n=parseFloat(s);return isNaN(n)?null:n;};
 function conta(b,da,a){const neg=b.textContent.trim().startsWith('−');const dur=600*T(),t0=performance.now();
-  const step=t=>{const p=Math.min(1,(t-t0)/dur),e=1-Math.pow(1-p,3);b.textContent=(neg?'− ':'')+eur(r2(Math.abs(da+(a-da)*e)));if(p<1)requestAnimationFrame(step);else b.textContent=(neg?'− ':'')+eur(Math.abs(a));};
+  const step=t=>{const p=Math.min(1,(t-t0)/dur),e=1-Math.pow(1-p,3);b.textContent=(neg?'−':'')+eur(r2(Math.abs(da+(a-da)*e)));if(p<1)requestAnimationFrame(step);else b.textContent=(neg?'−':'')+eur(Math.abs(a));}; // 24b.1: "−" senza spazio, come il riquadro (24.2b)
   requestAnimationFrame(step);}
 const _render19=render;
 render=function(){
   _render19();
   const chiave=tab+'|'+cur+'|'+(typeof rieMode!=='undefined'?rieMode:'');
   if(dir&&tab==='cal')anima($('grid'),dir);
-  if(dir&&tab==='rie')for(const id of ['rieTot','rieLav','rieFix','rieCards'])anima($(id),dir);
+  if(dir&&tab==='rie')for(const id of ['rieTot','rieAnno'])anima($(id),dir);
+  if(dir&&$('v-'+tab)?.classList.contains('pagrie'))for(const c of $('v-'+tab).querySelectorAll(':scope>.cards'))anima(c,dir); // 24b.1 (D-098)
   dir=0;
   if(chiave!==ultima&&!ridotte()){const s=$('v-'+tab);if(s){s.classList.remove('cascata');void s.offsetWidth;s.classList.add('cascata');clearTimeout(s._c);s._c=setTimeout(()=>s.classList.remove('cascata'),900);}}
   if(!ridotte())document.querySelectorAll('#v-'+tab+' .hero b').forEach(b=>{const k=tab+'|'+(b.previousElementSibling?.textContent||'');const nuovo=leggi(b.textContent);if(nuovo==null)return;

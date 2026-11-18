@@ -315,17 +315,19 @@ function icsPromemoria(){
 
 // ---------- estensioni di interfaccia ----------
 const _render5=render;
-render=function(){document.body.dataset.tab=tab;_render5();if(tab==='tas')renderTasse();aggiornaPromemoriaCache();};
+render=function(){document.body.dataset.tab=tab;_render5();if(tab==='tas'){renderTasse();renderComm();}aggiornaPromemoriaCache();};
+// 24b.1 (D-098): soglie dell'anno e "Per il commercialista" (con Excel CSV) nella pagina Tasse, per l'anno di Tasse
+function renderComm(){const box=$('tasComm');if(!box)return;const y=cur.slice(0,4);box.innerHTML=commHtml(y);
+  $('pdfAnnoInv').insertAdjacentHTML('afterend','<button class="btn ghost" id="csvAnno">Excel (CSV)</button>');
+  const pc=box.querySelector('.card:last-child p');if(pc)pc.textContent=`Un PDF completo: totali per committente, soglie, elenco di tutti i pagamenti del ${y} e dettaglio di ogni attività. Il commercialista può controllare riga per riga.`;
+  foldify(box,'tasc');}
 const _renderRie5=renderRiepilogo;
 renderRiepilogo=function(){
   _renderRie5();if(rieMode!=='anno')return;const y=cur.slice(0,4);const L=elencoPagamenti(y);
   const card=`<div class="card" data-fid="elenco" data-sum="${L.length} voci"><h3>Elenco pagamenti ${y}</h3><p class="muted sm" style="margin-top:0">Ogni pagamento contato nel ${y}, con compensi e rimborsi separati. Tocca “Data” per correggere quando ti hanno pagato.</p>
     ${L.map(i=>`<div class="due" style="--c:${colOk(i.p.colore)}"><span class="bar"></span><span class="tx"><b>${esc(i.p.nome)} · ${i.tp==='o'?'compensi':'rimborso spese'} ${esc(monthName(i.ym))}</b><small>${quandoPag(i)}${i.tp==='o'?` · lordo ${eur(i.lordo)} · ritenuta ${eur(i.rit)}`:''}</small></span><b class="amt">${eur(i.tp==='o'?i.netto:i.rimb)}</b><button class="btn ghost sm" data-unpag="${esc(i.pid+"|"+i.ym+"|"+i.tp)}">Data</button></div>`).join('')||'<p class="muted">Nessun pagamento.</p>'}</div>`;
-  const comm=document.querySelector('#rieAnno details[data-fold*="commercialista"]');
-  if(comm)comm.insertAdjacentHTML('beforebegin',card);else $('rieAnno').insertAdjacentHTML('beforeend',card);
+  $('rieAnno').insertAdjacentHTML('beforeend',card); // 24b.1 (D-098): nella pagina "Ancora da incassare", vista Anno
   foldify($('rieAnno'),'riea');
-  const inv=$('pdfAnnoInv');if(inv&&!$('csvAnno'))inv.insertAdjacentHTML('afterend','<button class="btn ghost" id="csvAnno">Excel (CSV)</button>');
-  const pc=document.querySelector('#rieAnno details[data-fold*="commercialista"] .fbody p');if(pc)pc.textContent=`Un PDF completo: totali per committente, soglie, elenco di tutti i pagamenti del ${y} e dettaglio di ogni attività. Il commercialista può controllare riga per riga.`;
 };
 const _openProj5=openProj;
 openProj=function(id){_openProj5(id);$('pjCat').value=catOf(pe.p);$('pjCatInfo').textContent=CAT_INFO[catOf(pe.p)];};
@@ -349,7 +351,7 @@ function bind5(){
     }catch(err){busy(false);toast('Non riesco a leggere il PDF: '+errMsg(err)+'. Inserisci i dati a mano.','err');openCU(null);}});
   $('cuTipo').onchange=togCU;$('cuSave').onclick=saveCU;$('cuDel').onclick=delCU;$('cuClose').onclick=closeCU;
   $('cuModal').addEventListener('click',e=>{if(e.target.id==='cuModal')closeCU();});
-  $('rieAnno').addEventListener('click',e=>{if(e.target.id==='csvAnno'){const y=cur.slice(0,4);download(new TextEncoder().encode(csvAnno(y)),`Riepilogo ${y} per il commercialista.csv`,'text/csv');toast('File scaricato: si apre con Excel');}});
+  $('tasComm').addEventListener('click',e=>{if(e.target.id==='csvAnno'){const y=cur.slice(0,4);download(new TextEncoder().encode(csvAnno(y)),`Riepilogo ${y} per il commercialista.csv`,'text/csv');toast('File scaricato: si apre con Excel');}});
   $('pjCat').onchange=()=>{$('pjCatInfo').textContent=CAT_INFO[$('pjCat').value];if($('pjCat').value==='occasionale'&&!+$('pjO-ritenuta').value)$('pjO-ritenuta').value=20;};
   $('cestBox').addEventListener('click',e=>{const b=e.target.closest('[data-rip]');if(b)ripristina(b.dataset.rip,b.dataset.k);});
   $('sicBox').addEventListener('click',e=>{if(e.target.id==='pinSet'||e.target.id==='pinCambia')impostaPin();if(e.target.id==='pinTogli')togliPin();});

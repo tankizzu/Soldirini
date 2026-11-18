@@ -242,7 +242,7 @@ function totaleLavoro(periodo){const L=lavori();let v=0,stima=false;
 window.totaleLavoro=totaleLavoro;
 const _renderRie15=renderRiepilogo;
 renderRiepilogo=function(){_renderRie15();const L=lavori();let box=$('rieLav');
-  if(!box){box=document.createElement('div');box.id='rieLav';box.className='cards';$('rieTot').after(box);}
+  // 24b.1 (D-098): il contenitore è nella pagina "Lavoro dipendente"
   if(!L.length){box.innerHTML='';return;}
   const anno=rieMode==='anno',y=cur.slice(0,4);
   box.innerHTML=L.map(l=>{const h=anno?cardAnno(l,y):cardMese(l,cur);const n=anno?null:nettoMese(l,cur);
@@ -300,7 +300,7 @@ function apriBusta(lid,mese,esistente){
   bp={lid,file:null,key:esistente?`${lid}|${mese}`:null};$('bpRis').hidden=true;
   $('bpTit').textContent='Busta paga · '+lav(lid).nome;$('bpStep1').hidden=!!esistente;$('bpStep2').hidden=!esistente;$('bpProg').hidden=true;$('bpErr').hidden=true;
   const b=esistente?BUS()[bp.key]:{};
-  $('bpMese').value=mese||cur;$('bpMese').classList.remove('manca');for(const k of ['lordo','trattenute','netto','ferie','rol','exfest'])$('bp-'+k).value=b?.[k]??'';
+  $('bpMese').value=mese||cur;document.querySelectorAll('#bpModal .manca').forEach(e=>e.classList.remove('manca'));for(const k of ['lordo','trattenute','netto','ferie','rol','exfest'])$('bp-'+k).value=b?.[k]??'';
   $('bpUF').value=b?.unitaFerie||lav(lid).ferie.unita;$('bpUP').value=b?.unitaPerm||lav(lid).perm.unita;
   for(const k of PEN_B)$('bp-'+k).value=b?.[k]??'';bp.dc=[...(b?.daControllare||[])];
   $('bpPenNota').hidden=!(esistente&&PEN_B.every(k=>(b?.[k]??'')===''));penBusta();
@@ -317,7 +317,8 @@ async function leggiBusta(file){
   const metti=(k,v)=>{const el=$('bp-'+k);el.value=v==null?'':v;el.classList.toggle('manca',v==null);};
   metti('lordo',r.lordo);metti('trattenute',r.trattenute);metti('netto',r.netto);metti('ferie',r.ferie);metti('rol',r.rol);metti('exfest',r.exfest);
   if(r.unita)$('bpUF').value=r.unita;if(r.unitaPermessi)$('bpUP').value=r.unitaPermessi;
-  for(const k of PEN_B)$('bp-'+k).value=r[k]==null?'':r[k];bp.dc=PEN_B.filter(k=>r[k]!=null);$('bpPenNota').hidden=true;penBusta();
+  for(const k of PEN_B){$('bp-'+k).value=r[k]==null?'':r[k];$('bp-'+k).classList.toggle('manca',!!(r.dubbi&&r.dubbi.includes(k)));} // 24b.1 (D-095): valore scartato → vuoto con il bordo rosso
+  bp.dc=PEN_B.filter(k=>r[k]!=null);$('bpPenNota').hidden=true;penBusta();
   bp.letti=letteVoci(r);
   $('bpNote').innerHTML=`<b>${bp.letti.ok.length?'Busta letta':'Non ho trovato le voci'}</b><br>${bp.letti.html}<br>${bp.letti.manca.length?'Quelle mancanti (bordo rosso) scrivile tu o lasciale vuote.':'Controlla e salva.'}`;
 }

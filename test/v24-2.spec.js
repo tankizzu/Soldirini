@@ -22,7 +22,7 @@ const DATI = () => {
   D().pagamenti = { [`${p.id}|2026-10|o`]: { pagato: true, data: '2026-11-05', importo: 300, updatedAt: 1 } };
   changed();
 };
-const caselle = page => page.locator('#heroDet > div > small:first-child').allTextContents();
+const caselle = page => page.locator('#heroDet > * > small:first-child').allTextContents();
 
 test.describe('24.2 · riquadro del Riepilogo riducibile (D-085)', () => {
   test('chiuso all\'avvio: "Soldi rimanenti", importo, "Entrate · Uscite"; un tocco apre le caselle (Uscite fisse e Spese giornaliere prima), un altro le chiude', async ({ browser }) => {
@@ -41,7 +41,8 @@ test.describe('24.2 · riquadro del Riepilogo riducibile (D-085)', () => {
     await expect(rim).toHaveAttribute('aria-expanded', 'false');
     await expect(rim).toHaveAttribute('aria-controls', 'heroDet');
     await expect(rim.locator('.vh')).toHaveText(', dettagli'); // 24.2b (02): testo fisso, lo stato è solo aria-expanded
-    await expect(rim.locator('.hchev')).toBeVisible();
+    await expect(rim.locator('.hchev')).toHaveCount(0); // 24b.1 (D-098 punto 2): niente freccia, si tocca la parte grande
+    await expect(page.locator('#rieTot .hero button:visible')).toHaveCount(1); // un solo pulsante visibile (il riquadro) finché è chiuso
     const box = await rim.boundingBox(); expect(box.height).toBeGreaterThanOrEqual(44);
     // aperto
     await rim.click();
@@ -50,15 +51,23 @@ test.describe('24.2 · riquadro del Riepilogo riducibile (D-085)', () => {
     await expect(rim.locator('.vh')).toHaveText(', dettagli');
     expect(await rim.evaluate(b => b.getAttribute('aria-label'))).toBeNull(); // il nome letto è il testo visibile
     expect(await caselle(page)).toEqual(['Uscite fisse', 'Spese giornaliere', 'Lavoro dipendente', 'Rimborsi spese', 'Ritenuta d’acconto', 'Ancora da incassare']);
-    await expect(det.locator('> div').nth(0).locator('b')).toHaveText('570,00 €');
-    await expect(det.locator('> div').nth(1).locator('b')).toHaveText('80,00 €');
+    await expect(det.locator('> *').nth(0).locator('b')).toHaveText('570,00 €');
+    await expect(det.locator('> *').nth(1).locator('b')).toHaveText('80,00 €');
     await expect(hero).not.toContainText('Lavorato nei progetti');
     // "Uscite fisse" e "Spese giornaliere" grandi come "Lavoro dipendente"
-    const dim = await page.evaluate(() => [...document.querySelectorAll('#heroDet > div')].map(d => [getComputedStyle(d.querySelector('b')).fontSize, Math.round(d.getBoundingClientRect().height)]));
+    const dim = await page.evaluate(() => [...document.querySelectorAll('#heroDet > *')].map(d => [getComputedStyle(d.querySelector('b')).fontSize, Math.round(d.getBoundingClientRect().height)]));
     expect(new Set(dim.map(d => d[0])).size).toBe(1);
     expect(dim[0]).toEqual(dim[2]); expect(dim[1]).toEqual(dim[2]);
-    // un tocco su una casella richiude
-    await det.locator('> div').nth(3).click();
+    // 24b.1 (D-098 punto 3): ogni casella porta alla sua pagina di dettaglio, con "‹ Riepilogo"
+    const pagine = await page.evaluate(() => [...document.querySelectorAll('#heroDet > *')].map(c => [c.tagName, c.dataset.vai]));
+    expect(pagine).toEqual([['BUTTON', 'dfx'], ['BUTTON', 'dsp'], ['BUTTON', 'dlav'], ['BUTTON', 'drim'], ['BUTTON', 'drit'], ['BUTTON', 'dinc']]);
+    await det.locator('> *').nth(2).click();
+    await expect(page.locator('#v-dlav')).toBeVisible(); await expect(page.locator('#v-rie')).toBeHidden();
+    await expect(page.locator('#v-dlav h2')).toHaveText('Lavoro dipendente'); await expect(page.locator('#v-dlav .pgper')).toHaveText('novembre 2026');
+    await page.locator('#v-dlav .back').click();
+    await expect(page.locator('#v-rie')).toBeVisible();
+    // un tocco sul riquadro (non su una casella) lo richiude
+    await rim.click();
     await expect(det).toBeHidden();
     // da tastiera
     await rim.focus(); await page.keyboard.press('Enter');
@@ -83,8 +92,8 @@ test.describe('24.2 · riquadro del Riepilogo riducibile (D-085)', () => {
     await expect(page.locator('#heroDet')).toBeHidden();
     await rim.click();
     expect(await caselle(page)).toEqual(['Uscite fisse', 'Spese giornaliere', 'Lavoro dipendente', 'Incassato dai progetti', 'Rimborsi spese', 'Ritenuta d’acconto', 'Ancora da incassare', 'Uscite fisse ancora da addebitare entro dicembre']);
-    await expect(page.locator('#heroDet > div.lungo small.nota')).toHaveText('Non contate nei soldi rimanenti: dicembre non è ancora iniziato.');
-    await expect(page.locator('#heroDet > div.lungo b')).toHaveText('570,00 €');
+    await expect(page.locator('#heroDet > .lungo small.nota')).toHaveText('Non contate nei soldi rimanenti: dicembre non è ancora iniziato.');
+    await expect(page.locator('#heroDet > .lungo b')).toHaveText('570,00 €');
     expect(errori).toEqual([]);
   });
 
@@ -100,9 +109,9 @@ test.describe('24.2 · riquadro del Riepilogo riducibile (D-085)', () => {
     await rim.click();
     expect(await caselle(page)).toEqual(['Spese giornaliere', 'Rimborsi spese', 'Ritenuta d’acconto', 'Ancora da incassare']);
     // numero pari di caselle: nessuna su tutta la larghezza; con un lavoro diventano 5 e l'ultima occupa tutta la riga (02)
-    await expect(page.locator('#heroDet > div.dispari')).toHaveCount(0);
+    await expect(page.locator('#heroDet > .dispari')).toHaveCount(0);
     await page.evaluate(() => { const l = Stip15.nuovoLavoro('fisso'); l.nome = 'Reparto'; D().lavori = { [l.id]: l }; changed(); render(); }); // resta aperto
-    const w = await page.evaluate(() => { const c = [...document.querySelectorAll('#heroDet > div')]; return [c.length, c.at(-1).classList.contains('dispari'), Math.round(c.at(-1).getBoundingClientRect().width), Math.round(c[0].getBoundingClientRect().width)]; });
+    const w = await page.evaluate(() => { const c = [...document.querySelectorAll('#heroDet > *')]; return [c.length, c.at(-1).classList.contains('dispari'), Math.round(c.at(-1).getBoundingClientRect().width), Math.round(c[0].getBoundingClientRect().width)]; });
     expect(w[0]).toBe(5); expect(w[1]).toBe(true); expect(w[2]).toBeGreaterThan(w[3] * 1.8);
     expect(errori).toEqual([]);
   });

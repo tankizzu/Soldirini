@@ -10,6 +10,7 @@
 try { if (window.top !== window.self) document.documentElement.style.display = 'none'; } catch (e) { document.documentElement.style.display = 'none'; }
 (function (g) {
   const LS = 'soldirini-v1';             // vecchia voce: resta intatta come punto di ritorno (R3.1, D-087 1a)
+  const DIARIO = 'soldirini-in-attesa'; // solo alla chiusura della pagina, con dati non ancora scritti in IndexedDB (vedi scriviSubito)
   const SEGNO = 'soldirini-spostato';     // solo la data dello spostamento, nessun dato: serve a capire se IndexedDB è stato svuotato (R3.2)
   const NOME = 'soldirini', ST = 'dati', K = 'dati', ATTESA = 3000;
   const SCRIPT = ['lib/jszip.min.js', 'lib/jspdf.umd.min.js', 'lib/html2canvas.min.js', 'docs.js', 'xlsx.js', 'modelli.js', 'app.js', 'plus.js', 'tasse.js',
@@ -138,7 +139,8 @@ try { if (window.top !== window.self) document.documentElement.style.display = '
         A.errore = null; A.daSalvare = false; return true;
       } catch (e) { // R2.2: messaggio come oggi; la modifica resta in memoria e si riprova alla prossima modifica o al ritorno nell'app
         A.errore = nomeErr(e);
-        try { toast(A.errore === 'QuotaExceededError' ? 'Memoria del telefono piena: non riesco a salvare.' : 'Non riesco a salvare i dati sul telefono: riprovo alla prossima modifica.', 'err'); } catch (x) { }
+        // testi di 02 (tornata 22 A3), almeno 8 secondi
+        try { toast(A.errore === 'QuotaExceededError' ? MSG_MEMORIA_PIENA : '⚠ Le ultime modifiche non sono salvate sul telefono. Soldirini riprova alla prossima modifica: intanto non chiudere l’app.', 'err', 8000); } catch (x) { }
         return false;
       }
     })().finally(() => { inCorso = null; });
@@ -148,7 +150,22 @@ try { if (window.top !== window.self) document.documentElement.style.display = '
   A.salvato = () => inCorso || Promise.resolve(!A.daSalvare);
   // R2.3: app in secondo piano o chiusa → la scrittura in sospeso parte subito
   const svuota = () => { if (A.daSalvare && !inCorso) A.salva(); };
-  g.addEventListener('pagehide', svuota);
+  // Pagina che si chiude (pagehide) con dati non ancora scritti. IndexedDB è asincrono: se la pagina sparisce prima che la
+  // scrittura sia completa, il telefono la annulla (visto nelle prove, T-S5). Per questo:
+  // 1) copia sincrona in localStorage['soldirini-in-attesa'], che resta anche se la pagina sparisce subito; all'avvio dopo
+  //    app.js la unisce (stessa unione di Drive) e la cancella appena la scrittura in IndexedDB è riuscita. Può non starci
+  //    (oltre circa 5 MiB): allora resta solo il punto 2. "Esci" la cancella con la vecchia copia;
+  // 2) scrittura diretta in IndexedDB, senza lettura prima, con revisione alta (ora attuale): un'altra scheda aperta la vede
+  //    come più nuova e la unisce prima di scrivere (R2.4).
+  const scriviSubito = () => {
+    if (!(A.daSalvare || inCorso) || A.modo !== 'idb' || A.fermo || !db) return;
+    let testo; try { testo = JSON.stringify(DB); } catch (e) { return; }
+    try { localStorage.setItem(DIARIO, testo); } catch (e) { }
+    try { const t = db.transaction(ST, 'readwrite'); t.objectStore(ST).put({ rev: Math.max(A.rev + 1, Date.now()), testo }, K); if (t.commit) t.commit(); } catch (e) { }
+  };
+  A.diario = () => { try { const t = localStorage.getItem(DIARIO); const o = t ? JSON.parse(t) : null; return o && typeof o === 'object' && o.data && typeof o.data === 'object' ? o : null; } catch (e) { return null; } };
+  A.togliDiario = () => { try { localStorage.removeItem(DIARIO); } catch (e) { } };
+  g.addEventListener('pagehide', scriviSubito);
   document.addEventListener('visibilitychange', () => { if (document.hidden) svuota(); else if (A.errore) A.salva(); });
 
   async function ricevi(m) {
@@ -159,7 +176,7 @@ try { if (window.top !== window.self) document.documentElement.style.display = '
 
   // ---------- "Esci" e cambio account (R3.4, R3.5, D-087 1b) ----------
   // si cancellano solo le voci e i database di Soldirini, per nome (R3.6): mai Strafobico né rimborsi-pwa-v1
-  A.togliVecchia = () => { try { localStorage.removeItem(LS); localStorage.removeItem(SEGNO); localStorage.removeItem(LS + '-illeggibile'); } catch (e) { } };
+  A.togliVecchia = () => { try { localStorage.removeItem(LS); localStorage.removeItem(SEGNO); localStorage.removeItem(LS + '-illeggibile'); localStorage.removeItem(DIARIO); } catch (e) { } };
   A.svuotaFile = () => new Promise(ok => {
     try {
       const r = indexedDB.open('soldirini-file', 1);
@@ -180,15 +197,29 @@ try { if (window.top !== window.self) document.documentElement.style.display = '
     // data della copia: la modifica più recente dentro la copia (updatedAt) o l'ultima sincronizzazione; se non c'è, nessuna data
     let t = (o.meta && +o.meta.lastSync) || 0;
     for (const k of Object.keys(o.data)) { const x = o.data[k]; if (x && typeof x === 'object') for (const v of Object.values(x)) if (v && typeof v === 'object' && +v.updatedAt > t) t = +v.updatedAt; }
+    const m = mancantiDi(o.data);
     const ev = vivi(o.data.eventi), date = ev.map(e => e.data).filter(d => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
     return { data: o.data, quando: t >= 1577836800000 && t < 4102444800000 ? new Date(t) : null, // solo date vere (dal 2020)
       attivita: ev.length, ultima: date.pop() || null,
-      progetti: vivi(o.data.progetti).length, spese: vivi(o.data.spesePers).length, mancanti: mancanti(o.data) };
+      progetti: vivi(o.data.progetti).length, spese: vivi(o.data.spesePers).length, manca: m, mancanti: m.tot };
   };
   // voci della vecchia copia che nei dati attuali non ci sono (D-093 punto 1: la riga in Impostazioni compare solo se ce n'è almeno una)
+  // Il confronto è per id: le voci cancellate restano nei dati come voce "deleted" (con updatedAt), quindi una voce cancellata
+  // dopo lo spostamento NON conta come mancante e "Aggiungi" non la rimette. Torna solo se quella voce "deleted" è andata persa
+  // (IndexedDB svuotato) – per questo la finestra ha l'avviso di 02.
   const RACCOLTE = ['eventi', 'progetti', 'lavori', 'fissi', 'spesePers', 'buste', 'cedolini', 'turni'];
-  const mancanti = vecchi => RACCOLTE.reduce((n, k) => { const ora = (DB.data && DB.data[k]) || {};
-    return n + Object.entries(vecchi[k] || {}).filter(([id, v]) => v && typeof v === 'object' && !v.deleted && !(id in ora)).length; }, 0);
+  const ymd = d => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d);
+  const mancantiDi = vecchi => {
+    const r = { tot: 0, per: {}, voci: {}, dal: null, al: null };
+    for (const k of RACCOLTE) {
+      const ora = (DB.data && DB.data[k]) || {};
+      const m = Object.entries(vecchi[k] || {}).filter(([id, v]) => v && typeof v === 'object' && !v.deleted && !(id in ora));
+      if (!m.length) continue;
+      r.per[k] = m.length; r.tot += m.length; r.voci[k] = Object.fromEntries(m);
+      if (k === 'eventi') for (const [, v] of m) if (ymd(v.data)) { if (!r.dal || v.data < r.dal) r.dal = v.data; if (!r.al || v.data > r.al) r.al = v.data; }
+    }
+    return r;
+  };
   A.datiVuoti = () => !pieni(DB.data);
 
   // ---------- protezione dalla pulizia automatica (D-087 1c) ----------

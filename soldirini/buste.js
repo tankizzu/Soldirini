@@ -214,7 +214,13 @@
     const rx = etichetta(r => r !== rf && (!rr || r.yc !== rr.yc) && EXF.test(r.testo), u => /^EX/.test(u));
     const sf = saldoDi(rf), sr = saldoDi(rr), sx = saldoDi(rx);
     const ferieV = sf.v, unita = sf.unita;
-    return { mese, lordo, trattenute, netto: netto != null ? netto : (lordo != null && trattenute != null ? Math.round((lordo - trattenute) * 100) / 100 : null), ferie: ferieV, unita, rol: sr.v, exfest: sx.v, unitaPermessi: sr.unita || sx.unita || 'ore', imponibilePrev, contribLav, giorniInps, testo };
+    // 24b.1 (D-095): contributi molto più piccoli del 9% circa dell'imponibile (meno della metà, 4,5%) sono letti male, per esempio
+    // con la prima cifra persa in una foto sfocata: meglio vuoti (bordo rosso nella finestra) che sbagliati. Senza imponibile si
+    // confronta con il lordo, che di solito è più grande dell'imponibile, quindi con una soglia più bassa (3%).
+    let contrib = contribLav; const dubbi = [];
+    if (contrib != null && ((imponibilePrev != null && imponibilePrev > 0 && contrib < imponibilePrev * 0.045)
+      || (imponibilePrev == null && lordo != null && lordo > 0 && contrib < lordo * 0.03))) { contrib = null; dubbi.push('contribLav'); }
+    return { mese, lordo, trattenute, netto: netto != null ? netto : (lordo != null && trattenute != null ? Math.round((lordo - trattenute) * 100) / 100 : null), ferie: ferieV, unita, rol: sr.v, exfest: sx.v, unitaPermessi: sr.unita || sx.unita || 'ore', imponibilePrev, contribLav: contrib, dubbi, giorniInps, testo };
   }
 
   // ---------- v22: cedolino della pensione INPS ----------

@@ -237,6 +237,9 @@ function graficoAnno(y,mesi){
   return `<div class="card chart" data-sum="${eur(r2(V.reduce((a,v)=>a+v.netto+v.rimb,0)))}"><h3>Grafico dell’anno</h3><div class="lg"><span><i class="bn"></i>Compensi netti</span><span><i class="br"></i>Rimborsi spese</span></div><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Incassi mese per mese ${y}">${g}${bars}</svg></div>`;
 }
 
+// 24b.1 (D-098, 02 §3): "Soglie dell'anno" e "Per il commercialista" stanno in Tasse (prima nel Riepilogo, vista Anno)
+function commHtml(y){const A=aggrega(y);return `<div class="card" data-sum="${eur(A.tot.lordo)} lordi"><h3>Soglie dell’anno</h3>${soglieHtml(y)}</div>`+
+  `<div class="card"><h3>Per il commercialista</h3><p class="muted sm">Un PDF con lordo, ritenute, netto e rimborsi ${y} per ogni committente: utile per la dichiarazione e per controllare le Certificazioni Uniche.</p><div class="acts"><button class="btn" id="pdfAnno">Scarica riepilogo ${y}</button><button class="btn ghost" id="pdfAnnoInv">Invia</button></div></div>`;}
 // ---------- riepilogo ----------
 renderRiepilogo=function(){
   const y=cur.slice(0,4);const key=rieMode==='mese'?cur:y;
@@ -253,18 +256,23 @@ renderRiepilogo=function(){
   let h=Object.values(per).filter(t=>t.n).map(t=>card(t,t.p)).join('')||'<p class="muted">Nessuna attività in questo periodo.</p>';
   $('rieCards').innerHTML=h;
   const nonPag=dv.filter(d=>!d.pag);
-  let extra=`<div class="card sec2" data-sum="${eur(daInc)}"><h3>Da incassare</h3>${nonPag.length?nonPag.map(d=>`<div class="due" style="--c:${colOk(d.p.colore)}"><span class="bar"></span><span class="tx"><b>${esc(d.p.nome)} · ${d.t==='r'?'rimborso spese':'compensi'}</b><small>${esc(monthName(d.ym))} · ${giorniDa(d.ym)?`da ${giorniDa(d.ym)} giorni`:'mese in corso'}</small></span><b class="amt ${giorniDa(d.ym)>45?'late':''}">${eur(d.imp)}</b><button class="btn ghost sm" data-pag="${esc(d.key)}">Pagato</button></div>`).join(''):'<p class="muted">Tutto incassato. 🎉</p>'}
+  // 24b.1 (D-098): "Da incassare" va nella pagina "Ancora da incassare" (rieInc); in rieAnno resta solo ciò che è dell'anno
+  let inc=`<div class="card sec2" data-sum="${eur(daInc)}"><h3>Da incassare</h3>${nonPag.length?nonPag.map(d=>`<div class="due" style="--c:${colOk(d.p.colore)}"><span class="bar"></span><span class="tx"><b>${esc(d.p.nome)} · ${d.t==='r'?'rimborso spese':'compensi'}</b><small>${esc(monthName(d.ym))} · ${giorniDa(d.ym)?`da ${giorniDa(d.ym)} giorni`:'mese in corso'}</small></span><b class="amt ${giorniDa(d.ym)>45?'late':''}">${eur(d.imp)}</b><button class="btn ghost sm" data-pag="${esc(d.key)}">Pagato</button></div>`).join(''):'<p class="muted">Tutto incassato. 🎉</p>'}
     ${dv.some(d=>d.pag)?`<details class="extra"><summary>Già pagati (${dv.filter(d=>d.pag).length})</summary>${dv.filter(d=>d.pag).reverse().map(d=>`<div class="due paid" style="--c:${colOk(d.p.colore)}"><span class="bar"></span><span class="tx"><b>${esc(d.p.nome)} · ${d.t==='r'?'rimborso':'compensi'}</b><small>${esc(monthName(d.ym))} · pagato il ${parseYmd(d.pag.data||today()).toLocaleDateString('it-IT')}</small></span><b class="amt">${eur(d.imp)}</b><button class="btn ghost sm" data-unpag="${esc(d.key)}">Modifica</button></div>`).join('')}</details>`:''}</div>`;
+  let extra='';
   if(rieMode==='anno'){
     let rows='';const T={rimb:0,lordo:0,rit:0,netto:0};
     for(let m=1;m<=12;m++){const ym=`${y}-${pad(m)}`;const r=A.mesi[m-1];if(!r.n)continue;for(const k in T)T[k]=r2(T[k]+r[k]);
       rows+=`<tr><td>${MESI[m-1]}</td><td>${eur(r.rimb)}</td><td>${eur(r.lordo)}</td><td>${eur(r.rit)}</td><td>${eur(r.netto)}</td><td><b>${eur(r2(r.netto+r.rimb))}</b></td></tr>`;}
-    extra=graficoAnno(y,A.mesi)+`<div class="card" data-sum="${eur(A.tot.lordo)} lordi"><h3>Soglie dell’anno</h3>${soglieHtml(y)}</div>`+extra+
-      (rows?`<div class="card" data-sum="${eur(r2(T.netto+T.rimb))}"><h3>Mese per mese (incassi)</h3><div class="tw"><table class="tab"><thead><tr><th>Mese</th><th>Rimborsi</th><th>Lordo</th><th>Ritenuta</th><th>Netto</th><th>Totale</th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td>Totale</td><td>${eur(T.rimb)}</td><td>${eur(T.lordo)}</td><td>${eur(T.rit)}</td><td>${eur(T.netto)}</td><td>${eur(r2(T.netto+T.rimb))}</td></tr></tfoot></table></div></div>`:'')+
-      `<div class="card"><h3>Per il commercialista</h3><p class="muted sm">Un PDF con lordo, ritenute, netto e rimborsi ${y} per ogni committente: utile per la dichiarazione e per controllare le Certificazioni Uniche.</p><div class="acts"><button class="btn" id="pdfAnno">Scarica riepilogo ${y}</button><button class="btn ghost" id="pdfAnnoInv">Invia</button></div></div>`;
+    // 24b.1 (D-098, 02 §3): grafico e mese per mese vanno in "Ancora da incassare" (vista Anno); soglie e commercialista in Tasse (commHtml)
+    extra=graficoAnno(y,A.mesi)+
+      (rows?`<div class="card" data-sum="${eur(r2(T.netto+T.rimb))}"><h3>Mese per mese (incassi)</h3><div class="tw"><table class="tab"><thead><tr><th>Mese</th><th>Rimborsi</th><th>Lordo</th><th>Ritenuta</th><th>Netto</th><th>Totale</th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td>Totale</td><td>${eur(T.rimb)}</td><td>${eur(T.lordo)}</td><td>${eur(T.rit)}</td><td>${eur(T.netto)}</td><td>${eur(r2(T.netto+T.rimb))}</td></tr></tfoot></table></div></div>`:'');
   }
-  $('rieAnno').innerHTML=extra;
-  foldify($('rieCards'),'rie');foldify($('rieAnno'),'riea');
+  // 02 (tornata 23 §2): nella vista Mese, sotto "Da incassare", il totale di ogni progetto (era la riga "Totale" delle schede dei progetti)
+  if(rieMode!=='anno'){const L=Object.values(per).filter(t=>t.n);const somma=r2(L.reduce((a,t)=>a+t.netto+t.rimb,0));
+    if(L.length)inc+=`<div class="card" data-fid="pp" data-sum="${eur(somma)}"><h3>${esc(MESI[+cur.slice(5)-1][0].toUpperCase()+MESI[+cur.slice(5)-1].slice(1))}, progetto per progetto</h3>${L.map(t=>`<div class="kv"><span>${esc(t.p.nome)} · ${t.n} ${t.n===1?'attività':'attività'}</span><b>${eur(r2(t.netto+t.rimb))}</b></div>`).join('')}</div>`;}
+  $('rieAnno').innerHTML=extra;$('rieInc').innerHTML=inc;
+  foldify($('rieCards'),'rie');foldify($('rieAnno'),'riea');foldify($('rieInc'),'inc');
 };
 async function pdfAnnoBytes(y){
   const pr=D().profilo;const A=aggrega(y);const {per,tot}=A;
@@ -443,7 +451,7 @@ async function xlsxCustom(pid,y){
 
 // ---------- documenti ----------
 renderDoc=function(){
-  $('docTitle').textContent=monthName(cur);
+  const dt=$('docTitle');if(dt)dt.textContent=monthName(cur); // 24b.1 (D-098): Documenti ora è nella pagina "Rimborsi spese"
   const y=cur.slice(0,4);let h='';
   for(const p of progetti()){
     if(p.modello?.tipo==='custom'){
@@ -604,10 +612,10 @@ function bindPlus(){
     if(g('data-xcust'))xlsxCustom(g('data-xcust'),cur.slice(0,4));
     if(g('data-pag'))chiediPagamento(g('data-pag'));
     if(g('data-unpag'))chiediPagamento(g('data-unpag'));};
-  $('docList').addEventListener('click',docClick);$('rieAnno').addEventListener('click',docClick);$('rieCards').addEventListener('click',docClick);
+  $('docList').addEventListener('click',docClick);$('rieAnno').addEventListener('click',docClick);$('rieCards').addEventListener('click',docClick);$('rieInc').addEventListener('click',docClick); // 24b.1 (D-098)
   $('rieTot').addEventListener('click',e=>{const b=e.target.closest('[data-b]');if(b){DB.meta.rieBase=b.dataset.b;persist();render();}});
   $('rieAnno').addEventListener('change',e=>{const s=e.target.closest('[data-cat]');if(!s)return;const p=prog(s.dataset.cat);p.ore.categoria=s.value;p.updatedAt=Date.now();changed();render();toast('Tipo di compenso salvato');});
-  $('rieAnno').addEventListener('click',async e=>{
+  $('tasComm').addEventListener('click',async e=>{ // 24b.1: il riepilogo per il commercialista è in Tasse
     if(e.target.id==='pdfAnno'||e.target.id==='pdfAnnoInv'){busy(true,'Preparo il PDF…');try{const f=await pdfAnnoBytes(cur.slice(0,4));busy(false);
       if(e.target.id==='pdfAnno'){download(f.bytes,f.name,'application/pdf');toast('PDF scaricato');}else await inviaPdf(f,null,`Riepilogo compensi ${cur.slice(0,4)}`,`Ciao,\nti mando il riepilogo dei miei compensi e rimborsi del ${cur.slice(0,4)}.`);}catch(err){toast(errMsg(err),'err');}finally{busy(false);}}});
   // profilo, firma, impostazioni

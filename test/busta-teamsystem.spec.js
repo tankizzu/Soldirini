@@ -92,6 +92,40 @@ test.describe('24.2 · busta TeamSystem (pezzi inventati)', () => {
   });
 });
 
+test.describe('24b.1 · contributi letti male (D-095)', () => {
+  test('contributi molto più piccoli del 9% circa dell\'imponibile (o del lordo, se manca) → vuoti; quelli giusti restano', async ({ browser }) => {
+    const { page, errori } = await nuovoDispositivo(browser, { telefono: false });
+    const conContributi = (c, imponibile = true) => busta().map(p => p.t === '266,72' ? { ...p, t: c } : p)
+      .filter(p => imponibile || !['IMPONIBILE', 'CONTR.', 'MESE', '2.904,00'].includes(p.t));
+    let r = await leggi(page, conContributi('66,72')); // prima cifra persa: 2,3% dell'imponibile
+    expect([r.contribLav, r.dubbi, r.imponibilePrev]).toEqual([null, ['contribLav'], 2904]);
+    r = await leggi(page, conContributi('266,72')); // 9,2%: giusto
+    expect([r.contribLav, r.dubbi]).toEqual([266.72, []]);
+    r = await leggi(page, conContributi('170,00')); // 5,9% (per esempio un apprendista): resta
+    expect([r.contribLav, r.dubbi]).toEqual([170, []]);
+    r = await leggi(page, conContributi('66,72', false)); // senza imponibile: confronto con il lordo (2,3% < 3%)
+    expect([r.imponibilePrev, r.contribLav, r.dubbi]).toEqual([null, null, ['contribLav']]);
+    expect(errori).toEqual([]);
+  });
+  test('finestra della busta: contributi scartati → campo vuoto con il bordo rosso; riaprendo il bordo non resta', async ({ browser }) => {
+    const { page, errori } = await nuovoDispositivo(browser);
+    const lid = await page.evaluate(() => { const l = Stip15.nuovoLavoro('fisso'); l.nome = 'Cooperativa di prova'; l.dal = '2026-01-01'; D().lavori[l.id] = l;
+      D().entrate = { 'v24|risposta': { risposta: 'no', updatedAt: 1 } }; changed();
+      // lettura finta: solo per provare la finestra (il lettore è provato sopra)
+      Buste.testoBusta = async () => []; Buste.analizzaBusta = () => ({ mese: '2026-10', lordo: 2904.15, trattenute: 585.4, netto: 2318.75, imponibilePrev: 2904, contribLav: null, dubbi: ['contribLav'] });
+      return l.id; });
+    await page.evaluate(lid => Stip15.apriBusta(lid, '2026-11'), lid);
+    await page.locator('#bpFile').setInputFiles({ name: 'busta.png', mimeType: 'image/png', buffer: Buffer.from('finta') });
+    await expect(page.locator('#bp-contribLav')).toHaveClass(/manca/);
+    await expect(page.locator('#bp-contribLav')).toHaveValue('');
+    await expect(page.locator('#bp-imponibilePrev')).not.toHaveClass(/manca/);
+    await page.locator('#bpClose').click();
+    await page.evaluate(lid => Stip15.apriBusta(lid, '2026-11'), lid);
+    await expect(page.locator('#bp-contribLav')).not.toHaveClass(/manca/);
+    expect(errori).toEqual([]);
+  });
+});
+
 test.describe('24.2 · busta finta letta da immagine (Tesseract, solo in locale)', () => {
   test('immagine pulita e "foto": voci giuste, e nelle foto nessun valore sbagliato (vuoto se non si legge)', async ({ browser }) => {
     const manca = mancanti();
@@ -108,11 +142,10 @@ test.describe('24.2 · busta finta letta da immagine (Tesseract, solo in locale)
       expect(r.mese, nome).toBe(opz.mese === 'nessuno' ? null : '2026-10');
       if (tutte) expect(r, nome).toEqual(expect.objectContaining(ATTESI));
       else { // mai un valore sbagliato, tranne il caso noto qui sotto
-        // 24.2b: con la preparazione dell'immagine della 24.0.2 (2400 px, senza contrasto), nella foto al 56% sfocata Tesseract legge
-        // i contributi "15,72" invece di "115,72". Caso noto, scritto nel report di 01 (Tornata 19): la scelta spetta all'utente.
-        const noto = opz.scala === 0.56 ? ['contribLav'] : [];
-        if (noto.length) test.info().annotations.push({ type: 'caso noto', description: `${nome}: contribLav letto ${r.contribLav}` });
-        for (const k of Object.keys(ATTESI)) if (r[k] != null && !noto.includes(k)) expect(r[k], `${nome} ${k}`).toBe(ATTESI[k]);
+        // 24b.1 (D-095): nella foto al 56% sfocata Tesseract legge i contributi con la prima cifra persa; il controllo
+        // "contributi molto più piccoli del 9% circa" li lascia vuoti (prima: il ✗ della 24.2b). Nessun caso noto: mai valori sbagliati.
+        if (opz.scala === 0.56) expect([r.contribLav, r.dubbi], nome).toEqual([null, ['contribLav']]);
+        for (const k of Object.keys(ATTESI)) if (r[k] != null) expect(r[k], `${nome} ${k}`).toBe(ATTESI[k]);
         expect(r.netto, nome).toBe(ATTESI.netto); }
     }
     expect(errori).toEqual([]);

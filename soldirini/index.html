@@ -219,7 +219,7 @@ nav.tabs button{padding:9px 4px}
 i.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px}
 
 /* colore di ogni sezione (toni spenti) */
-body[data-tab="cal"]{--sez:#5b6475}body[data-tab="rie"]{--sez:#6e6079}body[data-tab="doc"]{--sez:#776a52}body[data-tab="tas"]{--sez:#7d5c52}body[data-tab="pro"]{--sez:#58665f}
+body[data-tab="cal"]{--sez:#5b6475}body[data-tab="rie"]{--sez:#6e6079}body[data-tab="doc"]{--sez:#776a52}body:is([data-tab="dfx"],[data-tab="dsp"],[data-tab="dlav"],[data-tab="drit"],[data-tab="dinc"]){--sez:#6e6079}body[data-tab="drim"]{--sez:#776a52}body[data-tab="tas"]{--sez:#7d5c52}body[data-tab="pro"]{--sez:#58665f}
 :root[data-theme="dark"] body{--sez-l:55%}
 nav.tabs button.on{background:color-mix(in srgb,var(--sez) 16%,transparent);color:color-mix(in srgb,var(--sez) 85%,var(--ink))}
 nav.tabs{box-shadow:inset 0 -2px 0 color-mix(in srgb,var(--sez) 45%,transparent)}
@@ -326,6 +326,13 @@ body.nascondi :is(.hero b,.hero .rim b,.kv b,details.fold>summary .sum,#daySum b
 .pst.no{background:color-mix(in srgb,var(--warn) 16%,var(--card));color:color-mix(in srgb,var(--warn) 45%,var(--ink));border-color:color-mix(in srgb,var(--warn) 45%,var(--card))}
 .pst.nd{background:color-mix(in srgb,var(--mut) 12%,var(--card));color:var(--ink);border-color:color-mix(in srgb,var(--mut) 35%,var(--card))}
 #vcModal{z-index:70}.vcsum{border:1px solid var(--line);border-radius:12px;padding:2px 12px;margin:10px 0}.vcsum .kv:last-child{border:0}
+.vcacts{display:flex;justify-content:flex-end;align-items:center;gap:6px;margin-top:6px}.vcacts .btn{min-height:44px}
+.btn.link{background:transparent;border:0;color:var(--mut);text-decoration:underline;font-weight:600;padding:0 10px}
+.toast.azione{pointer-events:auto;display:flex;align-items:center;gap:12px}.toast .tbtn{background:transparent;border:0;color:inherit;font:inherit;font-weight:800;text-decoration:underline;min-height:44px;padding:0 4px;cursor:pointer}
+.dlg .dlgt{display:block;font-size:16.5px;margin-bottom:6px}.dlg .dlgp{display:block;margin-top:6px}
+.fascia{position:sticky;top:0;z-index:40;background:color-mix(in srgb,var(--warn) 16%,var(--card));border-bottom:1px solid color-mix(in srgb,var(--warn) 45%,var(--card));color:var(--ink);padding:10px 14px;font-size:14px}.fascia b,.fascia span{display:block}.fascia span{margin-top:3px}
+.vcsumt{font-size:12.5px;font-weight:750;color:var(--mut);margin:12px 0 -4px}
+.vcriga{padding-top:8px;border-top:1px dashed var(--line)}.vcrt{font-size:14px}.vcrt small{display:block;color:var(--mut);font-size:12.5px;margin-top:2px}.vcriga .btn{min-height:44px;flex:none}
 .vcavv{background:color-mix(in srgb,var(--warn) 14%,var(--card));border:1px solid color-mix(in srgb,var(--warn) 45%,var(--card));border-radius:12px;padding:10px 12px;font-size:14px;margin:10px 0}
 /* 24.2 (D-085): riquadro del Riepilogo riducibile */
 .hero button.rim{display:flex;flex-direction:column;align-items:flex-start;position:relative;width:100%;min-height:44px;background:none;border:0;border-bottom:1px solid rgba(255,255,255,.14);color:inherit;font:inherit;text-align:left;padding:0 44px 10px 0;margin:0;cursor:pointer;border-radius:0}
@@ -345,6 +352,23 @@ body.nascondi :is(.hero b,.hero .rim b,.kv b,details.fold>summary .sum,#daySum b
 .rbars{display:grid;grid-template-columns:repeat(12,1fr);gap:4px;align-items:end;height:140px;margin:10px 0 4px}.rbar{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:3px}.rbar span{width:100%;border-radius:6px 6px 2px 2px;background:#2f9e44;min-height:2px;transition:height .5s ease}.rbar span.neg{background:#e8590c}.rbar small{font-size:10px;color:var(--mut)}
 #filtri{display:block;position:relative}.calpop{position:absolute;z-index:20;left:0;top:46px;width:min(320px,100%);max-height:60vh;overflow:auto}.calpop .crow{flex-direction:row;font-size:15px;color:var(--ink);font-weight:600;margin:0}.calpop .crow input{width:auto;margin:0;flex:none;accent-color:var(--pri)}
 body.nascondi .hero small.det{filter:blur(6px)}
+/* 24b.1 (D-098): pagine di dettaglio del Riepilogo e caselle del riquadro che ci portano (stile provvisorio, aspetta il mockup di 02) */
+.pagrie .per{display:flex;align-items:center;gap:4px;margin:-6px 0 10px}.pagrie .per .pgper{flex:1;text-align:center;font-weight:650;color:var(--mut);font-size:14px}
+.testa{background:linear-gradient(135deg,color-mix(in srgb,var(--sez) 70%,#16181b),#1f2125);color:#fff;border-radius:var(--r);padding:14px 16px;margin-bottom:12px;display:flex;align-items:center;gap:12px}
+.testa:empty{display:none}.testa div{flex:1;display:flex;flex-direction:column}.testa small{opacity:.85;font-size:12.5px}.testa b{font-size:26px;font-variant-numeric:tabular-nums}
+.testa .ic{display:grid;place-items:center;background:rgba(255,255,255,.14);width:40px;height:40px;font-size:20px;border-radius:11px;flex:none}
+.hero button.rim:active{transform:scale(.985)}
+.hero .heroDet>button.hcel:active{background:rgba(255,255,255,.18);transform:scale(.97)}
+.hero .heroDet:not([hidden])>*{animation:apri calc(280ms*var(--t)) cubic-bezier(.2,.8,.2,1) both}
+.hero .heroDet:not([hidden])>*:nth-child(n+3){animation-delay:calc(40ms*var(--t))}.hero .heroDet:not([hidden])>*:nth-child(n+5){animation-delay:calc(80ms*var(--t))}.hero .heroDet:not([hidden])>*:nth-child(n+7){animation-delay:calc(120ms*var(--t))}
+/* 02 (tornata 23 §4): parti che passano da nascoste a visibili senza <details> compaiono con la stessa animazione delle sezioni */
+:is(#fxFineBox,#fxFineNota,#tmPrima,#tmAvv,#vcSum,#vcAvv,#vcNota,#vcDrive,#vcRigaBox):not([hidden]){animation:apri calc(280ms*var(--t)) cubic-bezier(.2,.8,.2,1)}
+.mesi .mrow{display:flex;align-items:center;gap:8px;width:100%;padding:8px 0;border:0;border-bottom:1px dashed var(--line);background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;min-height:44px}.mesi .mrow:last-child{border-bottom:0}.mesi .mrow .tx{flex:1;display:flex;flex-direction:column}.mesi .mrow small{color:var(--mut)}.mesi .mrow::after{content:"›";content:"›"/"";color:var(--mut);font-size:20px}
+.pgsez{margin:18px 2px 8px;font-size:15px}
+.pagrie .monthbar h2{text-transform:none} /* 24b.1: i titoli delle pagine si scrivono come nel riquadro ("Ritenuta d’acconto") */
+.hero .heroDet>button.hcel{font:inherit;color:inherit;text-align:left;border:0;cursor:pointer;position:relative;padding-right:24px;width:100%}
+.hero .heroDet>button.hcel::after{content:"›";content:"›"/"";position:absolute;right:9px;top:50%;transform:translateY(-50%);opacity:.7;font-size:18px} /* il segno non entra nel testo letto */
+.hero .heroDet>button.hcel:focus-visible{outline:2px solid #f3c969;outline-offset:2px}
 /* v19 animazioni (varianti A, velocità veloce) */
 :root{--t:.7}
 @keyframes inR{from{transform:translateX(60%);opacity:0}to{transform:none;opacity:1}}@keyframes inL{from{transform:translateX(-60%);opacity:0}to{transform:none;opacity:1}}
@@ -364,7 +388,7 @@ button,.btn,.chip,.pchip,.fchip,.ib,.fab,.calbtn,.subnav button,.prow{transition
 button:active:not(:disabled),.btn:active,.chip:active,.prow:active,.subnav button:active{transform:scale(.95);filter:brightness(.96)}
 .grid .day:active{transform:scale(.96)}
 @keyframes up{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
-.cascata :is(.cards,#rieTot,.stack,#docList,#tasList,#risBody)>*{animation:up calc(340ms*var(--t)) cubic-bezier(.2,.8,.2,1) both}
+.cascata :is(.cards,#rieTot,.stack,#docList,#tasList,#risBody)>*,.cascata.pagrie>*{animation:up calc(340ms*var(--t)) cubic-bezier(.2,.8,.2,1) both}
 .cascata :is(.cards,.stack,#docList,#tasList,#risBody)>*:nth-child(2){animation-delay:calc(50ms*var(--t))}.cascata :is(.cards,.stack,#docList,#tasList,#risBody)>*:nth-child(3){animation-delay:calc(100ms*var(--t))}
 .cascata :is(.cards,.stack,#docList,#tasList,#risBody)>*:nth-child(4){animation-delay:calc(150ms*var(--t))}.cascata :is(.cards,.stack,#docList,#tasList,#risBody)>*:nth-child(n+5){animation-delay:calc(200ms*var(--t))}
 .toast{transition:opacity calc(250ms*var(--t)) ease,transform calc(320ms*var(--t)) cubic-bezier(.2,.9,.3,1.2)}
@@ -448,6 +472,7 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
   <button id="occhio" class="ib eye" aria-label="Nascondi gli importi" aria-pressed="false"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path class="sbarra" d="M3 3l18 18"/></svg></button>
   <button id="sync" class="chip sync">…</button>
 </header>
+<div class="fascia" id="lsFascia" role="alert" hidden></div>
 <nav class="tabs">
   <button data-tab="cal" class="on">Calendario</button>
   <button data-tab="rie">Riepilogo</button>
@@ -479,14 +504,64 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
   <section id="v-rie" hidden>
     <div class="monthbar"><button class="ib" id="rPrev">‹</button><h2 id="rieTitle"></h2><div class="seg" id="rieSeg"><button data-m="mese">Mese</button><button data-m="anno">Anno</button></div><button class="ib" id="rNext">›</button></div>
     <div id="rieTot"></div>
-    <div class="cards" id="rieCards"></div>
     <div class="subnav">
-      <button data-goto="doc"><span class="ico"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg></span><span class="tx"><b>Documenti</b><small>Ricevute, note km, PDF e invio</small></span><span class="chev">›</span></button>
-      <button data-goto="tas"><span class="ico"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M9 17l6-6"/><circle cx="9.5" cy="11.5" r=".9"/><circle cx="14.5" cy="16.5" r=".9"/></svg></span><span class="tx"><b>Tasse</b><small>Quanto mettere da parte, CU, soglie</small></span><span class="chev">›</span></button>
+      <button data-goto="tas"><span class="ico"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M9 17l6-6"/><circle cx="9.5" cy="11.5" r=".9"/><circle cx="14.5" cy="16.5" r=".9"/></svg></span><span class="tx"><b>Tasse</b><small>Quanto mettere da parte, soglie, commercialista</small></span><span class="chev">›</span></button>
       <button data-goto="ris"><span class="ico"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 9c1.2.3 2 1.3 2 2.5V13h-2l-1 3h-3v2h-3v-2H8l-1-2c-1.7-.7-3-2.5-3-4.5C4 6.5 7.6 5 11 5c2 0 3.6.5 4.8 1.3L18 5v3.2"/><circle cx="15.5" cy="10.5" r=".8" fill="currentColor"/></svg></span><span class="tx"><b>Risparmi</b><small>Obiettivi, salvadanaio, andamento</small></span><span class="chev">›</span></button>
-      <button data-goto="pen"><span class="ico"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10 12 4l9 6"/><path d="M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"/></svg></span><span class="tx"><b>Pensione</b><small>Contributi, fondo pensione, la tua pensione</small></span><span class="chev">›</span></button>
+      <button data-goto="pen"><span class="ico"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10 12 4l9 6"/><path d="M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"/></svg></span><span class="tx"><b>Pensione</b><small>Fondo pensione, pensione futura</small></span><span class="chev">›</span></button>
     </div>
-    <div id="rieAnno"></div>
+  </section>
+
+  <section id="v-dfx" class="pagrie" hidden>
+    <button class="back" data-goto="rie">‹ Riepilogo</button>
+    <div class="monthbar"><h2>Uscite fisse</h2></div>
+    <div class="per"><button class="ib pgPrev" aria-label="Periodo prima">‹</button><span class="pgper"></span><button class="ib pgNext" aria-label="Periodo dopo">›</button></div>
+    <div class="testa"></div>
+    <div class="cards" id="rieFix"></div>
+  </section>
+
+  <section id="v-dsp" class="pagrie" hidden>
+    <button class="back" data-goto="rie">‹ Riepilogo</button>
+    <div class="monthbar"><h2>Spese giornaliere</h2></div>
+    <div class="per"><button class="ib pgPrev" aria-label="Periodo prima">‹</button><span class="pgper"></span><button class="ib pgNext" aria-label="Periodo dopo">›</button></div>
+    <div class="testa"></div>
+    <div class="cards" id="rieSpese"></div>
+  </section>
+
+  <section id="v-dlav" class="pagrie" hidden>
+    <button class="back" data-goto="rie">‹ Riepilogo</button>
+    <div class="monthbar"><h2>Lavoro dipendente</h2></div>
+    <div class="per"><button class="ib pgPrev" aria-label="Periodo prima">‹</button><span class="pgper"></span><button class="ib pgNext" aria-label="Periodo dopo">›</button></div>
+    <div class="testa"></div>
+    <div class="cards" id="rieLav"></div>
+    <div id="penLav"></div>
+  </section>
+
+  <section id="v-drim" class="pagrie" hidden>
+    <button class="back" data-goto="rie">‹ Riepilogo</button>
+    <div class="monthbar"><h2>Rimborsi spese</h2></div>
+    <div class="per"><button class="ib pgPrev" aria-label="Periodo prima">‹</button><span class="pgper"></span><button class="ib pgNext" aria-label="Periodo dopo">›</button></div>
+    <div class="testa"></div>
+    <div class="cards" id="docList"></div>
+    <div class="cards mesibox" id="rieMesi"></div>
+  </section>
+
+  <section id="v-drit" class="pagrie" hidden>
+    <button class="back" data-goto="rie">‹ Riepilogo</button>
+    <div class="monthbar"><h2>Ritenuta d’acconto</h2></div>
+    <div class="per"><button class="ib pgPrev" aria-label="Periodo prima">‹</button><span class="pgper"></span><button class="ib pgNext" aria-label="Periodo dopo">›</button></div>
+    <div class="testa"></div>
+    <div class="cards docposto"></div>
+    <div class="cards mesibox"></div>
+  </section>
+
+  <section id="v-dinc" class="pagrie" hidden>
+    <button class="back" data-goto="rie">‹ Riepilogo</button>
+    <div class="monthbar"><h2>Ancora da incassare</h2></div>
+    <div class="per"><button class="ib pgPrev" aria-label="Periodo prima">‹</button><span class="pgper"></span><button class="ib pgNext" aria-label="Periodo dopo">›</button></div>
+    <div class="testa"></div>
+    <div class="cards" id="rieInc"></div>
+    <div class="cards" id="rieAnno"></div>
+    <div class="cards" id="rieCards" hidden></div>
   </section>
 
   <section id="v-ris" hidden>
@@ -495,22 +570,21 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
     <div id="risBody"></div>
   </section>
 
-  <section id="v-pen" hidden>
+  <section id="v-pen" class="pagrie" hidden>
     <button class="back" data-goto="rie">‹ Riepilogo</button>
-    <div class="monthbar"><button class="ib" id="penPrev" aria-label="Anno prima">‹</button><h2 id="penTitle"></h2><button class="ib" id="penNext" aria-label="Anno dopo">›</button></div>
+    <div class="monthbar"><h2>Pensione</h2></div>
+    <div class="per"><button class="ib pgPrev" aria-label="Periodo prima">‹</button><span class="pgper"></span><button class="ib pgNext" aria-label="Periodo dopo">›</button></div>
+    <div class="testa"></div>
+    <div class="cards" id="riePen"></div>
     <div id="penBody"></div>
   </section>
 
-  <section id="v-doc" hidden>
-    <button class="back" data-goto="rie">‹ Riepilogo</button>
-    <div class="monthbar"><button class="ib" id="dPrev">‹</button><h2 id="docTitle"></h2><button class="ib" id="dNext">›</button></div>
-    <div class="cards" id="docList"></div>
-  </section>
 
   <section id="v-tas" hidden>
     <button class="back" data-goto="rie">‹ Riepilogo</button>
     <div class="monthbar"><button class="ib" id="tPrev" aria-label="Anno prima">‹</button><h2 id="tasTitle"></h2><button class="ib" id="tNext" aria-label="Anno dopo">›</button></div>
     <div class="cards" id="tasList"></div>
+    <div class="cards" id="tasComm"></div>
     <div class="card" style="margin-top:12px"><h3>Soglie annue</h3><p class="muted sm" style="margin-top:0">Limiti da tenere d’occhio (€ lordi). Verificali con il commercialista.</p><div id="soglieEd" class="g2"></div></div>
   </section>
 
@@ -890,11 +964,12 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
 <div class="modal" id="vcModal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="vcTit">
   <div class="sheethead"><h2 id="vcTit">Riprendere i dati salvati in precedenza?</h2></div>
   <p id="vcTxt" style="margin-top:0"></p>
+  <p class="vcsumt" id="vcSumT" hidden>Da aggiungere</p>
   <div class="vcsum" id="vcSum"></div>
   <p class="vcavv" id="vcAvv"></p>
   <p class="muted sm" id="vcDrive" hidden>Con Google Drive collegato, dopo la ripresa la sincronizzazione aggiunge le modifiche salvate su Drive.</p>
   <div class="foot"><button class="btn ghost" id="vcNo">Non ora</button><button class="btn" id="vcSi">Riprendi</button></div>
-  <p class="muted sm" id="vcNota">Con «Non ora» la copia resta sul telefono e la domanda torna al prossimo avvio.</p></div></div>
+  <p class="muted sm" id="vcNota">Con «Non ora» la domanda torna al prossimo avvio. Puoi riprendere la copia anche da Impostazioni → Account.</p></div></div>
 <div class="toast" id="toast"></div>
 <div class="busyov" id="busy" hidden><div id="busyMsg">Attendi…</div></div>
 <!-- v24b: archivio.js legge i dati (IndexedDB) e poi carica gli altri file nell'ordine di sempre -->
