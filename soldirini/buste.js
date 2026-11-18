@@ -13,10 +13,38 @@
     return lettore;
   }
   const immagine=file=>new Promise((ok,ko)=>{const u=URL.createObjectURL(file),i=new Image();i.onload=()=>{URL.revokeObjectURL(u);ok(i);};i.onerror=()=>ko(new Error('il file non sembra un’immagine'));i.src=u;});
+  // v24.0.1: le righe e le colonne delle tabelle confondono Tesseract (numeri e etichette persi nelle caselle):
+  // prima di leggere, i tratti scuri lunghi (orizzontali o verticali) diventano bianchi. Il testo resta.
+  function senzaLinee(tela){
+    try{const W=tela.width,H=tela.height,cx=tela.getContext('2d'),im=cx.getImageData(0,0,W,H),d=im.data,L=Math.max(60,Math.round(Math.max(W,H)*0.06)); // una linea è lunga: le barre unite di "TT" in grassetto no
+      const scuro=new Uint8Array(W*H);for(let i=0,j=0;i<d.length;i+=4,j++)scuro[j]=(d[i]*0.299+d[i+1]*0.587+d[i+2]*0.114)<160?1:0;
+      const S=Math.max(4,Math.round(Math.min(W,H)*0.006)); // spessore massimo di una linea: i riquadri scuri pieni (testo bianco su fondo scuro) restano
+      const oriz=new Uint8Array(W*H),vert=new Uint8Array(W*H),via=new Uint8Array(W*H);
+      for(let y=0;y<H;y++){let x=0;while(x<W){if(scuro[y*W+x]){const a=x;while(x<W&&scuro[y*W+x])x++;if(x-a>=L)for(let k=a;k<x;k++)oriz[y*W+k]=1;}else x++;}}
+      for(let x=0;x<W;x++){let y=0;while(y<H){if(scuro[y*W+x]){const a=y;while(y<H&&scuro[y*W+x])y++;if(y-a>=L)for(let k=a;k<y;k++)vert[k*W+x]=1;}else y++;}}
+      for(let x=0;x<W;x++){let y=0;while(y<H){if(oriz[y*W+x]){const a=y;while(y<H&&oriz[y*W+x])y++;if(y-a<=S)for(let k=a;k<y;k++)via[k*W+x]=1;}else y++;}}
+      for(let y=0;y<H;y++){let x=0;while(x<W){if(vert[y*W+x]){const a=x;while(x<W&&vert[y*W+x])x++;if(x-a<=S)for(let k=a;k<x;k++)via[y*W+k]=1;}else x++;}}
+      for(let j=0;j<via.length;j++)if(via[j]){const i=j*4;d[i]=d[i+1]=d[i+2]=255;}
+      cx.putImageData(im,0,0);}catch(e){/* se non si può leggere la tela, si va avanti senza */}
+  }
+  // v24.0.1: un importo stampato con spazi ("1. 234, 50", "2.345, 67", importi inventati) arriva in più pezzi: li riunisco
+  function unisciNumeri(pezzi){
+    const out=[];const yc=p=>(p.y0+p.y1)/2,linee=[];
+    pezzi.slice().sort((a,b)=>yc(a)-yc(b)).forEach(p=>{const l=linee.find(l=>Math.abs(l.y-yc(p))<Math.max(1,p.y1-p.y0)*0.5);if(l)l.el.push(p);else linee.push({y:yc(p),el:[p]});});
+    const S=[].concat(...linee.map(l=>l.el.sort((a,b)=>a.x0-b.x0)));
+    const ok=t=>/^\d{1,3}(\.\d{3})*,\d{2}$|^\d+,\d{2}$/.test(t);
+    for(let i=0;i<S.length;i++){let p=Object.assign({},S[i]);
+      while(i+1<S.length){const q=S[i+1],h=Math.max(1,p.y1-p.y0),stessa=Math.abs((p.y0+p.y1)/2-(q.y0+q.y1)/2)<h*0.5,vicino=q.x0-p.x1<h*1.2&&q.x1>p.x1;
+        const t=p.t+q.t;
+        if(stessa&&vicino&&(/[.,]$/.test(p.t)||/^[.,]/.test(q.t))&&/^[\d.,]+$/.test(p.t)&&/^[\d.,]+$/.test(q.t)&&(ok(t)||/^\d{1,3}[.,]$/.test(t)||/^\d{1,3}\.\d{3},$/.test(t)||/^\d+,$/.test(t))){
+          p={t,x0:Math.min(p.x0,q.x0),y0:Math.min(p.y0,q.y0),x1:Math.max(p.x1,q.x1),y1:Math.max(p.y1,q.y1)};i++;} else break;}
+      out.push(p);}
+    return out;
+  }
   /** Testo della busta con le posizioni: [{t,x0,y0,x1,y1}] (y dall'alto, +10000 per ogni pagina). */
   async function testoBusta(file,prog){
     const pezzi=[];
-    const ocr=async(tela,pag)=>{const w=await preparaLettore(prog);prog&&prog(0.4,'Leggo il testo…');await w.setParameters({tessedit_pageseg_mode:'3'});const {data}=await w.recognize(tela);
+    const ocr=async(tela,pag)=>{const w=await preparaLettore(prog);prog&&prog(0.4,'Leggo il testo…');senzaLinee(tela);await w.setParameters({tessedit_pageseg_mode:'3'});const {data}=await w.recognize(tela);
       (data.words||[]).forEach(p=>pezzi.push({t:p.text,x0:p.bbox.x0,y0:p.bbox.y0+pag*10000,x1:p.bbox.x1,y1:p.bbox.y1+pag*10000}));};
     if(/pdf/i.test(file.type)||/\.pdf$/i.test(file.name)){
       prog&&prog(0.1,'Apro il PDF…');
@@ -52,7 +80,7 @@
       else t = t.replace(',', '.');
       const v = parseFloat(t); return isNaN(v) ? null : (neg ? -v : v);
     };
-    const P = pezzi.map(p => Object.assign({}, p, { u: N(p.t), yc: (p.y0 + p.y1) / 2, h: p.y1 - p.y0, v: numero(p.t) }));
+    const P = unisciNumeri(pezzi).map(p => Object.assign({}, p, { u: N(p.t), yc: (p.y0 + p.y1) / 2, h: p.y1 - p.y0, v: numero(p.t) }));
     const hs = P.map(p => p.h).sort((a, b) => a - b), H = hs[Math.floor(hs.length / 2)] || 10;
     // righe
     const righe = [];
@@ -82,27 +110,35 @@
   const MM = ['GENNAIO','FEBBRAIO','MARZO','APRILE','MAGGIO','GIUGNO','LUGLIO','AGOSTO','SETTEMBRE','OTTOBRE','NOVEMBRE','DICEMBRE'];
   function analizzaBusta(pezzi) {
     const { N, numero, P, H, righe, testo, primo } = struttura(pezzi);
-    const netto = primo(/^NETTO (DEL MESE|A PAGARE|IN BUSTA|BUSTA|DA PAGARE|IN PAGAMENTO)$/, /^NETTO$/);
+    let netto = primo(/^NETTO (DEL MESE|A PAGARE|IN BUSTA|BUSTA|DA PAGARE|IN PAGAMENTO)$/, /^NETTO$/);
     // v22: l'imponibile previdenziale NON è il lordo (report 04, caso T-C6): ha un campo suo
-    let lordo = primo(/^TOT(ALE|\.)? ?COMPETENZE$/, /^COMPETENZE LORDE$/, /^(RETRIBUZIONE|TOTALE) LORD[AO]$/);
+    let lordo = primo(/^TOT(ALE|\.)? ?COMPETENZE$/, /^COMPETENZE LORDE$/, /^(RETRIBUZIONE|TOTALE) LORD[AO]$/, /^TOTALI$/);
     // v22: voci per la pensione (etichette ipotizzate da 04: vanno sempre controllate dall'utente)
-    const imponibilePrev = primo(/^IMPONIBILE PREVIDENZIALE$/, /^IMPON(IBILE|\.)? ?PREVID(ENZIALE|\.)?$/, /^IMPON(IBILE|\.)? ?INPS$/, /^IMPONIBILE CONTRIBUTIVO$/);
+    const imponibilePrev = primo(/^IMPONIBILE PREVIDENZIALE$/, /^IMPON(IBILE|\.)? ?PREVID(ENZIALE|\.)?$/, /^IMPON(IBILE|\.)? ?INPS$/, /^IMPONIBILE CONTRIBUTIVO$/, /^IMPON(IBILE|\.)? ?CONTR(IBUTIVO|IBUTI|\.)? ?MESE$/);
     const contribLav = primo(/^CONTRIBUTI PREVIDENZIALI$/, /^CONTR(IBUTI|\.)? ?IVS$/, /^F\.? ?P\.? ?L\.? ?D\.?$/, /^CONTRIBUT[OI] INPS$/, /^TOT(ALE|\.)? ?CONTRIBUTI$/);
     const gi = primo(/^(GG|GIORNI) INPS$/, /^GIORNI RETRIBUITI$/);
     const giorniInps = gi != null && gi <= 31 && Number.isInteger(gi) ? gi : null;
     let trattenute = primo(/^TOT(ALE|\.)? ?TRATTENUTE$/, /^TOTALE RITENUTE$/);
+    // v24.0.1: riga "TOTALI" con due importi (competenze e trattenute): il secondo sono le trattenute
+    if (trattenute == null && lordo != null) { const rt = righe.find(r => r.el.some(p => p.u === 'TOTALI'));
+      const nn = rt ? rt.el.filter(p => p.v != null && p.v > 0).sort((a, b) => a.x0 - b.x0) : [];
+      if (nn.length >= 2 && nn[0].v === lordo && nn[1].v < lordo) trattenute = nn[1].v; }
+    // v24.0.1: un netto più piccolo dei contributi non è credibile (pezzo di un numero letto male): meglio vuoto che sbagliato
+    if (netto != null && contribLav != null && netto < contribLav) netto = null;
     // v17: totali senza etichetta (es. sotto le colonne COMPETENZE e TRATTENUTE): due importi sulla stessa riga con competenze − trattenute = netto
     if (netto != null && (lordo == null || trattenute == null)) {
       cerca: for (const r of righe) { const nn = r.el.filter(p => p.v != null && p.v > 0);
         for (let i = 0; i < nn.length; i++) for (let j = i + 1; j < nn.length; j++) if (Math.abs(nn[i].v - nn[j].v - netto) < 0.6) {
           if (lordo == null) lordo = nn[i].v; if (trattenute == null) trattenute = nn[j].v; break cerca; } }
     }
+    // v24.0.1: se lordo e trattenute ci sono ma il netto non torna (oltre 1 € di arrotondamento), il netto letto è sbagliato
+    if (netto != null && lordo != null && trattenute != null && Math.abs(lordo - trattenute - netto) > 1) netto = null;
     if (netto != null && lordo != null && trattenute == null && lordo > netto) trattenute = Math.round((lordo - netto) * 100) / 100;
     // mese: "OTTOBRE 2026" oppure "10/2026"
     let mese = null; const T = N(testo);
     const m1 = T.match(new RegExp('(' + MM.join('|') + ')\\s*(20\\d\\d)'));
     if (m1) mese = m1[2] + '-' + String(MM.indexOf(m1[1]) + 1).padStart(2, '0');
-    else { const m2 = T.match(/(?:MESE|PERIODO|RETRIBUZIONE)[^\n]{0,25}?\b(0?[1-9]|1[0-2])[\/\-.](20\d\d)\b/) || T.match(/\b(0?[1-9]|1[0-2])[\/\-](20\d\d)\b/);
+    else { const m2 = T.match(/(?:MESE|PERIODO|RETRIBUZIONE)[^\n]{0,25}?(?<!\d[\/\-.])\b(0?[1-9]|1[0-2])[\/\-.](20\d\d)\b/) || T.match(/(?<!\d[\/\-.])\b(0?[1-9]|1[0-2])[\/\-](20\d\d)\b/); // v24.0.1: mai una data con il giorno (assunzione, scadenza)
       if (m2) mese = m2[2] + '-' + String(+m2[1]).padStart(2, '0'); }
     // saldo di una riga del riepilogo ferie/permessi: "Saldo 12,00" sulla riga, oppure la colonna Saldo/Residuo, oppure l'ultimo numero
     const saldoDi = rf => {
@@ -111,12 +147,18 @@
       const kw = rf.testo.match(/(SALDO|RESIDU[OEI]|DA GODERE|RIMANENZA|SPETTANTI RESIDU[OEI])\s*:?\s*(-?[\d.,]+-?)/);
       if (kw) v = numero(kw[2]);
       if (v == null) {
-        const testa = P.filter(p => /^(SALDO|RESIDU[OEI]?|RESID\.?|DA|RIMAN)/.test(p.u) && !/^RES\.?$/.test(p.u) && p.yc < rf.yc && p.yc > rf.yc - H * 8);
+        const pul = u => u.replace(/^[\s|\[(]+/, ''); // v24.0.2: "|RESIDUO" o "RESDUO" letti dalla foto
+        const testa = P.filter(p => /^(SALDO|RESI?DU[OEI]?|RESID\.?|DA|RIMAN)/.test(pul(p.u)) && !/^RES\.?$/.test(pul(p.u)) && p.yc < rf.yc && p.yc > rf.yc - H * 8);
         const nums = rf.el.filter(p => p.v != null);
         if (testa.length) {
           const t0 = testa.sort((a, c) => c.yc - a.yc)[0], xc = (t0.x0 + t0.x1) / 2;
-          v = nums.sort((a, c) => Math.abs((a.x0 + a.x1) / 2 - xc) - Math.abs((c.x0 + c.x1) / 2 - xc))[0].v;
-        } else v = nums[nums.length - 1].v;
+          const n0 = nums.sort((a, c) => Math.abs((a.x0 + a.x1) / 2 - xc) - Math.abs((c.x0 + c.x1) / 2 - xc))[0];
+          // v24.0.2: il numero deve stare sotto la colonna del residuo; se è lontano (altra tabella) la riga è vuota
+          v = Math.abs((n0.x0 + n0.x1) / 2 - xc) <= Math.max(t0.x1 - t0.x0, H * 3) ? n0.v : null;
+        } else if (!rf.senzaEtichetta) {
+          // v24.0.2: senza intestazione, l'ultimo numero del gruppo vicino all'etichetta (un numero molto più a destra è di un'altra tabella)
+          let k = 0; while (k + 1 < nums.length && nums[k + 1].x0 - nums[k].x1 < H * 8) k++; v = nums[k].v;
+        }
       }
       const vicino = righe.filter(r => Math.abs(r.yc - rf.yc) < H * 8).map(r => r.testo).join(' ');
       // prima guardo la riga stessa (es. "FERIE GG"), poi le righe vicine
@@ -124,13 +166,31 @@
       return { v, unita: propria || (/\bORE\b|\bH\b/.test(vicino) ? 'ore' : /\b(GG|GIORNI)\b/.test(vicino) ? 'giorni' : null) };
     };
     const conNumeri = r => r.el.some(p => p.v != null);
+    // v24.0.2: nelle foto i numeri di una riga della tabella possono finire mezza riga sotto l'etichetta ("EX FEST." e sotto i numeri):
+    // un'etichetta senza numeri si unisce alla riga subito sotto, se quella ha solo numeri a destra dell'etichetta
+    const LAB = /[A-Z]{3}/;
+    const conSotto = (r, re) => { if (conNumeri(r)) return r;
+      const lab = r.el.find(p => LAB.test(p.u) && re(p.u)) || r.el.find(p => LAB.test(p.u)); if (!lab) return r;
+      // nella riga sotto, nessuna altra etichetta all'altezza della colonna delle etichette (a sinistra può esserci testo a margine)
+      const s = righe.find(q => q !== r && q.yc > r.yc && q.yc - r.yc < H * 1.3 && conNumeri(q) && !q.el.some(p => p.v == null && LAB.test(p.u) && p.x0 > lab.x0 - H && p.x0 < lab.x1 + H * 6));
+      if (!s) return r;
+      // i numeri vanno all'etichetta più vicina: se un'altra etichetta della colonna è più vicina a quella riga, non sono di questa
+      const altra = righe.some(q => q !== r && q !== s && Math.abs(q.yc - s.yc) <= s.yc - r.yc && q.el.some(p => p.v == null && LAB.test(p.u) && p.x0 > lab.x0 - H && p.x0 < lab.x1 + H * 2));
+      return altra ? r : { yc: r.yc, el: r.el.concat(s.el).sort((a, c) => a.x0 - c.x0), testo: r.testo + ' ' + s.testo }; };
+    const etichetta = (re, rp = () => true) => { for (const r of righe.slice().sort((a, c) => a.yc - c.yc)) if (re(r)) { const u = conSotto(r, rp); if (conNumeri(u)) return u; } return null; };
     const EXF = /EX[\s.\-]*FEST|FESTIVITA'?\s*(SOPPRESSE|NON GODUTE|ABOLITE|RIDOTTE)|FEST\.?\s*SOPPR/;
     // ferie: riga che inizia con FERIE (non permessi o ex festività)
-    const rf = righe.find(r => /^FERIE\b/.test(r.testo) && conNumeri(r)) || righe.find(r => /\bFERIE\b/.test(r.testo) && !/PERMESS|FESTIVIT|ROL\b/.test(r.testo) && conNumeri(r));
+    let rf = etichetta(r => /^FERIE\b/.test(r.testo), u => /^FERIE/.test(u)) || etichetta(r => /\bFERIE\b/.test(r.testo) && !/PERMESS|FESTIVIT|ROL\b/.test(r.testo));
+    // v24.0.2: etichetta "FERIE" persa nella foto. Tabella con MATURATO / GODUTO / RESIDUO: la prima riga sotto le intestazioni,
+    // con almeno due numeri e senza un'etichetta leggibile, è quella delle ferie (prima riga della tabella)
+    if (!rf) { const th = righe.find(r => /MATURAT/.test(r.testo) && /GODUT/.test(r.testo) && /RESI?DU/.test(r.testo));
+      const q = th && righe.filter(r => r.yc > th.yc && r.yc - th.yc < H * 3 && conNumeri(r)).sort((a, c) => a.yc - c.yc)[0];
+      const n1 = q && q.el.find(p => p.v != null);
+      if (q && q.el.filter(p => p.v != null).length >= 2 && !q.el.some(p => p.v == null && LAB.test(p.u) && p.x0 < n1.x0)) rf = Object.assign({}, q, { senzaEtichetta: true }); }
     // permessi ROL (riduzione orario di lavoro)
-    const rr = righe.find(r => r !== rf && /\bR\.?O\.?L\.?\b|RIDUZ(IONE|\.)?\s*ORARIO|^PERMESS[OI]\b(?!.*(STUDIO|SINDAC|ELETTOR|LUTTO|104))/.test(r.testo) && !EXF.test(r.testo) && conNumeri(r));
+    const rr = etichetta(r => r !== rf && /\bR\.?O\.?L\.?\b|RIDUZ(IONE|\.)?\s*ORARIO|^PERMESS[OI]\b(?!.*(STUDIO|SINDAC|ELETTOR|LUTTO|104))/.test(r.testo) && !EXF.test(r.testo));
     // ex festività / festività non godute
-    const rx = righe.find(r => r !== rf && r !== rr && EXF.test(r.testo) && conNumeri(r));
+    const rx = etichetta(r => r !== rf && (!rr || r.yc !== rr.yc) && EXF.test(r.testo), u => /^EX/.test(u));
     const sf = saldoDi(rf), sr = saldoDi(rr), sx = saldoDi(rx);
     const ferieV = sf.v, unita = sf.unita;
     return { mese, lordo, trattenute, netto: netto != null ? netto : (lordo != null && trattenute != null ? Math.round((lordo - trattenute) * 100) / 100 : null), ferie: ferieV, unita, rol: sr.v, exfest: sx.v, unitaPermessi: sr.unita || sx.unita || 'ore', imponibilePrev, contribLav, giorniInps, testo };
@@ -233,5 +293,5 @@
     }
     return out;
   }
-  g.Buste={testoBusta,analizzaBusta,analizzaCedolino,testoDocumento,suggerisci};
+  g.Buste={testoBusta,analizzaBusta,senzaLinee,analizzaCedolino,testoDocumento,suggerisci};
 })(typeof window!=='undefined'?window:globalThis);

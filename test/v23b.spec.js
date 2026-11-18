@@ -14,7 +14,7 @@ test.describe('23b · pdf.js con isEvalSupported:false', () => {
       const righe = fs.readFileSync(path.join(APP, f), 'utf8').split('\n');
       righe.forEach((r, i) => { if (/getDocument\(/.test(r)) chiamate.push([`${f}:${i + 1}`, /isEvalSupported:false/.test(r)]); });
     }
-    expect(chiamate.map(c => c[0]).sort()).toEqual(['buste.js:23', 'buste.js:185', 'pdfdoc.js:11', 'tasse.js:133'].sort());
+    expect(chiamate.map(c => c[0]).sort()).toEqual(['buste.js:51', 'buste.js:245', 'pdfdoc.js:11', 'tasse.js:133'].sort());
     expect(chiamate.filter(c => !c[1])).toEqual([]);
   });
 
@@ -32,8 +32,8 @@ test.describe('23b · pdf.js con isEvalSupported:false', () => {
       const visti = new WeakSet(); const testo = (x, d = 0) => typeof x === 'string' ? x : (x && typeof x === 'object' && d < 6 && !visti.has(x) && (visti.add(x), true)) ? Object.values(x).map(v => testo(v, d + 1)).join(' ') : '';
       const testi = [];
       try {
-        testi.push(testo(await Buste.testoBusta(file())));        // buste.js:23
-        testi.push(testo(await Buste.testoDocumento(file())));    // buste.js:185
+        testi.push(testo(await Buste.testoBusta(file())));        // buste.js:51
+        testi.push(testo(await Buste.testoDocumento(file())));    // buste.js:245
         testi.push(testo(await pdfLeggi(b64)));                   // pdfdoc.js:11
         testi.push(testo(await leggiCU(file())));                 // tasse.js:133 (una CU vera non c'è: basta che apra il file)
       } finally { window.pdfjsLib = L; }
@@ -43,7 +43,7 @@ test.describe('23b · pdf.js con isEvalSupported:false', () => {
     expect(r.opz.length).toBeGreaterThanOrEqual(4);
     expect(r.opz.every(v => v === false)).toBe(true);
     const punti = [...new Set(r.dove.map(d => (d.match(/(\w+\.js:\d+)/) || [])[1]))].sort();
-    expect(punti).toEqual(['buste.js:185', 'buste.js:23', 'pdfdoc.js:11', 'tasse.js:133']);
+    expect(punti).toEqual(['buste.js:245', 'buste.js:51', 'pdfdoc.js:11', 'tasse.js:133']);
     expect(r.letti.slice(0, 3)).toEqual([true, true, true]);
     expect(errori).toEqual([]);
   });
