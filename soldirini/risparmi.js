@@ -28,11 +28,11 @@ function renderRisparmi(){
   <div class="card"><h3>🎯 Obiettivi</h3>${O.map(o=>{const s=totale(m=>m.ob===o.id);const t=num(o.target);const p=t?Math.min(100,Math.round(s/t*100)):0;
       const n=o.entro?Math.max(1,mesiTra(ym,o.entro)+1):0;const serve=t>s&&n?r2((t-s)/n):0;
       return `<div class="obp"><div class="kv"><span><b>${esc(o.nome)}</b>${o.entro?` <small class="muted">entro ${esc(monthName(o.entro))}</small>`:''}</span><b>${eur(s)} / ${eur(t)}</b></div><div class="bar"><span style="width:${p}%"></span></div>
-        <small class="muted">${p>=100?'🎉 Obiettivo raggiunto!':serve?`Servono ${eur(serve)} al mese`:''}</small> <button class="btn ghost sm" data-obed="${o.id}">Modifica</button></div>`;}).join('')||'<p class="muted sm">Nessun obiettivo. Esempi: vacanze, fondo emergenze, auto nuova.</p>'}
+        <small class="muted">${p>=100?'🎉 Obiettivo raggiunto!':serve?`Servono ${eur(serve)} al mese`:''}</small> <button class="btn ghost sm" data-obed="${esc(o.id)}">Modifica</button></div>`;}).join('')||'<p class="muted sm">Nessun obiettivo. Esempi: vacanze, fondo emergenze, auto nuova.</p>'}
     <div class="acts"><button class="btn sm" id="rsMv">+ Metti da parte</button><button class="btn ghost sm" id="rsOb">+ Nuovo obiettivo</button></div></div>
   <div class="card"><h3>📈 Andamento ${y}</h3><div class="rbars">${mesi.map((v,i)=>`<div class="rbar" title="${esc(MESI[i])}: ${eur(v)}"><span class="${v<0?'neg':''}" style="height:${Math.round(Math.abs(v)/mx*100)}%"></span><small>${MESI[i].slice(0,1).toUpperCase()}</small></div>`).join('')}</div>
     <div class="kv big"><span>Messi da parte nel ${y}</span><b>${eur(r2(mesi.reduce((a,v)=>a+v,0)))}</b></div></div>
-  <div class="card"><h3>Movimenti</h3>${movimenti().slice(0,15).map(m=>{const o=m.ob&&RS()['ob:'+m.ob];return `<div class="fxr"><span>${num(m.importo)<0?'↘':'↗'}</span><span class="tx"><b>${eur(num(m.importo))}</b><small>${parseYmd(m.data).toLocaleDateString('it-IT')}${o&&!o.deleted?' · '+esc(o.nome):''}${m.nota?' · '+esc(m.nota):''}</small></span><button class="btn ghost sm" data-mved="${m.id}">Modifica</button></div>`;}).join('')||'<p class="muted sm">Ancora nessun movimento.</p>'}</div>`;
+  <div class="card"><h3>Movimenti</h3>${movimenti().slice(0,15).map(m=>{const o=m.ob&&RS()['ob:'+m.ob];return `<div class="fxr"><span>${num(m.importo)<0?'↘':'↗'}</span><span class="tx"><b>${eur(num(m.importo))}</b><small>${parseYmd(m.data).toLocaleDateString('it-IT')}${o&&!o.deleted?' · '+esc(o.nome):''}${m.nota?' · '+esc(m.nota):''}</small></span><button class="btn ghost sm" data-mved="${esc(m.id)}">Modifica</button></div>`;}).join('')||'<p class="muted sm">Ancora nessun movimento.</p>'}</div>`;
 }
 const _render18r=render;
 render=function(){_render18r();if(tab==='ris')renderRisparmi();};
@@ -49,7 +49,7 @@ async function eliminaOb(){if(!await conferma('Eliminare l’obiettivo? I soldi 
 function apriMv(id,pre){const m=id?RS()['mv:'+id]:null;mv={id:id||uid(),tipo:m&&num(m.importo)<0?'out':'in',salvadanaio:m?.salvadanaio||pre?.salvadanaio||''};
   $('mvTit').textContent=m?'Movimento':'Metti da parte';$('mvDel').hidden=!m;
   $('mvImp').value=m?Math.abs(num(m.importo)):(pre?.importo||'');$('mvData').value=m?.data||pre?.data||today();$('mvNota').value=m?.nota||pre?.nota||'';
-  $('mvOb').innerHTML='<option value="">— nessun obiettivo —</option>'+obiettivi().map(o=>`<option value="${o.id}">${esc(o.nome)}</option>`).join('');$('mvOb').value=m?.ob||'';
+  $('mvOb').innerHTML='<option value="">— nessun obiettivo —</option>'+obiettivi().map(o=>`<option value="${esc(o.id)}">${esc(o.nome)}</option>`).join('');$('mvOb').value=m?.ob||'';
   tipoMv();apri('mvModal');}
 function tipoMv(){document.querySelectorAll('#mvTipo button').forEach(b=>b.classList.toggle('on',b.dataset.t===mv.tipo));$('mvTit').textContent=mv.tipo==='out'?'Prelevo dai risparmi':$('mvDel').hidden?'Metti da parte':'Movimento';}
 function salvaMv(){const v=num($('mvImp').value);if(!(v>0)){toast('Scrivi l’importo.','err');return;}

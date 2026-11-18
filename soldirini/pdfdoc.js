@@ -134,7 +134,7 @@ azioneWord=async function(pid,tipo){
   const p=prog(pid);if(p.docTpl?.kind!=='pdf')return _azioneWord14(pid,tipo);
   const S=[...(wSel[pid]||[])];if(!S.length){toast('Scegli almeno un mese.','err');return;}
   if(!p.docTpl.map?.length){toast('Il PDF non ha dati collegati: apri il progetto e tocca sull’anteprima i punti da compilare.','err');return;}
-  const data=document.querySelector(`[data-wdata="${pid}"]`)?.value||today();
+  const data=document.querySelector(`[data-wdata="${CSS.escape(pid)}"]`)?.value||today();
   busy(true,'Compilo il PDF…');
   try{const f=await pdfCompila(pid,S,data);busy(false);
     logStorico('Documento',`${p.docTpl.titolo||'Ricevuta'} ${p.nome} · ${f.v.periodo}`);persist();

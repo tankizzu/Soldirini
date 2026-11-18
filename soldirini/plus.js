@@ -126,7 +126,7 @@ function confermaEv(ids,ok){const now=Date.now();for(const id of ids){const e=D(
   changed();render();toast(ok?(ids.length>1?`Confermate ${ids.length} attività`:'Confermata'):'Tolta: non l’hai fatta');}
 function renderConfermare(){
   const L=daConfermare();const box=$('confBox');box.hidden=!L.length;if(!L.length)return;
-  $('confList').innerHTML=L.map(e=>{const p=prog(e.pid);const d=parseYmd(e.data);return `<div class="conf" style="--c:${colOk(p?.colore)}"><span class="bar"></span><span class="tx"><b>${esc(etichetta(e))}</b><small>${GIORNI[d.getDay()]} ${d.getDate()} ${MESI[d.getMonth()]} · ${esc(p?.nome||'')}</small></span><button class="ok" data-cok="${e.id}" aria-label="Fatta">✓</button><button class="no" data-cno="${e.id}" aria-label="Non fatta">✕</button></div>`;}).join('');
+  $('confList').innerHTML=L.map(e=>{const p=prog(e.pid);const d=parseYmd(e.data);return `<div class="conf" style="--c:${colOk(p?.colore)}"><span class="bar"></span><span class="tx"><b>${esc(etichetta(e))}</b><small>${GIORNI[d.getDay()]} ${d.getDate()} ${MESI[d.getMonth()]} · ${esc(p?.nome||'')}</small></span><button class="ok" data-cok="${esc(e.id)}" aria-label="Fatta">✓</button><button class="no" data-cno="${esc(e.id)}" aria-label="Non fatta">✕</button></div>`;}).join('');
   $('confAll').hidden=L.length<2;
 }
 // promemoria (quando l'app è aperta o torna in primo piano la sera)
@@ -451,7 +451,7 @@ renderDoc=function(){
       h+=`<div class="card pc" style="--c:${colOk(p.colore)}"><h3><i></i>${esc(p.nome)} · modello personalizzato</h3>
         <div class="kv"><span>Attività</span><b>${righe.length}</b></div><div class="kv"><span>Km</span><b>${nf(v.km,1)} · ${eur(v.rimb_km)}</b></div>${v.lordo?`<div class="kv"><span>Compensi netti</span><b>${eur(v.netto)}</b></div>`:''}
         <div class="kv big"><span>Totale</span><b>${eur(v.tot)}</b></div>
-        <div class="acts"><button class="btn" data-xcust="${p.id}" ${righe.length?'':'disabled'}>Scarica Excel ${y}</button>${fileLink(D().files[`cust|${p.id}|${y}`],'x','Foglio Google')+(p.cartella?.link?`<a class="btn ghost sm" href="${esc(p.cartella.link)}" target="_blank" rel="noopener">Cartella ↗</a>`:'')}${payBtn(`${p.id}|${cur}|r`,v.tot_rimb)}</div>
+        <div class="acts"><button class="btn" data-xcust="${esc(p.id)}" ${righe.length?'':'disabled'}>Scarica Excel ${y}</button>${fileLink(D().files[`cust|${p.id}|${y}`],'x','Foglio Google')+(p.cartella?.link?`<a class="btn ghost sm" href="${esc(p.cartella.link)}" target="_blank" rel="noopener">Cartella ↗</a>`:'')}${payBtn(`${p.id}|${cur}|r`,v.tot_rimb)}</div>
         <p class="muted sm">Compilato sul file Excel della società${p.modello.nome?' (“'+esc(p.modello.nome)+'”)':''}, un foglio per mese. ${'Il Foglio Google si aggiorna da solo alla sincronizzazione.'}</p></div>`;
       continue;
     }
@@ -463,7 +463,7 @@ renderDoc=function(){
         <div class="kv"><span>Km × ${nf(d.rate,4)} €</span><b>${eur(d.kmEur)}</b></div>
         ${sp.voci.length?`<div class="kv"><span>Spese con scontrino (${sp.voci.length})</span><b>${eur(sp.voci.reduce((a,x)=>a+(+x.importo||0),0))}</b></div><div class="thumbs">${sp.foto.map(f=>`<img src="${f.foto}" alt="scontrino ${esc(SPESE[f.tipo])}" title="${esc(SPESE[f.tipo])} ${eur(f.importo)}">`).join('')}</div>`:''}
         <div class="kv big"><span>Totale ricevuta</span><b>${eur(d.tot)}</b></div>
-        <details class="extra" data-pid="${p.id}"><summary>Altre spese e dati della ricevuta</summary>
+        <details class="extra" data-pid="${esc(p.id)}"><summary>Altre spese e dati della ricevuta</summary>
           <p class="muted sm">Le spese aggiunte alle attività (con foto) si sommano da sole. Qui puoi aggiungerne altre a mano.</p>
           <div class="g2">
             <label>Pedaggi €<input inputmode="decimal" data-x="pedaggi" value="${x.pedaggi||''}"></label>
@@ -478,7 +478,7 @@ renderDoc=function(){
             <label>Tariffa ACI €/km<input inputmode="decimal" data-x="tariffa" value="${x.tariffa}"></label>
             <label>Calcolata il<input data-x="tariffaData" value="${esc(x.tariffaData)}"></label>
           </div></details>
-        <div class="acts"><button class="btn" data-pdf="${p.id}" ${d.tot?'':'disabled'}>Scarica PDF</button><button class="btn ghost" data-inv="${p.id}" ${d.tot?'':'disabled'}>Invia</button>
+        <div class="acts"><button class="btn" data-pdf="${esc(p.id)}" ${d.tot?'':'disabled'}>Scarica PDF</button><button class="btn ghost" data-inv="${esc(p.id)}" ${d.tot?'':'disabled'}>Invia</button>
           ${fileLink(D().files[`rimb|${p.id}|${y}`],'ric','Ricevute')+fileLink(D().files[`rimb|${p.id}|${y}`],'nota','Nota')+fileLink(D().files[`pdf|${p.id}|${cur}`],'pdf','PDF su Drive')+(p.cartella?.link?`<a class="btn ghost sm" href="${esc(p.cartella.link)}" target="_blank" rel="noopener">Cartella ↗</a>`:'')}${payBtn(key,d.tot)}</div>
         <p class="muted sm">Il PDF contiene ricevuta${D().profilo.firma?' firmata':''}, nota km${sp.foto.length?' e le foto degli scontrini':''}.${D().profilo.firma?'':' Aggiungi la tua firma in Progetti → I tuoi dati.'}</p></div>`;
     }
@@ -487,7 +487,7 @@ renderDoc=function(){
       const key=`${p.id}|${cur}|o`;
       h+=`<div class="card pc" style="--c:${colOk(p.colore)}"><h3><i></i>${esc(p.nome)} · ore e ritenuta</h3>
         <div class="kv"><span>Attività</span><b>${ev.length} · ${nf(S.ore)} h</b></div><div class="kv"><span>Lordo</span><b>${eur(S.lordo)}</b></div><div class="kv"><span>Ritenuta</span><b>− ${eur(S.rit)}</b></div><div class="kv big"><span>Netto</span><b>${eur(S.netto)}</b></div>
-        ${p.docTpl?.file?'<p class="muted sm" style="margin:6px 0 0">La ricevuta da firmare (Word) è nella scheda qui sotto. Questo è il prospetto delle ore.</p>':''}<div class="acts"><button class="btn${p.docTpl?.file?' ghost':''}" data-pdfp="${p.id}" ${ev.length?'':'disabled'}>${p.docTpl?.file?'Prospetto ore (PDF)':'Scarica PDF'}</button><button class="btn ghost" data-invo="${p.id}" ${ev.length?'':'disabled'}>Invia</button>${payBtn(key,S.netto)}</div></div>`;
+        ${p.docTpl?.file?'<p class="muted sm" style="margin:6px 0 0">La ricevuta da firmare (Word) è nella scheda qui sotto. Questo è il prospetto delle ore.</p>':''}<div class="acts"><button class="btn${p.docTpl?.file?' ghost':''}" data-pdfp="${esc(p.id)}" ${ev.length?'':'disabled'}>${p.docTpl?.file?'Prospetto ore (PDF)':'Scarica PDF'}</button><button class="btn ghost" data-invo="${esc(p.id)}" ${ev.length?'':'disabled'}>Invia</button>${payBtn(key,S.netto)}</div></div>`;
     }
   }
   if(progetti().some(p=>p.ore.attivo)){

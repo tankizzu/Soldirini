@@ -97,31 +97,38 @@
       return out;
     };
     // valore: il numero più vicino a destra sulla stessa riga, altrimenti il più vicino sotto l'etichetta
-    const valoreDi = e => {
+    // 24.2: ok(p) controlla il numero trovato; se non va bene il valore resta vuoto (non si passa al numero dopo, che è di un'altra voce)
+    const valoreDi = (e, ok = () => true) => {
       const dx = e.riga.el.slice(e.j + 1).filter(p => p.v != null && p.x0 >= e.x1 - 2);
-      if (dx.length) return dx[0].v;
+      if (dx.length) return ok(dx[0]) ? dx[0].v : null;
       const sotto = P.filter(p => p.v != null && p.yc > e.yc + H * 0.4 && p.yc < e.yc + H * 4.5 && p.x1 > e.x0 - H * 2 && p.x0 < e.x1 + H * 8)
         .sort((a, b) => (a.yc - b.yc) || (Math.abs(a.x1 - e.x1) - Math.abs(b.x1 - e.x1)));
-      return sotto.length ? sotto[0].v : null;
+      return sotto.length && ok(sotto[0]) ? sotto[0].v : null;
     };
-    const primo = (...re) => { for (const r of re) for (const e of trova(r)) { const v = valoreDi(e); if (v != null && v > 0) return v; } return null; };
-    return { N, numero, P, H, righe, testo, trova, valoreDi, primo };
+    const primoCon = (ok, ...re) => { for (const r of re) for (const e of trova(r)) { const v = valoreDi(e, ok); if (v != null && v > 0) return v; } return null; };
+    const primo = (...re) => primoCon(() => true, ...re);
+    const conCentesimi = p => /[.,]\d{2}-?$/.test(p.t); // 24.2: importo stampato con i centesimi ("1.23500" o "1004" sono letti male)
+    return { N, numero, P, H, righe, testo, trova, valoreDi, primo, primoCon, conCentesimi };
   }
   const MM = ['GENNAIO','FEBBRAIO','MARZO','APRILE','MAGGIO','GIUGNO','LUGLIO','AGOSTO','SETTEMBRE','OTTOBRE','NOVEMBRE','DICEMBRE'];
   function analizzaBusta(pezzi) {
-    const { N, numero, P, H, righe, testo, primo } = struttura(pezzi);
-    let netto = primo(/^NETTO (DEL MESE|A PAGARE|IN BUSTA|BUSTA|DA PAGARE|IN PAGAMENTO)$/, /^NETTO$/);
+    const { N, numero, P, H, righe, testo, primo, primoCon, conCentesimi } = struttura(pezzi);
+    // 24.2: gli importi (netto, totali, imponibile, contributi) valgono solo se stampati con i centesimi: un pezzo letto a metà
+    // ("1004") o con la virgola persa ("1.23500" → 1,235) resta vuoto invece di dare un valore sbagliato
+    let netto = primoCon(conCentesimi, /^NETTO (DEL MESE|A PAGARE|IN BUSTA|BUSTA|DA PAGARE|IN PAGAMENTO)$/, /^NETTO$/);
     // v22: l'imponibile previdenziale NON è il lordo (report 04, caso T-C6): ha un campo suo
-    let lordo = primo(/^TOT(ALE|\.)? ?COMPETENZE$/, /^COMPETENZE LORDE$/, /^(RETRIBUZIONE|TOTALE) LORD[AO]$/, /^TOTALI$/);
+    let lordo = primo(/^TOT(ALE|\.)? ?COMPETENZE$/, /^COMPETENZE LORDE$/, /^(RETRIBUZIONE|TOTALE) LORD[AO]$/);
+    if (lordo == null) lordo = primoCon(conCentesimi, /^TOTALI$/);
     // v22: voci per la pensione (etichette ipotizzate da 04: vanno sempre controllate dall'utente)
-    const imponibilePrev = primo(/^IMPONIBILE PREVIDENZIALE$/, /^IMPON(IBILE|\.)? ?PREVID(ENZIALE|\.)?$/, /^IMPON(IBILE|\.)? ?INPS$/, /^IMPONIBILE CONTRIBUTIVO$/, /^IMPON(IBILE|\.)? ?CONTR(IBUTIVO|IBUTI|\.)? ?MESE$/);
-    const contribLav = primo(/^CONTRIBUTI PREVIDENZIALI$/, /^CONTR(IBUTI|\.)? ?IVS$/, /^F\.? ?P\.? ?L\.? ?D\.?$/, /^CONTRIBUT[OI] INPS$/, /^TOT(ALE|\.)? ?CONTRIBUTI$/);
+    const imponibilePrev = primoCon(conCentesimi, /^IMPONIBILE PREVIDENZIALE$/, /^IMPON(IBILE|\.)? ?PREVID(ENZIALE|\.)?$/, /^IMPON(IBILE|\.)? ?INPS$/, /^IMPONIBILE CONTRIBUTIVO$/, /^IMPON(IBILE|\.)? ?CONTR(IBUTIVO|IBUTI|\.)? ?MESE$/);
+    // 24.2: "CONTRIBUTI INPS" prima di "CONTRIBUTI IVS" (nelle buste TeamSystem "CONTRIBUTI IVS" è una riga di voce con la base)
+    const contribLav = primoCon(conCentesimi, /^CONTRIBUTI PREVIDENZIALI$/, /^CONTRIBUT[OI] INPS$/, /^CONTR(IBUTI|\.)? ?IVS$/, /^F\.? ?P\.? ?L\.? ?D\.?$/, /^TOT(ALE|\.)? ?CONTRIBUTI$/);
     const gi = primo(/^(GG|GIORNI) INPS$/, /^GIORNI RETRIBUITI$/);
     const giorniInps = gi != null && gi <= 31 && Number.isInteger(gi) ? gi : null;
     let trattenute = primo(/^TOT(ALE|\.)? ?TRATTENUTE$/, /^TOTALE RITENUTE$/);
     // v24.0.1: riga "TOTALI" con due importi (competenze e trattenute): il secondo sono le trattenute
     if (trattenute == null && lordo != null) { const rt = righe.find(r => r.el.some(p => p.u === 'TOTALI'));
-      const nn = rt ? rt.el.filter(p => p.v != null && p.v > 0).sort((a, b) => a.x0 - b.x0) : [];
+      const nn = rt ? rt.el.filter(p => p.v != null && p.v > 0 && conCentesimi(p)).sort((a, b) => a.x0 - b.x0) : [];
       if (nn.length >= 2 && nn[0].v === lordo && nn[1].v < lordo) trattenute = nn[1].v; }
     // v24.0.1: un netto più piccolo dei contributi non è credibile (pezzo di un numero letto male): meglio vuoto che sbagliato
     if (netto != null && contribLav != null && netto < contribLav) netto = null;
@@ -133,13 +140,20 @@
     }
     // v24.0.1: se lordo e trattenute ci sono ma il netto non torna (oltre 1 € di arrotondamento), il netto letto è sbagliato
     if (netto != null && lordo != null && trattenute != null && Math.abs(lordo - trattenute - netto) > 1) netto = null;
+    // 24.2: netto molto più piccolo delle trattenute, che non torna con i totali: è letto male → vuoto (o ricalcolato dai totali)
+    if (netto != null && trattenute != null && netto < trattenute * 0.5 && !(lordo != null && Math.abs(lordo - trattenute - netto) <= 1)) netto = null;
     if (netto != null && lordo != null && trattenute == null && lordo > netto) trattenute = Math.round((lordo - netto) * 100) / 100;
-    // mese: "OTTOBRE 2026" oppure "10/2026"
-    let mese = null; const T = N(testo);
-    const m1 = T.match(new RegExp('(' + MM.join('|') + ')\\s*(20\\d\\d)'));
-    if (m1) mese = m1[2] + '-' + String(MM.indexOf(m1[1]) + 1).padStart(2, '0');
-    else { const m2 = T.match(/(?:MESE|PERIODO|RETRIBUZIONE)[^\n]{0,25}?(?<!\d[\/\-.])\b(0?[1-9]|1[0-2])[\/\-.](20\d\d)\b/) || T.match(/(?<!\d[\/\-.])\b(0?[1-9]|1[0-2])[\/\-](20\d\d)\b/); // v24.0.1: mai una data con il giorno (assunzione, scadenza)
-      if (m2) mese = m2[2] + '-' + String(+m2[1]).padStart(2, '0'); }
+    // mese (24.2): mai da una data con il giorno (v24.0.1). 1) vicino a MESE / PERIODO / RETRIBUZIONE / COMPETENZA (stessa riga
+    // o quella sotto): "OTTOBRE 2026" oppure un "10/2026" isolato; 2) altrimenti nel resto del testo, se c'è un mese solo;
+    // 3) con due mesi diversi, o nessuno, resta vuoto (meglio vuoto che sbagliato)
+    const T = N(testo), ym = (a, m) => a + '-' + String(m).padStart(2, '0');
+    const RE_NOME = new RegExp('\\b(' + MM.join('|') + ')\\s*(20\\d\\d)\\b', 'g'), RE_NUM = /(?<![\d\/.\-])(0?[1-9]|1[0-2])[\/\-.](20\d\d)(?![\d\/.\-])/g;
+    const mesiIn = s => [...[...s.matchAll(RE_NOME)].map(m => ym(m[2], MM.indexOf(m[1]) + 1)), ...[...s.matchAll(RE_NUM)].map(m => ym(m[2], +m[1]))];
+    const vicini = new Set();
+    righe.forEach((r, i) => { if (/\b(MESE|PERIODO|RETRIBUZIONE|COMPETENZA)\b/.test(r.testo)) { mesiIn(r.testo).forEach(m => vicini.add(m));
+      const sotto = righe[i + 1]; if (sotto && sotto.yc - r.yc < H * 3) mesiIn(sotto.testo).forEach(m => vicini.add(m)); } });
+    const tutti = new Set(mesiIn(T));
+    const mese = vicini.size === 1 ? [...vicini][0] : vicini.size === 0 && tutti.size === 1 ? [...tutti][0] : null;
     // saldo di una riga del riepilogo ferie/permessi: "Saldo 12,00" sulla riga, oppure la colonna Saldo/Residuo, oppure l'ultimo numero
     const saldoDi = rf => {
       if (!rf) return { v: null, unita: null };
@@ -148,18 +162,23 @@
       if (kw) v = numero(kw[2]);
       if (v == null) {
         const pul = u => u.replace(/^[\s|\[(]+/, ''); // v24.0.2: "|RESIDUO" o "RESDUO" letti dalla foto
-        const testa = P.filter(p => /^(SALDO|RESI?DU[OEI]?|RESID\.?|DA|RIMAN)/.test(pul(p.u)) && !/^RES\.?$/.test(pul(p.u)) && p.yc < rf.yc && p.yc > rf.yc - H * 8);
+        const testa = P.filter(p => /^(SALDO|RESI?DU[OEI]?|RESID\.?|DA|RIMAN)/.test(pul(p.u)) && !/^RES\.?$/.test(pul(p.u)) && p.yc < rf.yc && p.yc > rf.yc - H * 14); // 24.2: H*8 → H*14 (tabella con 4 righe sotto l'intestazione)
         const nums = rf.el.filter(p => p.v != null);
         if (testa.length) {
           const t0 = testa.sort((a, c) => c.yc - a.yc)[0], xc = (t0.x0 + t0.x1) / 2;
           const n0 = nums.sort((a, c) => Math.abs((a.x0 + a.x1) / 2 - xc) - Math.abs((c.x0 + c.x1) / 2 - xc))[0];
           // v24.0.2: il numero deve stare sotto la colonna del residuo; se è lontano (altra tabella) la riga è vuota
           v = Math.abs((n0.x0 + n0.x1) / 2 - xc) <= Math.max(t0.x1 - t0.x0, H * 3) ? n0.v : null;
+        } else if (nums.length >= 3) {
+          v = null; // 24.2b: colonna RESIDUO non trovata e 3 o più numeri: non si sa quale sia il residuo (potrebbe essere la PROIEZIONE) → vuoto
         } else if (!rf.senzaEtichetta) {
           // v24.0.2: senza intestazione, l'ultimo numero del gruppo vicino all'etichetta (un numero molto più a destra è di un'altra tabella)
           let k = 0; while (k + 1 < nums.length && nums[k + 1].x0 - nums[k].x1 < H * 8) k++; v = nums[k].v;
         }
       }
+      // 24.2: nella tabella ferie/permessi i valori hanno i decimali: uno senza, in una riga dove gli altri li hanno, è letto male → vuoto
+      const sc = rf.el.find(p => p.v === v);
+      if (v != null && sc && !/[.,]\d{1,2}$/.test(sc.t) && rf.el.filter(p => p.v != null && /[.,]\d{2}$/.test(p.t)).length >= 2) v = null;
       const vicino = righe.filter(r => Math.abs(r.yc - rf.yc) < H * 8).map(r => r.testo).join(' ');
       // prima guardo la riga stessa (es. "FERIE GG"), poi le righe vicine
       const propria = /\b(GG|GIORNI)\b/.test(rf.testo) ? 'giorni' : /\bORE\b|\bH\b/.test(rf.testo) ? 'ore' : null;
@@ -188,7 +207,9 @@
       const n1 = q && q.el.find(p => p.v != null);
       if (q && q.el.filter(p => p.v != null).length >= 2 && !q.el.some(p => p.v == null && LAB.test(p.u) && p.x0 < n1.x0)) rf = Object.assign({}, q, { senzaEtichetta: true }); }
     // permessi ROL (riduzione orario di lavoro)
-    const rr = etichetta(r => r !== rf && /\bR\.?O\.?L\.?\b|RIDUZ(IONE|\.)?\s*ORARIO|^PERMESS[OI]\b(?!.*(STUDIO|SINDAC|ELETTOR|LUTTO|104))/.test(r.testo) && !EXF.test(r.testo));
+    // 24.2: prima la riga R.O.L. / riduzione orario; "PERMESSI" solo se non c'è (nelle buste TeamSystem sono righe diverse)
+    const rr = etichetta(r => r !== rf && /\bR\.?O\.?L\.?\b|RIDUZ(IONE|\.)?\s*ORARIO/.test(r.testo) && !EXF.test(r.testo))
+      || etichetta(r => r !== rf && /^PERMESS[OI]\b(?!.*(STUDIO|SINDAC|ELETTOR|LUTTO|104))/.test(r.testo) && !EXF.test(r.testo));
     // ex festività / festività non godute
     const rx = etichetta(r => r !== rf && (!rr || r.yc !== rr.yc) && EXF.test(r.testo), u => /^EX/.test(u));
     const sf = saldoDi(rf), sr = saldoDi(rr), sx = saldoDi(rx);

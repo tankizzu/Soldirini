@@ -37,22 +37,34 @@ function contiAnno(y){const T={prog:0,lav:0,pen:0,fAdd:0,fTot:0,sp:0,entrate:0,u
 window.contiMese=contiMese;window.contiAnno=contiAnno;
 
 // ---------- riepilogo: in alto i soldi rimanenti, poi lavoro dipendente, rimborsi, ritenuta, pagamenti fissi ----------
+// 24.2 (D-085): riquadro riducibile. Chiuso: soldi rimanenti, "Entrate · Uscite". Aperto: le caselle.
+// Chiuso a ogni apertura dell'app (D-010): lo stato resta solo in memoria, non si salva.
+let heroAperto=false;
+function heroStato(h){const b=h.querySelector('.rim'),d=h.querySelector('#heroDet');if(!b||!d)return;
+  // 24.2b (testi di 02): lo stato si comunica solo con aria-expanded; il testo nascosto ", dettagli" resta fisso
+  h.classList.toggle('aperto',heroAperto);b.setAttribute('aria-expanded',String(heroAperto));d.hidden=!heroAperto;}
 const _renderRie18=renderRiepilogo;
 renderRiepilogo=function(){_renderRie18();
   const anno=rieMode==='anno',y=cur.slice(0,4);const hero=$('rieTot').querySelector('.hero');if(!hero)return;
   const {tot}=anno?aggrega(y):riepilogo(cur);const daInc=r2(dovuti().filter(d=>!d.pag).reduce((a,d)=>a+d.imp,0));
   const C=anno?contiAnno(y):contiMese(cur);const lavV=anno?C.lav:C.lav.v,penV=anno?C.pen:C.pen.v;
-  const cella=(t,v,cls='')=>`<div class="${cls}"><small>${t}</small><b>${v}</b></div>`;
-  // v24 (D-065, D-066, D-067): "Soldi rimanenti:" / "del mese"; usciti = uscite fisse del mese + spese giornaliere
-  const ora=today().slice(0,7);const sotto=!anno?'del mese':+y<+ora.slice(0,4)?'somma dei mesi da gennaio a dicembre':+y===+ora.slice(0,4)?`somma dei mesi da gennaio a ${MESI[C.mesi-1]}`:'l’anno non è ancora iniziato';
-  hero.innerHTML=`<div class="rim${C.rimanenti<0?' neg':''}"><small>${anno?'Rimasti nel '+y:'Soldi rimanenti:'}</small><small class="dm">${sotto}</small><b>${eur(C.rimanenti)}</b><small class="det">Entrati ${eur(C.entrate)} · usciti ${eur(C.usciti)}</small>`+
-    (fissi().length?`<small class="hl">Uscite fisse: ${eur(C.fTot)}</small>`:'')+
-    (C.sp||!anno?`<small class="hl">Spese giornaliere: ${eur(C.sp)}</small>`:'')+
-    (anno&&C.fResto?`<small class="hl">Uscite fisse ancora da addebitare entro dicembre: ${eur(C.fResto)}</small>`:'')+`</div>`+
-    (lavori().length?cella('Lavoro dipendente',eur(lavV)):'')+
-    (penV||(window.Pensione&&Pensione.profilo())?cella('Pensione',eur(penV)):'')+
-    cella('Rimborsi spese',eur(tot.rimb))+cella('Ritenuta d’acconto',eur(tot.rit))+
-    cella(anno?'Incassato dai progetti':'Lavorato nei progetti',eur(r2(tot.netto+tot.rimb)))+cella('Ancora da incassare',eur(daInc));
+  const cella=(t,v,cls='',nota='')=>({h:c=>`<div class="${[cls,c].filter(Boolean).join(' ')}"><small>${t}</small><b>${v}</b>${nota?`<small class="nota">${nota}</small>`:''}</div>`});
+  // vista Anno: resta "somma dei mesi da gennaio a …"; vista Mese senza "del mese" (D-085)
+  const ora=today().slice(0,7);const sotto=!anno?'':+y<+ora.slice(0,4)?'somma dei mesi da gennaio a dicembre':+y===+ora.slice(0,4)?`somma dei mesi da gennaio a ${MESI[C.mesi-1]}`:'l’anno non è ancora iniziato';
+  // 24.2b: ordine e testi di 02 (report 02-ux-riquadro-riducibile §1); le regole su quando compare ogni casella restano quelle di prima
+  const caselle=[fissi().length?cella('Uscite fisse',eur(C.fTot)):null,
+    C.sp||!anno?cella('Spese giornaliere',eur(C.sp)):null,
+    lavori().length?cella('Lavoro dipendente',eur(lavV)):null,
+    penV||(window.Pensione&&Pensione.profilo())?cella('Pensione',eur(penV)):null,
+    anno?cella('Incassato dai progetti',eur(r2(tot.netto+tot.rimb))):null,
+    cella('Rimborsi spese',eur(tot.rimb)),cella('Ritenuta d’acconto',eur(tot.rit)),cella('Ancora da incassare',eur(daInc))].filter(Boolean);
+  // con due colonne, se l'ultima casella resta sola occupa tutta la larghezza (classe "dispari")
+  const det=caselle.map((c,i)=>c.h(i===caselle.length-1&&caselle.length%2?'dispari':'')).join('')+
+    (anno&&C.fResto?cella('Uscite fisse ancora da addebitare entro dicembre',eur(C.fResto),'lungo','Non contate nei soldi rimanenti: dicembre non è ancora iniziato.').h():'');
+  // D-092: anche nella vista Anno il titolo è "Soldi rimanenti"; sotto zero il segno è "−" (02)
+  const imp=eur(C.rimanenti).replace(/^-/,'−');
+  hero.innerHTML=`<button type="button" class="rim${C.rimanenti<0?' neg':''}" aria-controls="heroDet"><small class="tit">Soldi rimanenti</small>${sotto?`<small class="dm">${sotto}</small>`:''}<b>${imp}</b><small class="det">Entrate ${eur(C.entrate)} · Uscite ${eur(C.usciti)}</small><span class="vh">, dettagli</span><span class="hchev" aria-hidden="true">▾</span></button><div id="heroDet" class="heroDet">${det}</div>`;
+  heroStato(hero);
   // uscite fisse del mese (D-065: "Uscite fisse" ovunque; righe "addebitata il N" / "addebito il N")
   let box=$('rieFix');if(!box){box=document.createElement('div');box.id='rieFix';box.className='cards';($('rieLav')||$('rieTot')).after(box);}
   if($('rieLav')&&box.previousElementSibling!==$('rieLav'))$('rieLav').after(box);
@@ -67,7 +79,7 @@ renderRiepilogo=function(){_renderRie18();
 
 // ---------- pagamenti fissi: impostazioni ----------
 function renderFissi(){const L=fissi();$('foldFixSum').textContent=L.length?eur(r2(L.filter(f=>attivoNel(f,today().slice(0,7))).reduce((a,f)=>a+num(f.importo),0)))+'/mese':'';
-  $('fixList').innerHTML=L.map(f=>{const c=fcat(f.cat);const fine=fineFisso(f);return `<button class="card prow fxr" data-fx="${f.id}"><span>${c[1]}</span><span class="tx"><b>${esc(f.nome)}</b><small>${eur(num(f.importo))} il giorno ${+f.giorno||1}${fine?' · fino a '+esc(monthName(fine)):''}</small></span><span class="chev">›</span></button>`;}).join('')||'<p class="muted sm">Nessun pagamento fisso.</p>';}
+  $('fixList').innerHTML=L.map(f=>{const c=fcat(f.cat);const fine=fineFisso(f);return `<button class="card prow fxr" data-fx="${esc(f.id)}"><span>${c[1]}</span><span class="tx"><b>${esc(f.nome)}</b><small>${eur(num(f.importo))} il giorno ${+f.giorno||1}${fine?' · fino a '+esc(monthName(fine)):''}</small></span><span class="chev">›</span></button>`;}).join('')||'<p class="muted sm">Nessun pagamento fisso.</p>';}
 let fx=null;
 function apriFisso(f){fx=f?clone(f):{id:uid(),cat:'netflix',nome:'',importo:'',giorno:'',dal:today().slice(0,7),al:'',rate:'',nota:''};const isNew=!f;
   $('fxTit').textContent=isNew?'Nuova uscita fissa':'Uscita fissa';$('fxDel').hidden=isNew;
@@ -128,8 +140,8 @@ function filtriPop(){
   if(quanti<2&&!P.length){box.innerHTML='';return;}
   const sel=filtro?prog(filtro)?.nome:'Tutti';const altri=[...nascosti].length;
   box.innerHTML=`<div class="calpanel"><button class="calbtn" id="calBtn" aria-expanded="${popAperto}">📅 ${esc(sel||'Tutti')}${altri?` · ${altri} nascost${altri===1?'o':'i'}`:''} ▾</button></div>`+(popAperto?`<div class="calpop" id="calPop">
-    ${P.length?`<h4>Progetti</h4><label class="crow"><input type="radio" name="cf" value="" ${!filtro?'checked':''}> Tutti i progetti</label>${P.map(p=>`<label class="crow" style="--c:${colOk(p.colore)}"><input type="radio" name="cf" value="${p.id}" ${filtro===p.id?'checked':''}><i></i>${esc(p.nome)}</label>`).join('')}`:''}
-    <h4>Mostra anche</h4>${L.map(l=>`<label class="crow" style="--c:${colOk(l.colore)}"><input type="checkbox" data-cv="l:${l.id}" ${nascosti.has('l:'+l.id)?'':'checked'}><i></i>💼 ${esc(l.nome)}</label>`).join('')}
+    ${P.length?`<h4>Progetti</h4><label class="crow"><input type="radio" name="cf" value="" ${!filtro?'checked':''}> Tutti i progetti</label>${P.map(p=>`<label class="crow" style="--c:${colOk(p.colore)}"><input type="radio" name="cf" value="${esc(p.id)}" ${filtro===p.id?'checked':''}><i></i>${esc(p.nome)}</label>`).join('')}`:''}
+    <h4>Mostra anche</h4>${L.map(l=>`<label class="crow" style="--c:${colOk(l.colore)}"><input type="checkbox" data-cv="l:${esc(l.id)}" ${nascosti.has('l:'+l.id)?'':'checked'}><i></i>💼 ${esc(l.nome)}</label>`).join('')}
     <label class="crow" style="--c:#8a8f98"><input type="checkbox" data-cv="sp" ${nascosti.has('sp')?'':'checked'}><i></i>🛒 Spese giornaliere</label>
     ${fissi().length?`<label class="crow" style="--c:#868e96"><input type="checkbox" data-cv="fx" ${nascosti.has('fx')?'':'checked'}><i></i>💳 Uscite fisse</label>`:''}</div>`:'');
 }
@@ -166,6 +178,7 @@ function bind18(){
   try{occhio(localStorage.getItem('soldirini-occhio')==='1');}catch(e){}
   swipe($('v-cal'),()=>$('next').click(),()=>$('prev').click());
   swipe($('rieTot'),()=>$('rNext').click(),()=>$('rPrev').click());
+  $('rieTot').addEventListener('click',e=>{const h=e.target.closest('.hero');if(!h||!h.querySelector('#heroDet')||e.target.closest('[data-b]'))return;heroAperto=!heroAperto;heroStato(h);});
   $('filtri').addEventListener('click',e=>{if(e.target.closest('#calBtn')){popAperto=!popAperto;filtriPop();e.stopImmediatePropagation();}},true);
   $('filtri').addEventListener('change',e=>{const t=e.target;if(t.name==='cf'){filtro=t.value;render();return;}
     if(t.dataset.cv){t.checked?nascosti.delete(t.dataset.cv):nascosti.add(t.dataset.cv);salvaNascosti();render();}});

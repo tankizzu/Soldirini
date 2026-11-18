@@ -24,7 +24,7 @@ const DATI = () => {
 };
 
 test.describe('v24 · finestra "È entrato" e "In arrivo"', () => {
-  test('T-R1 riquadro: "Soldi rimanenti:" / "del mese", entrati, usciti, righe Uscite fisse e Spese giornaliere; righe addebitata/addebito', async ({ browser }) => {
+  test('T-R1 riquadro (24.2, D-085): "Soldi rimanenti", "Entrate · Uscite"; aperto: Uscite fisse e Spese giornaliere; righe addebitata/addebito', async ({ browser }) => {
     const { page } = await telefono(browser);
     const lid = await page.evaluate(DATI);
     await page.evaluate(lid => { D().entrate[`lav|${lid}|2026-10`] = { entrato: true, data: '2026-11-10', importo: 1500, updatedAt: 1 };
@@ -33,11 +33,13 @@ test.describe('v24 · finestra "È entrato" e "In arrivo"', () => {
       pagamenti()[`${p.id}|2026-10|o`] = { pagato: true, data: '2026-11-05', importo: 300, updatedAt: 1 }; changed(); }, lid);
     await vaiRie(page);
     const rim = page.locator('#rieTot .hero .rim');
-    await expect(rim).toContainText('Soldi rimanenti:');
-    await expect(rim.locator('.dm')).toHaveText('del mese');
+    await expect(rim.locator('.tit')).toHaveText('Soldi rimanenti');
+    await expect(rim.locator('.dm')).toHaveCount(0);
     await expect(rim.locator('b')).toHaveText('1150,00 €');
-    await expect(rim.locator('.det')).toHaveText('Entrati 1800,00 € · usciti 650,00 €');
-    await expect(rim.locator('.hl')).toHaveText(['Uscite fisse: 570,00 €', 'Spese giornaliere: 80,00 €']);
+    await expect(rim.locator('.det')).toHaveText('Entrate 1800,00 € · Uscite 650,00 €');
+    await rim.click();
+    await expect(page.locator('#heroDet > div').nth(0)).toHaveText('Uscite fisse570,00 €');
+    await expect(page.locator('#heroDet > div').nth(1)).toHaveText('Spese giornaliere80,00 €');
     await expect(page.locator('#rieTot .hero')).not.toContainText('Pagamenti fissi');
     await expect(page.locator('#rieFix summary .st')).toHaveText('💳 Uscite fisse');
     await expect(page.locator('#rieFix .kv span').filter({ hasText: 'Affitto' })).toContainText('addebitata il 3');
@@ -147,9 +149,9 @@ test.describe('v24 · vista Anno (E-13 a)', () => {
     await page.evaluate(DATI);
     await vaiRie(page, '2026-11', 'anno');
     const rim = page.locator('#rieTot .hero .rim');
-    await expect(rim).toContainText('Rimasti nel 2026');
+    await expect(rim.locator('.tit')).toHaveText('Soldi rimanenti'); // D-092
     await expect(rim.locator('.dm')).toHaveText('somma dei mesi da gennaio a novembre');
-    await expect(rim.locator('.hl').last()).toHaveText('Uscite fisse ancora da addebitare entro dicembre: 570,00 €');
+    await expect(page.locator('#heroDet > div').last()).toHaveText('Uscite fisse ancora da addebitare entro dicembre570,00 €Non contate nei soldi rimanenti: dicembre non è ancora iniziato.');
     await expect(page.locator('#rieFix .kv').filter({ hasText: 'dicembre 2026' })).toContainText('non ancora contato');
     await expect(page.locator('#rieFix .kv.big')).toContainText('Totale fino a novembre');
     await vaiRie(page, '2025-06', 'anno');
@@ -255,8 +257,12 @@ test.describe('v24 · uscite fisse', () => {
     ['T-T13', 'abb', '2026-12-31', { al: '2026-12', mesi: { '2026-12': 10, '2027-01': 0 } }],
     ['T-T14', { nome: 'Rata', importo: '100', giorno: '3', dal: '2026-09', rate: '3' }, '2027-01-15', { err: 'Finisce già a novembre 2026: “Termina” può solo anticipare la fine.', mesi: { '2026-11': 100, '2026-12': 0, '2027-01': 0 } }],
     ['T-T15', ['Palestra', 30, 20, '2026-11'], '2026-11-17', { err: 'È prima dell’inizio (novembre 2026). Se l’avevi inserita per errore, usa Elimina.', mesi: { '2026-10': 0, '2026-11': 30 } }],
+    // 24.2: casi in più di 04 (report 04-fisco-revisione-prove-24-1, §2)
+    ['T-T14b', { nome: 'Rata', importo: '100', giorno: '3', dal: '2026-09', rate: '3' }, '2026-10-15', { al: '2026-10', mesi: { '2026-09': 100, '2026-10': 100, '2026-11': 0 } }], // nessun avviso: ottobre resta com'era
+    ['T-T18', { nome: 'Affitto', importo: '450', giorno: '3', dal: '2026-10', al: '2026-12' }, '2026-12-31', { err: 'Finisce già a dicembre 2026: “Termina” può solo anticipare la fine.', mesi: { '2026-12': 450, '2027-01': 0 } }],
+    ['T-T19', { nome: 'Uscita', importo: '20', giorno: '', dal: '2026-10' }, '2026-11-17', { al: '2026-11', mesi: { '2026-11': 20, '2026-12': 0 } }], // giorno vuoto: vale 1
   ];
-  test('casi T-T1…T-T15 e T-T6b di 04 (D-073, D-076), dalla finestra', async ({ browser }) => {
+  test('casi T-T1…T-T15, T-T6b, T-T14b, T-T18 e T-T19 di 04 (D-073, D-076), dalla finestra', async ({ browser }) => {
     const { page, errori } = await telefono(browser);
     await page.evaluate(() => { D().entrate = { 'v24|risposta': { risposta: 'no', updatedAt: 1 } }; changed(); });
     for (const [nome, u, G, att] of CASI) {
@@ -275,8 +281,9 @@ test.describe('v24 · uscite fisse', () => {
         await expect(page.locator('#tmModal'), nome).toBeHidden();
       }
       const r = await page.evaluate(([id, mesi]) => ({ al: D().fissi[id].al, rate: D().fissi[id].rate, mesi: Object.fromEntries(Object.keys(mesi).map(m => [m, contiMese(m).fTot])) }), [id, att.mesi || {}]);
-      expect(r.al, nome).toBe(att.err ? '' : att.al);
+      expect(r.al, nome).toBe(att.err ? (campi.al || '') : att.al);
       if (att.err) expect(r.rate, nome).toBe(campi.rate || ''); // nessuna modifica
+      else expect(r.rate, nome).toBe(''); // "Termina" scrive solo "al" e svuota le rate
       if (att.mesi) expect(r.mesi, nome).toEqual(att.mesi);
     }
     expect(errori).toEqual([]);

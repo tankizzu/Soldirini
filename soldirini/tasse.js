@@ -162,7 +162,7 @@ function openCU(c,daPdf){
   cuEd=c?clone(c):{id:uid(),tipo:'autonomo',anno:+cur.slice(0,4),comm:'',pid:'',p4:'',p7:'',p8:'',p9:'',p1:'',p21:'',causale:''};
   const x=cuEd;$('cuTitle').textContent=c&&!daPdf?'Certificazione Unica':'Nuova Certificazione Unica';
   $('cuTipo').value=x.tipo;$('cuAnno').value=x.anno;$('cuComm').value=x.comm||'';$('cuCaus').value=x.causale||'';
-  $('cuPid').innerHTML='<option value="">— nessun progetto —</option>'+progetti().map(p=>`<option value="${p.id}">${esc(p.nome)}</option>`).join('');$('cuPid').value=x.pid||'';
+  $('cuPid').innerHTML='<option value="">— nessun progetto —</option>'+progetti().map(p=>`<option value="${esc(p.id)}">${esc(p.nome)}</option>`).join('');$('cuPid').value=x.pid||'';
   for(const k of ['p4','p7','p8','p9','p1','p21'])$('cu-'+k).value=x[k]===''||x[k]==null?'':nf(x[k],2);
   $('cuMsg').innerHTML=daPdf?(x.trovati?`Ho letto <b>${x.trovati}</b> importi dal PDF. <b>Controllali</b> con il documento: ogni società usa un’impaginazione diversa.`:'Non sono riuscito a leggere gli importi da questo PDF: inseriscili guardando il documento (punti 4, 7, 8, 9).'):'';
   $('cuDel').hidden=!(c&&D().cu?.[c.id]);togCU();$('cuModal').hidden=false;document.body.classList.add('noscroll');
@@ -224,7 +224,7 @@ function renderTasse(){
   h+=`<div class="card" data-fid="cu" data-sum="${cus.length?`${cus.length} CU${aut.length?` · ${esiti.filter(Boolean).length}/${aut.length} ok`:''}`:'—'}"><h3>Certificazioni Uniche</h3>
     <p class="muted sm" style="margin-top:0">Carica il PDF di ogni CU che ricevi: leggo gli importi e li confronto con i pagamenti segnati qui. Le CU del lavoro dipendente servono solo per la stima delle tasse.</p>
     <div class="acts"><label class="btn filebtn">Carica CU (PDF)<input type="file" id="cuFile" accept="application/pdf" hidden></label><button class="btn ghost" id="cuMan">Inserisci a mano</button></div>
-    ${cus.map(c=>{const p=prog(c.pid);return `<div class="cuitem"><div class="cuh"><b>${esc(c.comm||p?.nome||'CU')}</b><span class="muted sm">${c.tipo==='dipendente'?'lavoro dipendente':'lavoro autonomo'}${c.causale?' · causale '+esc(c.causale):''}${p?' · '+esc(p.nome):''}</span><button class="btn ghost sm" data-cuedit="${c.id}">Modifica</button>${c.fileLink?`<a class="btn ghost sm" href="${esc(c.fileLink)}" target="_blank" rel="noopener">PDF ↗</a>`:''}</div>
+    ${cus.map(c=>{const p=prog(c.pid);return `<div class="cuitem"><div class="cuh"><b>${esc(c.comm||p?.nome||'CU')}</b><span class="muted sm">${c.tipo==='dipendente'?'lavoro dipendente':'lavoro autonomo'}${c.causale?' · causale '+esc(c.causale):''}${p?' · '+esc(p.nome):''}</span><button class="btn ghost sm" data-cuedit="${esc(c.id)}">Modifica</button>${c.fileLink?`<a class="btn ghost sm" href="${esc(c.fileLink)}" target="_blank" rel="noopener">PDF ↗</a>`:''}</div>
       ${c.tipo==='dipendente'?`<p class="muted sm">Reddito ${eur(c.p1)} · ritenute IRPEF ${eur(c.p21||0)}. Non lo confronto: il lavoro dipendente non è in Soldirini.</p>`:confrontoCU(c)}</div>`;}).join('')||'<p class="muted sm">Nessuna CU per il '+y+'.</p>'}</div>`;
   $('tasList').innerHTML=h;foldify($('tasList'),'tas');
 }
@@ -245,8 +245,8 @@ function ripristina(id,kind){const now=Date.now();
   changed();render();toast('Ripristinato');}
 function renderCestino(){
   const {ev,pr}=cestino();const box=$('cestBox');if(!box)return;
-  box.innerHTML=(pr.map(p=>`<div class="due" style="--c:${colOk(p.colore)}"><span class="bar"></span><span class="tx"><b>Progetto ${esc(p.nome)}</b><small>eliminato il ${new Date(p.deletedAt).toLocaleDateString('it-IT')}</small></span><button class="btn ghost sm" data-rip="${p.id}" data-k="p">Ripristina</button></div>`).join('')+
-    ev.filter(e=>!pr.some(p=>p.id===e.pid&&p.deletedAt===e.deletedAt)).slice(0,60).map(e=>{const p=prog(e.pid);return `<div class="due" style="--c:${colOk(p?.colore||'#888')}"><span class="bar"></span><span class="tx"><b>${esc(etichetta(e))}</b><small>${dIt(e.data)} · ${esc(p?.nome||'')} · eliminata il ${new Date(e.deletedAt).toLocaleDateString('it-IT')}</small></span><button class="btn ghost sm" data-rip="${e.id}" data-k="e">Ripristina</button></div>`;}).join(''))||'<p class="muted sm">Il cestino è vuoto.</p>';
+  box.innerHTML=(pr.map(p=>`<div class="due" style="--c:${colOk(p.colore)}"><span class="bar"></span><span class="tx"><b>Progetto ${esc(p.nome)}</b><small>eliminato il ${new Date(p.deletedAt).toLocaleDateString('it-IT')}</small></span><button class="btn ghost sm" data-rip="${esc(p.id)}" data-k="p">Ripristina</button></div>`).join('')+
+    ev.filter(e=>!pr.some(p=>p.id===e.pid&&p.deletedAt===e.deletedAt)).slice(0,60).map(e=>{const p=prog(e.pid);return `<div class="due" style="--c:${colOk(p?.colore||'#888')}"><span class="bar"></span><span class="tx"><b>${esc(etichetta(e))}</b><small>${dIt(e.data)} · ${esc(p?.nome||'')} · eliminata il ${new Date(e.deletedAt).toLocaleDateString('it-IT')}</small></span><button class="btn ghost sm" data-rip="${esc(e.id)}" data-k="e">Ripristina</button></div>`;}).join(''))||'<p class="muted sm">Il cestino è vuoto.</p>';
   const L=(D().storico||[]).slice(-120).reverse();
   $('storBox').innerHTML=L.map(x=>`<div class="stor"><span class="muted sm">${new Date(x.t).toLocaleString('it-IT',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</span><span><b>${esc(x.a)}</b> · ${esc(x.d)}</span></div>`).join('')||'<p class="muted sm">Ancora nessuna modifica registrata.</p>';
 }

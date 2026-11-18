@@ -54,9 +54,9 @@ function renderLav(){
   if(md.dates.length===1){const G=C.vociGiorno(l,turniDi(l.id).filter(t=>t.data===d0),d0);oggi=G.voci.map(v=>esc((v.tipo?.icona?v.tipo.icona+' ':'')+v.nome+(v.daS&&v.aS?' '+v.daS+'–'+v.aS:'')+(v.implicito?' (abituale)':''))).join(' · ');}
   const t=st.tipo?C.tipoDi(l,st.tipo):null;const scelto=st.tipo!==undefined;
   const servOrari=scelto&&(!t||t.cat==='lavoro'||t.cat==='variabile');const servOre=scelto&&(!t||!(t.da&&t.a));
-  box.innerHTML=(L.length>1?`<label>Lavoro<select id="evLavSel">${L.map(x=>`<option value="${x.id}" ${x.id===l.id?'selected':''}>${esc(x.nome)}</option>`).join('')}</select></label>`:`<p class="sm" style="margin-top:0"><b>${esc(l.nome)}</b></p>`)+
+  box.innerHTML=(L.length>1?`<label>Lavoro<select id="evLavSel">${L.map(x=>`<option value="${esc(x.id)}" ${x.id===l.id?'selected':''}>${esc(x.nome)}</option>`).join('')}</select></label>`:`<p class="sm" style="margin-top:0"><b>${esc(l.nome)}</b></p>`)+
     (oggi?`<p class="muted sm">Già segnato: ${oggi}</p>`:'')+
-    `<div class="tuchips">${l.tipi.map(x=>`<button type="button" class="chip ${st.tipo===x.id?'on':''}" style="--c:${colOk(x.colore||l.colore)}" data-lt="${x.id}">${esc((x.icona?x.icona+' ':'')+x.nome)}</button>`).join('')}<button type="button" class="chip ${st.tipo===null?'on':''}" data-lt="">Orario diverso</button></div>`+
+    `<div class="tuchips">${l.tipi.map(x=>`<button type="button" class="chip ${st.tipo===x.id?'on':''}" style="--c:${colOk(x.colore||l.colore)}" data-lt="${esc(x.id)}">${esc((x.icona?x.icona+' ':'')+x.nome)}</button>`).join('')}<button type="button" class="chip ${st.tipo===null?'on':''}" data-lt="">Orario diverso</button></div>`+
     (scelto?`<div class="g2" style="margin-top:8px">${servOrari?`<label>Dalle<input type="time" data-lk="da" value="${esc(st.da)}"></label><label>Alle<input type="time" data-lk="a" value="${esc(st.a)}"></label><label>Pausa (min)<input type="number" inputmode="numeric" data-lk="pausa" value="${esc(st.pausa)}"></label>`:''}${servOre?`<label>Ore<input type="number" inputmode="decimal" step="0.25" data-lk="ore" value="${esc(st.ore)}"></label>`:''}<label class="s2">Nota<input data-lk="nota" value="${esc(st.nota)}"></label></div>
       <p class="muted sm">${!t?'Sostituisce l’orario di quel giorno.':t.da&&t.a?`Orario del tipo: ${t.da}–${t.a}. Cambialo solo se quel giorno è diverso.`:C.PAGATE.includes(t.cat)?'Lascia vuote le ore per contare l’orario abituale del giorno.':'Scrivi le ore (oppure dalle–alle).'}</p>`:'<p class="muted sm">Tocca un tipo per segnarlo in questo giorno.</p>');
 }
@@ -99,8 +99,8 @@ function renderTurni(){
   $('evTurniSel').innerHTML=usati.map(x=>`<div class="tsel"><b>${esc(x.pr.nome||'Turno')}</b><span class="muted sm">${esc(x.f.da)}–${esc(x.f.a)}</span><button type="button" class="x" data-tsrm="${esc(x.pr.id)}" aria-label="Togli">×</button></div>`).join('');
   $('evTurniPick').hidden=!pick;
   if(pick)$('evTurniPick').innerHTML=`<div class="tpick">${p.ore.fasce.map(f=>modTurno===f.id?
-      `<div class="tpr"><input class="nm" data-tm="nome" value="${esc(f.nome||'')}" placeholder="Nome"><input type="time" data-tm="da" value="${esc(f.da)}"><input type="time" data-tm="a" value="${esc(f.a)}"><button type="button" class="btn sm" data-tsave="${f.id}">Ok</button><button type="button" class="x" data-tdel="${f.id}" aria-label="Elimina turno">🗑</button></div>`
-      :`<div class="tpr"><span class="nm"><b>${esc(f.nome||'Turno')}</b> <span class="muted sm">${esc(f.da)}–${esc(f.a)}</span></span><button type="button" class="btn sm" data-tuse="${f.id}">Usa</button><button type="button" class="btn ghost sm" data-tedit="${f.id}">Modifica</button></div>`).join('')||'<p class="muted sm">Nessun turno impostato in questo progetto.</p>'}
+      `<div class="tpr"><input class="nm" data-tm="nome" value="${esc(f.nome||'')}" placeholder="Nome"><input type="time" data-tm="da" value="${esc(f.da)}"><input type="time" data-tm="a" value="${esc(f.a)}"><button type="button" class="btn sm" data-tsave="${esc(f.id)}">Ok</button><button type="button" class="x" data-tdel="${esc(f.id)}" aria-label="Elimina turno">🗑</button></div>`
+      :`<div class="tpr"><span class="nm"><b>${esc(f.nome||'Turno')}</b> <span class="muted sm">${esc(f.da)}–${esc(f.a)}</span></span><button type="button" class="btn sm" data-tuse="${esc(f.id)}">Usa</button><button type="button" class="btn ghost sm" data-tedit="${esc(f.id)}">Modifica</button></div>`).join('')||'<p class="muted sm">Nessun turno impostato in questo progetto.</p>'}
     <div class="tpr"><input class="nm" id="tnNome" placeholder="Nuovo turno (es. Allenamento)"><input type="time" id="tnDa"><input type="time" id="tnA"><button type="button" class="btn ghost sm" id="tnAdd">+</button></div></div>`;
 }
 function usaTurno(f){const x=readEv();x.fasce=(x.fasce||[]).filter(q=>!(q.da===''&&q.a===''));
@@ -158,7 +158,7 @@ apriGiorno=function(d){_apriGiorno16(d);renderSpeseGiorno(d);};
 function renderSpeseGiorno(d){
   let box=$('daySpese');if(!box){box=document.createElement('div');box.id='daySpese';$('dayBox').appendChild(box);}
   const L=speseDel(s=>s.data===d);const tot=L.reduce((a,s)=>a+num(s.importo),0);
-  box.innerHTML=L.length?`<div class="tubox"><div class="tuh"><b>🛒 Spese giornaliere</b><small class="muted">${eur(tot)}</small></div>${L.map(s=>{const c=catDi(s.cat);return `<div class="sprow"><span>${c[1]}</span><span class="tx"><b>${esc(c[2])}</b>${s.nota?`<small>${esc(s.nota)}</small>`:''}</span><b>${eur(num(s.importo))}</b><button type="button" class="x" data-spdel="${s.id}" aria-label="Elimina spesa">×</button></div>`;}).join('')}</div>`:'';
+  box.innerHTML=L.length?`<div class="tubox"><div class="tuh"><b>🛒 Spese giornaliere</b><small class="muted">${eur(tot)}</small></div>${L.map(s=>{const c=catDi(s.cat);return `<div class="sprow"><span>${c[1]}</span><span class="tx"><b>${esc(c[2])}</b>${s.nota?`<small>${esc(s.nota)}</small>`:''}</span><b>${eur(num(s.importo))}</b><button type="button" class="x" data-spdel="${esc(s.id)}" aria-label="Elimina spesa">×</button></div>`;}).join('')}</div>`:'';
   if(tot){const ds=$('daySum');if(ds&&!ds.querySelector('[data-sptot]'))ds.insertAdjacentHTML('beforeend',`<span data-sptot><b>${eur(r2(tot))}</b> spesi</span>`);}
 }
 const _renderCal16=renderCal;

@@ -126,19 +126,19 @@ function cardWord(p){
   // la scelta dei mesi vale per il mese che stai guardando: se cambi mese, riparte da quello
   if(!wSel[p.id]||wSel[p.id].per!==cur){wSel[p.id]=new Set(mesi.includes(cur)?[cur]:[]);wSel[p.id].per=cur;}
   const S=[...wSel[p.id]].filter(m=>mesi.includes(m));const v=S.length?valoriWord(p.id,S):null;
-  return `<div class="card pc" style="--c:${colOk(p.colore)}" data-fid="word-${p.id}" data-sum="${v?eur(v._n.netto):'—'}"><h3><i></i>${esc(p.nome)} · ${esc(p.docTpl.titolo||'Ricevuta')} (Word)</h3>
+  return `<div class="card pc" style="--c:${colOk(p.colore)}" data-fid="word-${esc(p.id)}" data-sum="${v?eur(v._n.netto):'—'}"><h3><i></i>${esc(p.nome)} · ${esc(p.docTpl.titolo||'Ricevuta')} (Word)</h3>
     <p class="muted sm" style="margin-top:0">Scegli uno o più mesi da mettere nello stesso documento.</p>
-    <div class="row wmesi">${mesi.map(m=>`<button type="button" class="pchip sm ${S.includes(m)?'on':''}" data-wmese="${p.id}|${m}">${cap(MESI[+m.slice(5)-1].slice(0,3))} ${m.slice(2,4)}</button>`).join('')||'<span class="muted sm">Nessun mese con ore segnate.</span>'}</div>
+    <div class="row wmesi">${mesi.map(m=>`<button type="button" class="pchip sm ${S.includes(m)?'on':''}" data-wmese="${esc(p.id)}|${m}">${cap(MESI[+m.slice(5)-1].slice(0,3))} ${m.slice(2,4)}</button>`).join('')||'<span class="muted sm">Nessun mese con ore segnate.</span>'}</div>
     ${v?`<div class="kv"><span>Periodo</span><b>${esc(v.periodo)}</b></div><div class="kv"><span>Attività · ore</span><b>${v._n.att} · ${v.ore}</b></div>
     <div class="kv"><span>Competenze (lordo)</span><b>${eur(v._n.lordo)}</b></div><div class="kv"><span>Ritenuta d'acconto</span><b>− ${eur(v._n.rit)}</b></div>${v._n.inps?`<div class="kv"><span>Ritenuta INPS</span><b>− ${eur(v._n.inps)}</b></div>`:''}
     <div class="kv big"><span>Netto a pagare</span><b>${eur(v._n.netto)}</b></div>
-    <label style="margin-top:8px">Data del documento<input type="date" data-wdata="${p.id}" value="${today()}"></label>
-    <div class="acts"><button class="btn" data-wdoc="${p.id}">Scarica Word</button><button class="btn ghost" data-winv="${p.id}">Invia</button>${DB.meta.account?`<button class="btn ghost sm" data-wdrive="${p.id}">Salva su Drive (+ PDF)</button>`:''}${fileLink(D().files[`doc|${p.id}|${S.sort().join(',')}`],'docx','Word su Drive')}${fileLink(D().files[`doc|${p.id}|${S.sort().join(',')}`],'pdf','PDF su Drive')}</div>`:''}
+    <label style="margin-top:8px">Data del documento<input type="date" data-wdata="${esc(p.id)}" value="${today()}"></label>
+    <div class="acts"><button class="btn" data-wdoc="${esc(p.id)}">Scarica Word</button><button class="btn ghost" data-winv="${esc(p.id)}">Invia</button>${DB.meta.account?`<button class="btn ghost sm" data-wdrive="${esc(p.id)}">Salva su Drive (+ PDF)</button>`:''}${fileLink(D().files[`doc|${p.id}|${S.sort().join(',')}`],'docx','Word su Drive')}${fileLink(D().files[`doc|${p.id}|${S.sort().join(',')}`],'pdf','PDF su Drive')}</div>`:''}
   </div>`;
 }
 async function azioneWord(pid,tipo){
   const S=[...(wSel[pid]||[])];if(!S.length){toast('Scegli almeno un mese.','err');return;}
-  const data=document.querySelector(`[data-wdata="${pid}"]`)?.value||today();const p=prog(pid);
+  const data=document.querySelector(`[data-wdata="${CSS.escape(pid)}"]`)?.value||today();const p=prog(pid);
   if(!p.docTpl?.map?.length){toast('Il documento non ha dati collegati: apri il progetto e collega almeno importi e periodo, altrimenti scaricheresti il file originale.','err');return;}
   busy(true,'Compilo il documento…');
   try{

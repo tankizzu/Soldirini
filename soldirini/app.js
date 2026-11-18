@@ -528,7 +528,7 @@ function render(){
 function renderCal(){
   $('mese').textContent=monthName(cur);
   const ps=progetti();
-  $('filtri').innerHTML=ps.length>1?`<button class="fchip ${filtro?'':'on'}" data-f="">Tutti</button>`+ps.map(p=>`<button class="fchip ${filtro===p.id?'on':''}" data-f="${p.id}" style="--c:${colOk(p.colore)}"><i></i>${esc(p.nome)}</button>`).join(''):'';
+  $('filtri').innerHTML=ps.length>1?`<button class="fchip ${filtro?'':'on'}" data-f="">Tutti</button>`+ps.map(p=>`<button class="fchip ${filtro===p.id?'on':''}" data-f="${esc(p.id)}" style="--c:${colOk(p.colore)}"><i></i>${esc(p.nome)}</button>`).join(''):'';
   const [y,m]=cur.split('-').map(Number);const first=new Date(y,m-1,1);const off=(first.getDay()+6)%7;const n=lastDay(cur);
   const by={};for(const e of eventiDel(e=>e.data.startsWith(cur)&&(!filtro||e.pid===filtro),true))(by[e.data]=by[e.data]||[]).push(e);
   let h=['lun','mar','mer','gio','ven','sab','dom'].map(d=>`<div class="dow">${d}</div>`).join('');
@@ -551,7 +551,7 @@ function evRow(e,withDate){
   if(e.ore)bits.push(isFisso(e)?`compenso ${eur(s.lordo)}`:`${nf(s.ore)} h · ${eur(s.lordo)} lordi`);
   const d=parseYmd(e.data);
   if((e.spese||[]).length)bits.push(`spese ${eur((e.spese||[]).reduce((a,x)=>a+(+x.importo||0),0))}`);
-  return `<button class="evrow${e.stato==='previsto'?' prev':''}" data-ev="${e.id}" style="--c:${colOk(p?.colore||'#888')}">${withDate?`<span class="dd"><b>${d.getDate()}</b>${GIORNI[d.getDay()].slice(0,3)}</span>`:''}<span class="bar"></span><span class="tx"><b>${esc(etichetta(e))}${e.stato==='previsto'?' <em class="tag">prevista</em>':''}${e.serie?' <em class="tag rip">↻</em>':''}</b><small>${esc(p?.nome||'?')}${bits.length?' · '+bits.join(' · '):''}</small></span></button>`;
+  return `<button class="evrow${e.stato==='previsto'?' prev':''}" data-ev="${esc(e.id)}" style="--c:${colOk(p?.colore||'#888')}">${withDate?`<span class="dd"><b>${d.getDate()}</b>${GIORNI[d.getDay()].slice(0,3)}</span>`:''}<span class="bar"></span><span class="tx"><b>${esc(etichetta(e))}${e.stato==='previsto'?' <em class="tag">prevista</em>':''}${e.serie?' <em class="tag rip">↻</em>':''}</b><small>${esc(p?.nome||'?')}${bits.length?' · '+bits.join(' · '):''}</small></span></button>`;
 }
 function renderDay(){
   const box=$('dayBox');if(multi){box.hidden=true;return;}box.hidden=false;
@@ -586,14 +586,14 @@ function defaultsEv(p){
 }
 function fillEv(e){
   md.e=e;const p=prog(e.pid);
-  $('evProj').innerHTML=progetti().map(x=>`<button type="button" class="pchip ${x.id===e.pid?'on':''}" data-pid="${x.id}" style="--c:${colOk(x.colore)}"><i></i>${esc(x.nome)}</button>`).join('');
+  $('evProj').innerHTML=progetti().map(x=>`<button type="button" class="pchip ${x.id===e.pid?'on':''}" data-pid="${esc(x.id)}" style="--c:${colOk(x.colore)}"><i></i>${esc(x.nome)}</button>`).join('');
   document.querySelectorAll('#evTipo button').forEach(b=>b.classList.toggle('on',b.dataset.t===e.tipo));
   const lab={allenamento:'Squadra (se diversa dal solito)',partita:'Avversario',amichevole:'Avversario',lavoro:'Descrizione',altro:'Descrizione'}[e.tipo];
   $('evTitoloL').textContent=lab;
   $('evTitolo').value=e.tipo==='allenamento'?(e.squadra||''):(e.titolo||'');
   $('evTitolo').placeholder=e.tipo==='allenamento'?(p.rimborso.squadra||'es. Under15'):e.tipo==='lavoro'?'es. Turno pomeridiano':'';
   $('evRimb').checked=!!e.rimborso;$('evRimbBox').hidden=!e.rimborso;
-  $('evLuogo').innerHTML=p.rimborso.luoghi.map(l=>`<option value="${l.id}">${esc(l.nome)} · ${nf(l.km,1)} km</option>`).join('')+'<option value="__new">+ Nuovo luogo…</option>'+(e.luogoId&&!p.rimborso.luoghi.find(l=>l.id===e.luogoId)?`<option value="${e.luogoId}">${esc(e.luogo)}</option>`:'');
+  $('evLuogo').innerHTML=p.rimborso.luoghi.map(l=>`<option value="${esc(l.id)}">${esc(l.nome)} · ${nf(l.km,1)} km</option>`).join('')+'<option value="__new">+ Nuovo luogo…</option>'+(e.luogoId&&!p.rimborso.luoghi.find(l=>l.id===e.luogoId)?`<option value="${e.luogoId}">${esc(e.luogo)}</option>`:'');
   $('evLuogo').value=e.luogoId||(p.rimborso.luoghi.length?p.rimborso.luoghi[0].id:'__new');
   $('evNewLuogo').hidden=$('evLuogo').value!=='__new';
   $('evKm').value=e.km??'';
@@ -601,7 +601,7 @@ function fillEv(e){
   $('evOre').checked=!!e.ore;$('evOreBox').hidden=!e.ore;
   $('evFisso').checked=isFisso(e);$('evFasceBox').hidden=isFisso(e);$('evFissoBox').hidden=!isFisso(e);
   $('evFissoV').value=isFisso(e)?e.fisso:'';
-  $('evPreset').innerHTML=p.ore.fasce.map(f=>{const on=(e.fasce||[]).some(x=>x.da===f.da&&x.a===f.a);return `<button type="button" class="pchip ${on?'on':''}" data-fa="${f.id}"><i></i>${esc(f.nome)} ${f.da}–${f.a}</button>`;}).join('');
+  $('evPreset').innerHTML=p.ore.fasce.map(f=>{const on=(e.fasce||[]).some(x=>x.da===f.da&&x.a===f.a);return `<button type="button" class="pchip ${on?'on':''}" data-fa="${esc(f.id)}"><i></i>${esc(f.nome)} ${f.da}–${f.a}</button>`;}).join('');
   renderFasce();
   $('evTar').value=e.tariffa??p.ore.tariffa;$('evRit').value=e.rit??p.ore.ritenuta;
   $('evNote').value=e.note||'';
@@ -649,7 +649,7 @@ function saveExtra(pid,k,v){
 // ---- progetti ----
 function renderProgetti(){
   const ps=progetti();
-  $('projList').innerHTML=ps.map(p=>`<button class="card prow" data-proj="${p.id}" style="--c:${colOk(p.colore)}"><i></i><span><b>${esc(p.nome)}</b><small>${[p.rimborso.attivo?'rimborsi spesa':'',p.ore.attivo?'ore / ritenuta':''].filter(Boolean).join(' · ')}${p.cartella?.nome?' · cartella “'+esc(p.cartella.nome)+'”':' · cartella da creare'}</small></span><span class="chev">›</span></button>`).join('')||'<p class="muted">Nessun progetto. Crea la tua prima squadra o il tuo primo lavoro.</p>';
+  $('projList').innerHTML=ps.map(p=>`<button class="card prow" data-proj="${esc(p.id)}" style="--c:${colOk(p.colore)}"><i></i><span><b>${esc(p.nome)}</b><small>${[p.rimborso.attivo?'rimborsi spesa':'',p.ore.attivo?'ore / ritenuta':''].filter(Boolean).join(' · ')}${p.cartella?.nome?' · cartella “'+esc(p.cartella.nome)+'”':' · cartella da creare'}</small></span><span class="chev">›</span></button>`).join('')||'<p class="muted">Nessun progetto. Crea la tua prima squadra o il tuo primo lavoro.</p>';
   const pr=D().profilo;
   for(const k of ['cognome','nome','natoA','dataNascita','residenza','via','cf'])if(document.activeElement!==$('pf-'+k))$('pf-'+k).value=pr[k]||'';
   if(document.activeElement!==$('pf-modello'))$('pf-modello').value=pr.auto?.modello||'';
@@ -798,7 +798,7 @@ function bind(){
   document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('evModal').hidden)closeEv();else if(!$('pjModal').hidden)closeProj();}});
 }
 function openProjRefresh(keep){const p=keep.p,isNew=keep.isNew;D().progetti.__tmp=p;openProj('__tmp');delete D().progetti.__tmp;pe={p,isNew};pe.p.id=p.id;if(isNew){$('pjTitle').textContent='Nuovo progetto';$('pjDel').hidden=true;$('pjPreset').hidden=false;}}
-function renderDocSoft(){const open=[...document.querySelectorAll('#docList details[open]')].map(d=>d.dataset.pid);const y=scrollY;renderDoc();open.forEach(id=>{const d=document.querySelector(`#docList details[data-pid="${id}"]`);if(d)d.open=true;});scrollTo(0,y);}
+function renderDocSoft(){const open=[...document.querySelectorAll('#docList details[open]')].map(d=>d.dataset.pid);const y=scrollY;renderDoc();open.forEach(id=>{const d=document.querySelector(`#docList details[data-pid="${CSS.escape(id)}"]`);if(d)d.open=true;});scrollTo(0,y);}
 async function toJpeg(file){
   const url=URL.createObjectURL(file);const img=new Image();img.src=url;await img.decode();
   const k=Math.min(1,460/Math.max(img.naturalWidth,img.naturalHeight));const c=document.createElement('canvas');c.width=Math.round(img.naturalWidth*k);c.height=Math.round(img.naturalHeight*k);
