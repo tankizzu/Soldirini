@@ -7,8 +7,10 @@ const fissi=()=>Object.values(FX()).filter(f=>!f.deleted).sort((a,b)=>(+a.giorno
 const FCAT=[['netflix','🎬','Netflix'],['disney','✨','Disney+'],['mutuo','🏠','Mutuo'],['rata','💳','Rata'],['abbonamento','📱','Abbonamento'],['utenze','💡','Utenze'],['altro','•','Altro']];
 const fcat=k=>FCAT.find(c=>c[0]===k)||FCAT[FCAT.length-1];
 const addMese=(ym,n)=>{const d=new Date(+ym.slice(0,4),+ym.slice(5)-1+n,1);return `${d.getFullYear()}-${pad(d.getMonth()+1)}`;};
-const fineFisso=f=>f.al||(+f.rate>0?addMese(f.dal,+f.rate-1):'');
-const attivoNel=(f,ym)=>(!f.dal||ym>=f.dal)&&(!fineFisso(f)||ym<=fineFisso(f));
+// 24.1: "dal" e "al" arrivano anche da Drive: valgono solo se sono AAAA-MM validi (altrimenti come se mancassero)
+const ymOk=v=>typeof v==='string'&&/^\d{4}-(0[1-9]|1[0-2])$/.test(v);
+const fineFisso=f=>ymOk(f.al)?f.al:(+f.rate>0&&ymOk(f.dal)?addMese(f.dal,+f.rate-1):'');
+const attivoNel=(f,ym)=>(!ymOk(f.dal)||ym>=f.dal)&&(!fineFisso(f)||ym<=fineFisso(f));
 const giornoNel=(f,ym)=>{const n=new Date(+ym.slice(0,4),+ym.slice(5),0).getDate();return `${ym}-${pad(Math.min(n,Math.max(1,+f.giorno||1)))}`;};
 window.fissiDel=ym=>fissi().filter(f=>attivoNel(f,ym)).map(f=>({f,data:giornoNel(f,ym)}));
 
@@ -70,7 +72,7 @@ let fx=null;
 function apriFisso(f){fx=f?clone(f):{id:uid(),cat:'netflix',nome:'',importo:'',giorno:'',dal:today().slice(0,7),al:'',rate:'',nota:''};const isNew=!f;
   $('fxTit').textContent=isNew?'Nuova uscita fissa':'Uscita fissa';$('fxDel').hidden=isNew;
   $('fxNome').value=fx.nome;$('fxImp').value=fx.importo;$('fxGiorno').value=fx.giorno;$('fxDal').value=fx.dal;$('fxRate').value=fx.rate;$('fxAl').value=fx.al;$('fxNota').value=fx.nota||'';
-  $('fxDur').value=fx.rate?'rate':fx.al?'al':'';durata();catChips();const T=isNew?null:terminaDa(f);$('fxFine').hidden=!T;$('fxFineNota').hidden=!T;if(T)$('fxFineNota').textContent=T.testo+' “Elimina” la toglie anche dai mesi passati: usalo solo se l’hai inserita per errore.';$('fxModal').hidden=false;document.body.classList.add('noscroll');}
+  $('fxDur').value=fx.rate?'rate':fx.al?'al':'';durata();catChips();riquadroFine(isNew?null:f);$('fxModal').hidden=false;document.body.classList.add('noscroll');}
 function catChips(){$('fxCats').innerHTML=FCAT.map(c=>`<button type="button" class="chip ${fx.cat===c[0]?'on':''}" data-fxc="${c[0]}">${c[1]} ${c[2]}</button>`).join('');}
 function durata(){const d=$('fxDur').value;$('fxRateL').hidden=d!=='rate';$('fxAlL').hidden=d!=='al';}
 function chiudiFisso(){$('fxModal').hidden=true;document.body.classList.remove('noscroll');}
@@ -78,14 +80,33 @@ function salvaFisso(){const nome=$('fxNome').value.trim()||fcat(fx.cat)[2];const
   if(!(imp>0)){toast('Scrivi l’importo.','err');return;}if(!(g>=1&&g<=31)){toast('Scrivi il giorno di addebito (1–31).','err');return;}
   const d=$('fxDur').value;Object.assign(fx,{nome,importo:String(r2(imp)),giorno:String(g),dal:$('fxDal').value||today().slice(0,7),rate:d==='rate'?String(Math.round(num($('fxRate').value))||''):'',al:d==='al'?$('fxAl').value:'',nota:$('fxNota').value.trim(),deleted:false,updatedAt:Date.now()});
   FX()[fx.id]=fx;changed();chiudiFisso();render();toast('Uscita fissa salvata.');}
-// v24 (D-072): "Termina da questo mese" non riscrive il passato (Elimina invece la toglie da tutti i mesi).
-// Se l'addebito di questo mese è già passato conta ancora in questo mese (al = mese in corso), altrimenti al = mese prima.
-function terminaDa(f){const ora=today().slice(0,7);if(!attivoNel(f,ora))return null;const pagata=giornoNel(f,ora)<=today();
-  const al=pagata?ora:addMese(ora,-1);if(f.dal&&al<f.dal)return null;
-  // testi 19a/19b di 02 (D-072): con l'addebito già passato (anche oggi) conta ancora questo mese
-  return {al,testo:(pagata?`Questo mese è già stata pagata: conta ancora a ${MESI[+ora.slice(5)-1]} e non conta più da ${monthName(addMese(ora,1))}.`:`Da ${monthName(ora)} non conta più.`)+' I mesi passati restano come sono.'};}
-async function terminaFisso(){const f=FX()[fx.id];const T=f&&terminaDa(f);if(!T)return;
-  if(!await conferma(`Terminare “${f.nome}”? ${T.testo}`,'Termina'))return;f.al=T.al;f.rate='';f.updatedAt=Date.now();changed();chiudiFisso();render();toast(`✓ ${f.nome} terminata: conta fino a ${monthName(T.al)}.`);}
+// 24.1 (D-073, D-076; regola D-072; testi di 02): "Termina" con l'ultimo giorno scelto (passato, oggi o futuro; di base oggi).
+// Se l'addebito del mese di quel giorno cade entro quel giorno (29-31: giorno vero del mese, giornoNel), quel mese conta ancora (al = quel mese);
+// altrimenti al = mese prima. I mesi prima non cambiano. Fine prima dell'inizio: errore (usa Elimina). Non allunga mai una fine che c'è già (P-1).
+// Se toglie l'uscita da mesi già passati si può salvare, con l'avviso.
+const giornoOk=v=>{if(typeof v!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(v))return false;const [y,m,g]=v.split('-').map(Number);const x=new Date(y,m-1,g);return x.getFullYear()===y&&x.getMonth()===m-1&&x.getDate()===g;};
+function terminaCon(f,giorno){if(!giornoOk(giorno))return {err:'Scegli l’ultimo giorno.'};
+  const m=giorno.slice(0,7),add=giornoNel(f,m),entro=add<=giorno,al=entro?m:addMese(m,-1),fine=fineFisso(f),da=addMese(al,1);
+  if(ymOk(f.dal)&&al<f.dal)return {err:`È prima dell’inizio (${monthName(f.dal)}). Se l’avevi inserita per errore, usa Elimina.`};
+  if(fine&&al>=fine)return {err:`Finisce già a ${monthName(fine)}: “Termina” può solo anticipare la fine.`};
+  const ad=`L’addebito del ${+add.slice(8)} ${MESI[+m.slice(5)-1]}`;
+  const frase=entro?`${ad} è entro questo giorno: conta ancora a ${esc(monthName(m))} e <b>non conta più da ${esc(monthName(da))}</b>.`
+    :`${ad} è dopo questo giorno: <b>non conta più da ${esc(monthName(da))}</b>.`;
+  // mesi già passati (prima del mese in corso) che perdono l'uscita
+  const ult=addMese(today().slice(0,7),-1),fin=fine&&fine<ult?fine:ult;
+  const avviso=da<=fin?(da===fin?`⚠ Cambiano i soldi rimanenti di ${monthName(da)} (già passato). Se è giusto, termina pure.`
+    :`⚠ Cambiano i soldi rimanenti di ${monthName(da)} – ${monthName(fin)} (già passati). Se è giusto, termina pure.`):'';
+  return {al,frase,avviso};}
+function terminaControlla(){const f=FX()[fx&&fx.id];if(!f)return null;const T=terminaCon(f,$('tmData').value);
+  if(T.err){$('tmMsg').textContent=T.err;$('tmMsg').className='sm err';}else{$('tmMsg').innerHTML=T.frase;$('tmMsg').className='sm';}
+  $('tmPrima').hidden=!!T.err;$('tmAvv').textContent=T.avviso||'';$('tmAvv').hidden=!T.avviso;$('tmOk').disabled=!!T.err;return T;}
+function terminaFisso(){const f=FX()[fx.id];if(!f)return;$('tmTit').textContent=`Termina “${f.nome}”`;$('tmData').value=today();terminaControlla();$('tmModal').hidden=false;}
+function chiudiTermina(){$('tmModal').hidden=true;}
+function salvaTermina(){const f=FX()[fx.id];const T=terminaControlla();if(!f||!T||T.err)return;
+  f.al=T.al;f.rate='';f.updatedAt=Date.now();changed();chiudiTermina();chiudiFisso();render();toast(`✓ ${f.nome} terminata: conta fino a ${monthName(T.al)}.`);}
+// riquadro nella finestra dell'uscita fissa: "Non la paghi più?" oppure, se ha già una fine, "Terminata: conta fino a …"
+function riquadroFine(f){const fine=f&&fineFisso(f);$('fxFineBox').hidden=!f;if(!f)return;
+  $('fxFineTit').textContent=fine?`Terminata: conta fino a ${monthName(fine)}.`:'Non la paghi più?';$('fxFineNota').hidden=!!fine;$('fxFine').textContent=fine?'Cambia l’ultimo giorno':'Termina';}
 async function eliminaFisso(){if(!await conferma(`Eliminare “${fx.nome}”?`,'Elimina','danger'))return;const f=FX()[fx.id];if(f){f.deleted=true;f.updatedAt=Date.now();}changed();chiudiFisso();render();}
 
 // ---------- calendario: pagamenti fissi, filtri a comparsa, scorrimento ----------
@@ -107,8 +128,8 @@ function filtriPop(){
   if(quanti<2&&!P.length){box.innerHTML='';return;}
   const sel=filtro?prog(filtro)?.nome:'Tutti';const altri=[...nascosti].length;
   box.innerHTML=`<div class="calpanel"><button class="calbtn" id="calBtn" aria-expanded="${popAperto}">📅 ${esc(sel||'Tutti')}${altri?` · ${altri} nascost${altri===1?'o':'i'}`:''} ▾</button></div>`+(popAperto?`<div class="calpop" id="calPop">
-    ${P.length?`<h4>Progetti</h4><label class="crow"><input type="radio" name="cf" value="" ${!filtro?'checked':''}> Tutti i progetti</label>${P.map(p=>`<label class="crow" style="--c:${p.colore}"><input type="radio" name="cf" value="${p.id}" ${filtro===p.id?'checked':''}><i></i>${esc(p.nome)}</label>`).join('')}`:''}
-    <h4>Mostra anche</h4>${L.map(l=>`<label class="crow" style="--c:${l.colore}"><input type="checkbox" data-cv="l:${l.id}" ${nascosti.has('l:'+l.id)?'':'checked'}><i></i>💼 ${esc(l.nome)}</label>`).join('')}
+    ${P.length?`<h4>Progetti</h4><label class="crow"><input type="radio" name="cf" value="" ${!filtro?'checked':''}> Tutti i progetti</label>${P.map(p=>`<label class="crow" style="--c:${colOk(p.colore)}"><input type="radio" name="cf" value="${p.id}" ${filtro===p.id?'checked':''}><i></i>${esc(p.nome)}</label>`).join('')}`:''}
+    <h4>Mostra anche</h4>${L.map(l=>`<label class="crow" style="--c:${colOk(l.colore)}"><input type="checkbox" data-cv="l:${l.id}" ${nascosti.has('l:'+l.id)?'':'checked'}><i></i>💼 ${esc(l.nome)}</label>`).join('')}
     <label class="crow" style="--c:#8a8f98"><input type="checkbox" data-cv="sp" ${nascosti.has('sp')?'':'checked'}><i></i>🛒 Spese giornaliere</label>
     ${fissi().length?`<label class="crow" style="--c:#868e96"><input type="checkbox" data-cv="fx" ${nascosti.has('fx')?'':'checked'}><i></i>💳 Uscite fisse</label>`:''}</div>`:'');
 }
@@ -152,6 +173,8 @@ function bind18(){
   $('fixNew').onclick=()=>apriFisso(null);$('fixList').addEventListener('click',e=>{const b=e.target.closest('[data-fx]');if(b)apriFisso(FX()[b.dataset.fx]);});
   $('fxCats').addEventListener('click',e=>{const b=e.target.closest('[data-fxc]');if(!b)return;const prima=fcat(fx.cat)[2];fx.cat=b.dataset.fxc;if(!$('fxNome').value.trim()||$('fxNome').value===prima)$('fxNome').value=['netflix','disney'].includes(fx.cat)?fcat(fx.cat)[2]:'';catChips();});
   $('fxDur').onchange=durata;$('fxClose').onclick=chiudiFisso;$('fxSave').onclick=salvaFisso;$('fxDel').onclick=eliminaFisso;$('fxFine').onclick=terminaFisso;
+  $('tmData').addEventListener('input',terminaControlla);$('tmAnn').onclick=chiudiTermina;$('tmClose').onclick=chiudiTermina;$('tmOk').onclick=salvaTermina;
+  $('tmModal').addEventListener('click',e=>{if(e.target.id==='tmModal')chiudiTermina();});
   $('fxModal').addEventListener('click',e=>{if(e.target.id==='fxModal')chiudiFisso();});
 }
 bind18();render();

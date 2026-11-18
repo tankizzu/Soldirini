@@ -68,7 +68,7 @@ function valoriWord(pid,yms,dataDoc){
     const prima=r2(eventi().filter(e=>e.ore&&catOf(prog(e.pid))==='occasionale'&&e.data.startsWith(anno)&&e.data.slice(0,7)<[...yms].sort()[0]).reduce((a,e)=>a+soldiOre(e).lordo,0));
     const ecc=Math.max(0,prima+lordo-Math.max(soglia5,prima));inps=r2(ecc*pct/100);
   }
-  const pag=yms.map(ym=>pagamenti()[`${pid}|${ym}|o`]).filter(g=>g?.pagato&&g.data).map(g=>g.data).sort().pop();
+  const pag=yms.map(ym=>pagamenti()[`${pid}|${ym}|o`]).filter(pagOk).map(g=>g.data).sort().pop();
   const per=periodoTesto(yms);
   return {...per,ore:nf(ore),lordo:numIt(lordo),ritenuta:numIt(rit),inps:numIt(inps),netto:numIt(r2(lordo-rit-inps)),
     data_doc:dIt(dataDoc||today()),data_pag:pag?dIt(pag):'',nome:[pr.nome,pr.cognome].filter(Boolean).join(' '),cf:pr.cf||'',progetto:p.nome,
@@ -126,7 +126,7 @@ function cardWord(p){
   // la scelta dei mesi vale per il mese che stai guardando: se cambi mese, riparte da quello
   if(!wSel[p.id]||wSel[p.id].per!==cur){wSel[p.id]=new Set(mesi.includes(cur)?[cur]:[]);wSel[p.id].per=cur;}
   const S=[...wSel[p.id]].filter(m=>mesi.includes(m));const v=S.length?valoriWord(p.id,S):null;
-  return `<div class="card pc" style="--c:${p.colore}" data-fid="word-${p.id}" data-sum="${v?eur(v._n.netto):'—'}"><h3><i></i>${esc(p.nome)} · ${esc(p.docTpl.titolo||'Ricevuta')} (Word)</h3>
+  return `<div class="card pc" style="--c:${colOk(p.colore)}" data-fid="word-${p.id}" data-sum="${v?eur(v._n.netto):'—'}"><h3><i></i>${esc(p.nome)} · ${esc(p.docTpl.titolo||'Ricevuta')} (Word)</h3>
     <p class="muted sm" style="margin-top:0">Scegli uno o più mesi da mettere nello stesso documento.</p>
     <div class="row wmesi">${mesi.map(m=>`<button type="button" class="pchip sm ${S.includes(m)?'on':''}" data-wmese="${p.id}|${m}">${cap(MESI[+m.slice(5)-1].slice(0,3))} ${m.slice(2,4)}</button>`).join('')||'<span class="muted sm">Nessun mese con ore segnate.</span>'}</div>
     ${v?`<div class="kv"><span>Periodo</span><b>${esc(v.periodo)}</b></div><div class="kv"><span>Attività · ore</span><b>${v._n.att} · ${v.ore}</b></div>

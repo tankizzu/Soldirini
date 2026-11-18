@@ -40,6 +40,11 @@ const lastDay=ym=>{const [y,m]=ym.split('-').map(Number);return new Date(y,m,0).
 const today=()=>ymd(new Date());
 const TIPI={allenamento:'Allenamento',partita:'Partita',amichevole:'Amichevole',lavoro:'Lavoro',altro:'Altro'};
 const COLORI=['#5b6475','#7d5c52','#6e6079','#776a52','#58665f','#8a6f3e','#4f6d7a','#7a5566','#707070'];
+// 24.1 (D-077): i colori arrivano anche da Drive: nella pagina (stile in linea) va solo un #rrggbb, altrimenti un grigio
+// 24.1 (D-077): un pagamento dei progetti letto da Drive conta solo con pagato===true e una data AAAA-MM-GG vera (come leggiPag di entrate.js)
+const dataOk=d=>{if(typeof d!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(d))return false;const [y,m,g]=d.split('-').map(Number);const x=new Date(y,m-1,g);return x.getFullYear()===y&&x.getMonth()===m-1&&x.getDate()===g;};
+const pagOk=g=>!!g&&typeof g==='object'&&g.pagato===true&&dataOk(g.data);
+const colOk=c=>typeof c==='string'&&/^#[0-9a-fA-F]{6}$/.test(c)?c:'#707070';
 const min=t=>{const m=/^(\d{1,2})[:.](\d{2})$/.exec(String(t||'').trim());return m?(+m[1])*60+(+m[2]):null;};
 const normT=t=>{const v=min(t);return v==null?'':`${Math.floor(v/60)}:${pad(v%60)}`;};
 
@@ -523,7 +528,7 @@ function render(){
 function renderCal(){
   $('mese').textContent=monthName(cur);
   const ps=progetti();
-  $('filtri').innerHTML=ps.length>1?`<button class="fchip ${filtro?'':'on'}" data-f="">Tutti</button>`+ps.map(p=>`<button class="fchip ${filtro===p.id?'on':''}" data-f="${p.id}" style="--c:${p.colore}"><i></i>${esc(p.nome)}</button>`).join(''):'';
+  $('filtri').innerHTML=ps.length>1?`<button class="fchip ${filtro?'':'on'}" data-f="">Tutti</button>`+ps.map(p=>`<button class="fchip ${filtro===p.id?'on':''}" data-f="${p.id}" style="--c:${colOk(p.colore)}"><i></i>${esc(p.nome)}</button>`).join(''):'';
   const [y,m]=cur.split('-').map(Number);const first=new Date(y,m-1,1);const off=(first.getDay()+6)%7;const n=lastDay(cur);
   const by={};for(const e of eventiDel(e=>e.data.startsWith(cur)&&(!filtro||e.pid===filtro),true))(by[e.data]=by[e.data]||[]).push(e);
   let h=['lun','mar','mer','gio','ven','sab','dom'].map(d=>`<div class="dow">${d}</div>`).join('');
@@ -532,7 +537,7 @@ function renderCal(){
   for(let d=1;d<=n;d++){
     const id=`${cur}-${pad(d)}`;const es=by[id]||[];
     const cls=['day',id===t?'today':'',id===selDay&&!multi?'sel':'',multi&&selected.has(id)?'msel':'',[0,6].includes(new Date(y,m-1,d).getDay())?'we':''].join(' ');
-    h+=`<button class="${cls}" data-day="${id}"><span class="n">${d}</span><span class="evs">${es.slice(0,3).map(e=>{const p=prog(e.pid);return `<span class="ev${e.stato==='previsto'?' prev':''}" style="--c:${p?.colore||'#888'}">${esc(etichettaBreve(e))}</span>`;}).join('')}${es.length>3?`<span class="more">+${es.length-3}</span>`:''}</span></button>`;
+    h+=`<button class="${cls}" data-day="${id}"><span class="n">${d}</span><span class="evs">${es.slice(0,3).map(e=>{const p=prog(e.pid);return `<span class="ev${e.stato==='previsto'?' prev':''}" style="--c:${colOk(p?.colore||'#888')}">${esc(etichettaBreve(e))}</span>`;}).join('')}${es.length>3?`<span class="more">+${es.length-3}</span>`:''}</span></button>`;
   }
   $('grid').innerHTML=h;
   $('multiBtn').classList.toggle('on',multi);$('multiBtn').textContent=multi?'Fine selezione':'Più giorni';
@@ -546,7 +551,7 @@ function evRow(e,withDate){
   if(e.ore)bits.push(isFisso(e)?`compenso ${eur(s.lordo)}`:`${nf(s.ore)} h · ${eur(s.lordo)} lordi`);
   const d=parseYmd(e.data);
   if((e.spese||[]).length)bits.push(`spese ${eur((e.spese||[]).reduce((a,x)=>a+(+x.importo||0),0))}`);
-  return `<button class="evrow${e.stato==='previsto'?' prev':''}" data-ev="${e.id}" style="--c:${p?.colore||'#888'}">${withDate?`<span class="dd"><b>${d.getDate()}</b>${GIORNI[d.getDay()].slice(0,3)}</span>`:''}<span class="bar"></span><span class="tx"><b>${esc(etichetta(e))}${e.stato==='previsto'?' <em class="tag">prevista</em>':''}${e.serie?' <em class="tag rip">↻</em>':''}</b><small>${esc(p?.nome||'?')}${bits.length?' · '+bits.join(' · '):''}</small></span></button>`;
+  return `<button class="evrow${e.stato==='previsto'?' prev':''}" data-ev="${e.id}" style="--c:${colOk(p?.colore||'#888')}">${withDate?`<span class="dd"><b>${d.getDate()}</b>${GIORNI[d.getDay()].slice(0,3)}</span>`:''}<span class="bar"></span><span class="tx"><b>${esc(etichetta(e))}${e.stato==='previsto'?' <em class="tag">prevista</em>':''}${e.serie?' <em class="tag rip">↻</em>':''}</b><small>${esc(p?.nome||'?')}${bits.length?' · '+bits.join(' · '):''}</small></span></button>`;
 }
 function renderDay(){
   const box=$('dayBox');if(multi){box.hidden=true;return;}box.hidden=false;
@@ -581,7 +586,7 @@ function defaultsEv(p){
 }
 function fillEv(e){
   md.e=e;const p=prog(e.pid);
-  $('evProj').innerHTML=progetti().map(x=>`<button type="button" class="pchip ${x.id===e.pid?'on':''}" data-pid="${x.id}" style="--c:${x.colore}"><i></i>${esc(x.nome)}</button>`).join('');
+  $('evProj').innerHTML=progetti().map(x=>`<button type="button" class="pchip ${x.id===e.pid?'on':''}" data-pid="${x.id}" style="--c:${colOk(x.colore)}"><i></i>${esc(x.nome)}</button>`).join('');
   document.querySelectorAll('#evTipo button').forEach(b=>b.classList.toggle('on',b.dataset.t===e.tipo));
   const lab={allenamento:'Squadra (se diversa dal solito)',partita:'Avversario',amichevole:'Avversario',lavoro:'Descrizione',altro:'Descrizione'}[e.tipo];
   $('evTitoloL').textContent=lab;
@@ -644,7 +649,7 @@ function saveExtra(pid,k,v){
 // ---- progetti ----
 function renderProgetti(){
   const ps=progetti();
-  $('projList').innerHTML=ps.map(p=>`<button class="card prow" data-proj="${p.id}" style="--c:${p.colore}"><i></i><span><b>${esc(p.nome)}</b><small>${[p.rimborso.attivo?'rimborsi spesa':'',p.ore.attivo?'ore / ritenuta':''].filter(Boolean).join(' · ')}${p.cartella?.nome?' · cartella “'+esc(p.cartella.nome)+'”':' · cartella da creare'}</small></span><span class="chev">›</span></button>`).join('')||'<p class="muted">Nessun progetto. Crea la tua prima squadra o il tuo primo lavoro.</p>';
+  $('projList').innerHTML=ps.map(p=>`<button class="card prow" data-proj="${p.id}" style="--c:${colOk(p.colore)}"><i></i><span><b>${esc(p.nome)}</b><small>${[p.rimborso.attivo?'rimborsi spesa':'',p.ore.attivo?'ore / ritenuta':''].filter(Boolean).join(' · ')}${p.cartella?.nome?' · cartella “'+esc(p.cartella.nome)+'”':' · cartella da creare'}</small></span><span class="chev">›</span></button>`).join('')||'<p class="muted">Nessun progetto. Crea la tua prima squadra o il tuo primo lavoro.</p>';
   const pr=D().profilo;
   for(const k of ['cognome','nome','natoA','dataNascita','residenza','via','cf'])if(document.activeElement!==$('pf-'+k))$('pf-'+k).value=pr[k]||'';
   if(document.activeElement!==$('pf-modello'))$('pf-modello').value=pr.auto?.modello||'';

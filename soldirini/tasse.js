@@ -50,7 +50,7 @@ function elencoPagamenti(y){
     for(const [pid,t] of Object.entries(riepilogo(ym).per)){if(!t.n)continue;
       for(const [tp,val] of [['o',t.lordo],['r',t.rimb]]){if(!val)continue;const mi=meseIncasso(pid,ym,tp);if(!mi.startsWith(y))continue;
         const g=pagamenti()[`${pid}|${ym}|${tp}`];
-        out.push({pid,p:t.p,ym,tp,mi,data:g?.pagato&&g.data?g.data:null,ore:tp==='o'?t.ore:0,lordo:tp==='o'?t.lordo:0,rit:tp==='o'?t.rit:0,netto:tp==='o'?t.netto:0,rimb:tp==='r'?t.rimb:0,km:tp==='r'?t.km:0});}}}
+        out.push({pid,p:t.p,ym,tp,mi,data:pagOk(g)?g.data:null,ore:tp==='o'?t.ore:0,lordo:tp==='o'?t.lordo:0,rit:tp==='o'?t.rit:0,netto:tp==='o'?t.netto:0,rimb:tp==='r'?t.rimb:0,km:tp==='r'?t.km:0});}}}
   return out.sort((a,b)=>(a.data||a.mi+'-99').localeCompare(b.data||b.mi+'-99')||a.p.nome.localeCompare(b.p.nome));
 }
 const quandoPag=it=>it.data?dIt(it.data):`previsto ${it.mi.slice(5)}/${it.mi.slice(0,4)}`;
@@ -194,7 +194,7 @@ function confrontoCU(c){
   const bad=[['p4',t.lordo],['p9',t.rit]].some(([k,v])=>c[k]!==''&&!ok(v,c[k]))&&!note4;
   h+=bad?`<div class="note">I numeri non tornano. Controlla l’elenco qui sotto: forse un mese è stato pagato in un altro anno (cambia la data in “Entrati”), manca un’attività o la percentuale è diversa.</div>`:'';
   const L=elencoPagamenti(String(c.anno)).filter(i=>i.pid===c.pid);
-  h+=`<details class="extra"><summary>Pagamenti ${c.anno} di ${esc(t.p.nome)} (${L.length})</summary>${L.map(i=>`<div class="due" style="--c:${t.p.colore}"><span class="bar"></span><span class="tx"><b>${i.tp==='o'?'Compensi':'Rimborso'} ${esc(monthName(i.ym))}</b><small>${quandoPag(i)}</small></span><b class="amt">${eur(i.tp==='o'?i.lordo:i.rimb)}</b><button class="btn ghost sm" data-unpag="${i.pid}|${i.ym}|${i.tp}">Data</button></div>`).join('')}</details>`;
+  h+=`<details class="extra"><summary>Pagamenti ${c.anno} di ${esc(t.p.nome)} (${L.length})</summary>${L.map(i=>`<div class="due" style="--c:${colOk(t.p.colore)}"><span class="bar"></span><span class="tx"><b>${i.tp==='o'?'Compensi':'Rimborso'} ${esc(monthName(i.ym))}</b><small>${quandoPag(i)}</small></span><b class="amt">${eur(i.tp==='o'?i.lordo:i.rimb)}</b><button class="btn ghost sm" data-unpag="${esc(i.pid+"|"+i.ym+"|"+i.tp)}">Data</button></div>`).join('')}</details>`;
   return h;
 }
 
@@ -245,8 +245,8 @@ function ripristina(id,kind){const now=Date.now();
   changed();render();toast('Ripristinato');}
 function renderCestino(){
   const {ev,pr}=cestino();const box=$('cestBox');if(!box)return;
-  box.innerHTML=(pr.map(p=>`<div class="due" style="--c:${p.colore}"><span class="bar"></span><span class="tx"><b>Progetto ${esc(p.nome)}</b><small>eliminato il ${new Date(p.deletedAt).toLocaleDateString('it-IT')}</small></span><button class="btn ghost sm" data-rip="${p.id}" data-k="p">Ripristina</button></div>`).join('')+
-    ev.filter(e=>!pr.some(p=>p.id===e.pid&&p.deletedAt===e.deletedAt)).slice(0,60).map(e=>{const p=prog(e.pid);return `<div class="due" style="--c:${p?.colore||'#888'}"><span class="bar"></span><span class="tx"><b>${esc(etichetta(e))}</b><small>${dIt(e.data)} · ${esc(p?.nome||'')} · eliminata il ${new Date(e.deletedAt).toLocaleDateString('it-IT')}</small></span><button class="btn ghost sm" data-rip="${e.id}" data-k="e">Ripristina</button></div>`;}).join(''))||'<p class="muted sm">Il cestino è vuoto.</p>';
+  box.innerHTML=(pr.map(p=>`<div class="due" style="--c:${colOk(p.colore)}"><span class="bar"></span><span class="tx"><b>Progetto ${esc(p.nome)}</b><small>eliminato il ${new Date(p.deletedAt).toLocaleDateString('it-IT')}</small></span><button class="btn ghost sm" data-rip="${p.id}" data-k="p">Ripristina</button></div>`).join('')+
+    ev.filter(e=>!pr.some(p=>p.id===e.pid&&p.deletedAt===e.deletedAt)).slice(0,60).map(e=>{const p=prog(e.pid);return `<div class="due" style="--c:${colOk(p?.colore||'#888')}"><span class="bar"></span><span class="tx"><b>${esc(etichetta(e))}</b><small>${dIt(e.data)} · ${esc(p?.nome||'')} · eliminata il ${new Date(e.deletedAt).toLocaleDateString('it-IT')}</small></span><button class="btn ghost sm" data-rip="${e.id}" data-k="e">Ripristina</button></div>`;}).join(''))||'<p class="muted sm">Il cestino è vuoto.</p>';
   const L=(D().storico||[]).slice(-120).reverse();
   $('storBox').innerHTML=L.map(x=>`<div class="stor"><span class="muted sm">${new Date(x.t).toLocaleString('it-IT',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</span><span><b>${esc(x.a)}</b> · ${esc(x.d)}</span></div>`).join('')||'<p class="muted sm">Ancora nessuna modifica registrata.</p>';
 }
@@ -320,7 +320,7 @@ const _renderRie5=renderRiepilogo;
 renderRiepilogo=function(){
   _renderRie5();if(rieMode!=='anno')return;const y=cur.slice(0,4);const L=elencoPagamenti(y);
   const card=`<div class="card" data-fid="elenco" data-sum="${L.length} voci"><h3>Elenco pagamenti ${y}</h3><p class="muted sm" style="margin-top:0">Ogni pagamento contato nel ${y}, con compensi e rimborsi separati. Tocca “Data” per correggere quando ti hanno pagato.</p>
-    ${L.map(i=>`<div class="due" style="--c:${i.p.colore}"><span class="bar"></span><span class="tx"><b>${esc(i.p.nome)} · ${i.tp==='o'?'compensi':'rimborso spese'} ${esc(monthName(i.ym))}</b><small>${quandoPag(i)}${i.tp==='o'?` · lordo ${eur(i.lordo)} · ritenuta ${eur(i.rit)}`:''}</small></span><b class="amt">${eur(i.tp==='o'?i.netto:i.rimb)}</b><button class="btn ghost sm" data-unpag="${i.pid}|${i.ym}|${i.tp}">Data</button></div>`).join('')||'<p class="muted">Nessun pagamento.</p>'}</div>`;
+    ${L.map(i=>`<div class="due" style="--c:${colOk(i.p.colore)}"><span class="bar"></span><span class="tx"><b>${esc(i.p.nome)} · ${i.tp==='o'?'compensi':'rimborso spese'} ${esc(monthName(i.ym))}</b><small>${quandoPag(i)}${i.tp==='o'?` · lordo ${eur(i.lordo)} · ritenuta ${eur(i.rit)}`:''}</small></span><b class="amt">${eur(i.tp==='o'?i.netto:i.rimb)}</b><button class="btn ghost sm" data-unpag="${esc(i.pid+"|"+i.ym+"|"+i.tp)}">Data</button></div>`).join('')||'<p class="muted">Nessun pagamento.</p>'}</div>`;
   const comm=document.querySelector('#rieAnno details[data-fold*="commercialista"]');
   if(comm)comm.insertAdjacentHTML('beforebegin',card);else $('rieAnno').insertAdjacentHTML('beforeend',card);
   foldify($('rieAnno'),'riea');

@@ -184,27 +184,140 @@ test.describe('v24 · uscite fisse', () => {
     await expect(page.locator('#secFix')).toBeHidden();
   });
 
-  test('"Termina da questo mese": già addebitata → conta ancora a novembre (T-U9); non ancora addebitata → da novembre non conta (T-U8)', async ({ browser }) => {
+  // 24.1 (D-073, D-076): un solo pulsante "Termina" che apre una finestra con l'ultimo giorno (di base oggi). Testi di 02 (report 02-ux-finestra-termina-d073).
+  const ids = page => page.evaluate(() => Object.fromEntries(Object.values(D().fissi).map(f => [f.nome, f.id])));
+  const apriTermina = async (page, id, giorno) => {
+    await page.evaluate(id => Soldi18.apriFisso(D().fissi[id]), id);
+    await page.locator('#fxFine').click();
+    await expect(page.locator('#tmModal')).toBeVisible();
+    if (giorno !== undefined) await page.locator('#tmData').fill(giorno);
+  };
+  test('finestra "Termina" con oggi: testi di 02, T-U9 e T-U8; riaprendo "Terminata" e "Cambia l\'ultimo giorno"', async ({ browser }) => {
     const { page } = await telefono(browser);
-    await page.evaluate(DATI);
-    const ids = await page.evaluate(() => Object.fromEntries(Object.values(D().fissi).map(f => [f.nome, f.id])));
-    // testi 19a/19b di 02 (report 02-ux-d072)
-    const termina = async (id, testo, dopo) => {
-      await page.evaluate(id => Soldi18.apriFisso(D().fissi[id]), id);
-      await expect(page.locator('#fxFineNota')).toContainText(testo + ' I mesi passati restano come sono.');
-      await page.locator('#fxFine').click();
-      await expect(page.locator('#dlgMsg')).toContainText(testo);
-      await page.locator('#dlgBtns').getByRole('button', { name: 'Termina' }).click();
-      await expect(page.locator('#toast')).toHaveText(dopo);
-    };
-    await termina(ids.Affitto, 'Questo mese è già stata pagata: conta ancora a novembre e non conta più da dicembre 2026.', '✓ Affitto terminata: conta fino a novembre 2026.');
-    await termina(ids.Assicurazione, 'Da novembre 2026 non conta più.', '✓ Assicurazione terminata: conta fino a ottobre 2026.');
-    const r = await page.evaluate(ids => [D().fissi[ids.Affitto].al, D().fissi[ids.Assicurazione].al, contiMese('2026-10').fTot, contiMese('2026-11').fTot, contiMese('2026-12').fTot], ids);
-    expect(r).toEqual(['2026-11', '2026-10', 570, 463, 13]); // ottobre invariato; novembre senza assicurazione; dicembre solo Netflix
-    // "Elimina" toglie anche dai mesi passati (T-U8, comportamento di prima)
-    await page.evaluate(id => Soldi18.apriFisso(D().fissi[id]), ids.Netflix);
+    await page.evaluate(DATI); const I = await ids(page);
+    await page.evaluate(id => Soldi18.apriFisso(D().fissi[id]), I.Affitto);
+    await expect(page.locator('#fxFineTit')).toHaveText('Non la paghi più?');
+    await expect(page.locator('#fxFineNota')).toHaveText('Scegli l’ultimo giorno: i mesi prima restano come sono.');
+    await expect(page.locator('#fxFine')).toHaveText('Termina');
+    await expect(page.locator('#fxDel')).toHaveText('Elimina');
+    await page.locator('#fxFine').click();
+    await expect(page.locator('#tmTit')).toHaveText('Termina “Affitto”');
+    await expect(page.locator('#tmData')).toHaveValue('2026-11-17'); // di base oggi
+    await expect(page.locator('#tmModal')).toContainText('Di solito è oggi. Puoi scegliere anche un giorno passato o futuro.');
+    await expect(page.locator('#tmMsg')).toHaveText('L’addebito del 3 novembre è entro questo giorno: conta ancora a novembre 2026 e non conta più da dicembre 2026.');
+    await expect(page.locator('#tmMsg b')).toHaveText('non conta più da dicembre 2026');
+    await expect(page.locator('#tmPrima')).toHaveText('I mesi prima restano come sono.');
+    await expect(page.locator('#tmAvv')).toBeHidden();
+    await page.locator('#tmOk').click();
+    await expect(page.locator('#toast')).toHaveText('✓ Affitto terminata: conta fino a novembre 2026.');
+    await expect(page.locator('#tmModal')).toBeHidden(); await expect(page.locator('#fxModal')).toBeHidden();
+    await apriTermina(page, I.Assicurazione);
+    await expect(page.locator('#tmMsg')).toHaveText('L’addebito del 30 novembre è dopo questo giorno: non conta più da novembre 2026.');
+    await expect(page.locator('#tmAvv')).toBeHidden(); // novembre è il mese in corso, non già passato
+    await page.locator('#tmOk').click();
+    await expect(page.locator('#toast')).toHaveText('✓ Assicurazione terminata: conta fino a ottobre 2026.');
+    expect(await page.evaluate(I => [D().fissi[I.Affitto].al, D().fissi[I.Assicurazione].al, contiMese('2026-10').fTot, contiMese('2026-11').fTot, contiMese('2026-12').fTot], I))
+      .toEqual(['2026-11', '2026-10', 570, 463, 13]);
+    // riaprendo un'uscita terminata
+    await page.evaluate(id => Soldi18.apriFisso(D().fissi[id]), I.Affitto);
+    await expect(page.locator('#fxFineTit')).toHaveText('Terminata: conta fino a novembre 2026.');
+    await expect(page.locator('#fxFineNota')).toBeHidden();
+    await expect(page.locator('#fxFine')).toHaveText('Cambia l’ultimo giorno');
+    await page.locator('#fxFine').click();
+    await expect(page.locator('#tmMsg')).toHaveText('Finisce già a novembre 2026: “Termina” può solo anticipare la fine.'); // P-1 con oggi
+    await page.locator('#tmData').fill('2026-11-02'); // anticipare si può
+    await expect(page.locator('#tmMsg')).toHaveText('L’addebito del 3 novembre è dopo questo giorno: non conta più da novembre 2026.');
+    await page.locator('#tmAnn').click(); await expect(page.locator('#tmModal')).toBeHidden(); await expect(page.locator('#fxModal')).toBeVisible();
+    expect(await page.evaluate(id => D().fissi[id].al, I.Affitto)).toBe('2026-11'); // "Annulla" non cambia niente
+    // "Elimina" toglie anche dai mesi passati (comportamento di prima)
+    await page.evaluate(id => Soldi18.apriFisso(D().fissi[id]), I.Netflix);
     await page.locator('#fxDel').click(); await page.locator('#dlgBtns').getByRole('button', { name: 'Elimina' }).click();
     expect(await page.evaluate(() => contiMese('2026-10').fTot)).toBe(557);
+  });
+
+  // casi T-T1…T-T16 di 04 (report 04-fisco-d073-termina-d074): oggi 17/11/2026; ogni caso con una sola uscita, così i totali del mese sono i suoi
+  const USC = { aff: ['Affitto', 450, 3, '2026-10'], ass: ['Assicurazione', 107, 30, '2026-10'], abb: ['Abbonamento', 10, 31, '2026-10'] };
+  const CASI = [
+    ['T-T1', 'aff', '2026-11-17', { al: '2026-11', mesi: { '2026-10': 450, '2026-11': 450, '2026-12': 0 } }],
+    ['T-T2', 'ass', '2026-11-17', { al: '2026-10', mesi: { '2026-10': 107, '2026-11': 0 } }],
+    ['T-T3', 'aff', '2026-11-03', { al: '2026-11', mesi: { '2026-11': 450, '2026-12': 0 }, frase: 'L’addebito del 3 novembre è entro questo giorno' }],
+    ['T-T4', 'aff', '2026-11-02', { al: '2026-10', mesi: { '2026-10': 450, '2026-11': 0 } }],
+    ['T-T5', 'aff', '2026-10-20', { al: '2026-10', mesi: { '2026-10': 450, '2026-11': 0 } }], // novembre è il mese in corso: niente avviso
+    ['T-T6', ['Assicurazione', 107, 30, '2026-09'], '2026-10-15', { al: '2026-09', mesi: { '2026-09': 107, '2026-10': 0, '2026-11': 0 }, avviso: '⚠ Cambiano i soldi rimanenti di ottobre 2026 (già passato). Se è giusto, termina pure.' }],
+    ['T-T6b', 'ass', '2026-10-15', { err: 'È prima dell’inizio (ottobre 2026). Se l’avevi inserita per errore, usa Elimina.', mesi: { '2026-10': 107, '2026-11': 107 } }], // "dal 2026-10": fine prima dell'inizio (D-076 punto 2)
+    ['due mesi passati (dal 2026-08)', ['Assicurazione', 107, 30, '2026-08'], '2026-09-10', { al: '2026-08', mesi: { '2026-08': 107, '2026-09': 0, '2026-10': 0 }, avviso: '⚠ Cambiano i soldi rimanenti di settembre 2026 – ottobre 2026 (già passati). Se è giusto, termina pure.' }],
+    ['T-T7', 'aff', '2027-01-15', { al: '2027-01', mesi: { '2026-11': 450, '2026-12': 450, '2027-01': 450, '2027-02': 0 } }],
+    ['T-T8', 'ass', '2027-01-15', { al: '2026-12', mesi: { '2026-11': 107, '2026-12': 107, '2027-01': 0 } }],
+    ['T-T9', 'abb', '2026-11-30', { al: '2026-11', mesi: { '2026-11': 10, '2026-12': 0 }, frase: 'L’addebito del 30 novembre è entro questo giorno' }],
+    ['T-T10', 'abb', '2027-02-28', { al: '2027-02', mesi: { '2027-02': 10, '2027-03': 0 }, frase: 'L’addebito del 28 febbraio è entro questo giorno: conta ancora a febbraio 2027 e non conta più da marzo 2027.' }],
+    ['T-T11', 'abb', '2027-02-27', { al: '2027-01', mesi: { '2027-01': 10, '2027-02': 0 }, frase: 'L’addebito del 28 febbraio è dopo questo giorno: non conta più da febbraio 2027.' }],
+    ['T-T12', 'abb', '2028-02-28', { al: '2028-01', mesi: { '2028-01': 10, '2028-02': 0 }, frase: 'L’addebito del 29 febbraio è dopo questo giorno' }],
+    ['T-T13', 'abb', '2026-12-31', { al: '2026-12', mesi: { '2026-12': 10, '2027-01': 0 } }],
+    ['T-T14', { nome: 'Rata', importo: '100', giorno: '3', dal: '2026-09', rate: '3' }, '2027-01-15', { err: 'Finisce già a novembre 2026: “Termina” può solo anticipare la fine.', mesi: { '2026-11': 100, '2026-12': 0, '2027-01': 0 } }],
+    ['T-T15', ['Palestra', 30, 20, '2026-11'], '2026-11-17', { err: 'È prima dell’inizio (novembre 2026). Se l’avevi inserita per errore, usa Elimina.', mesi: { '2026-10': 0, '2026-11': 30 } }],
+  ];
+  test('casi T-T1…T-T15 e T-T6b di 04 (D-073, D-076), dalla finestra', async ({ browser }) => {
+    const { page, errori } = await telefono(browser);
+    await page.evaluate(() => { D().entrate = { 'v24|risposta': { risposta: 'no', updatedAt: 1 } }; changed(); });
+    for (const [nome, u, G, att] of CASI) {
+      const f = typeof u === 'string' ? USC[u] : u;
+      const campi = Array.isArray(f) ? { nome: f[0], importo: String(f[1]), giorno: String(f[2]), dal: f[3], rate: '' } : f;
+      const id = await page.evaluate(c => { D().fissi = {}; const id = uid(); D().fissi[id] = Object.assign({ id, cat: 'altro', al: '', rate: '', updatedAt: 1 }, c); changed(); return id; }, campi);
+      await apriTermina(page, id, G);
+      if (att.err) {
+        await expect(page.locator('#tmMsg'), nome).toHaveText(att.err);
+        await expect(page.locator('#tmOk'), nome).toBeDisabled();
+        await page.locator('#tmAnn').click(); await page.locator('#fxClose').click();
+      } else {
+        if (att.frase) await expect(page.locator('#tmMsg'), nome).toContainText(att.frase);
+        if (att.avviso) await expect(page.locator('#tmAvv'), nome).toHaveText(att.avviso); else await expect(page.locator('#tmAvv'), nome).toBeHidden();
+        await page.locator('#tmOk').click();
+        await expect(page.locator('#tmModal'), nome).toBeHidden();
+      }
+      const r = await page.evaluate(([id, mesi]) => ({ al: D().fissi[id].al, rate: D().fissi[id].rate, mesi: Object.fromEntries(Object.keys(mesi).map(m => [m, contiMese(m).fTot])) }), [id, att.mesi || {}]);
+      expect(r.al, nome).toBe(att.err ? '' : att.al);
+      if (att.err) expect(r.rate, nome).toBe(campi.rate || ''); // nessuna modifica
+      if (att.mesi) expect(r.mesi, nome).toEqual(att.mesi);
+    }
+    expect(errori).toEqual([]);
+  });
+
+  test('T-T16: giorno non valido o vuoto → "Scegli l\'ultimo giorno.", niente salvataggio', async ({ browser }) => {
+    const { page } = await telefono(browser);
+    await page.evaluate(DATI); const I = await ids(page);
+    await apriTermina(page, I.Affitto);
+    for (const v of ['2026-13-40', 'domani', '']) {
+      await page.evaluate(v => { const i = document.getElementById('tmData'); i.value = v; i.dispatchEvent(new Event('input', { bubbles: true })); }, v);
+      await expect(page.locator('#tmMsg')).toHaveText('Scegli l’ultimo giorno.');
+      await expect(page.locator('#tmOk')).toBeDisabled();
+      await expect(page.locator('#tmPrima')).toBeHidden();
+    }
+    await page.locator('#tmOk').click({ force: true });
+    expect(await page.evaluate(id => D().fissi[id].al, I.Affitto)).toBe('');
+  });
+
+  test('T-T17: due telefoni sullo stesso Drive, uno termina: dopo la sincronizzazione l\'altro ha la stessa fine', async ({ browser }) => {
+    const drive = new DriveFinto();
+    const A = await nuovoDispositivo(browser, { drive, ora: OGGI }); await pronto(A.page); await accedi(A.page);
+    await A.page.evaluate(DATI); await sincronizza(A.page);
+    const B = await nuovoDispositivo(browser, { drive, ora: OGGI }); await pronto(B.page); await accediEsistente(B.page);
+    const I = await ids(A.page);
+    await apriTermina(A.page, I.Affitto); await A.page.locator('#tmOk').click(); await sincronizza(A.page);
+    await sincronizza(B.page);
+    expect(await B.page.evaluate(id => [D().fissi[id].al, contiMese('2026-12').fTot], I.Affitto)).toEqual(['2026-11', 120]);
+  });
+
+  test('"al" e "dal" letti da Drive: un valore non AAAA-MM vale come se mancasse (03), senza errori', async ({ browser }) => {
+    const { page, errori } = await telefono(browser);
+    const r = await page.evaluate(() => { D().fissi = {};
+      for (const [id, al, dal] of [['a', 'presto', '2026-10'], ['b', '2026-13', '2026-10'], ['c', '<b>x</b>', 'ieri'], ['d', '2026-10', '2026-10']])
+        D().fissi[id] = { id, nome: id, cat: 'altro', importo: '10', giorno: '5', dal, al, rate: '', updatedAt: 1 };
+      D().fissi.e = { id: 'e', nome: 'e', cat: 'altro', importo: '10', giorno: '5', dal: 'xx', al: '', rate: '3', updatedAt: 1 };
+      changed(); return [contiMese('2026-09').fTot, contiMese('2026-10').fTot, contiMese('2027-05').fTot]; });
+    // settembre: c ed e (dal non valido = senza inizio); ottobre: tutte; maggio 2027: a, b, c, e (d finita a ottobre; e senza fine: le rate non si contano senza un "dal" valido)
+    expect(r).toEqual([20, 50, 40]);
+    await page.evaluate(() => { tab = 'pro'; render(); });
+    expect(errori).toEqual([]);
   });
 
   test('nomi: "Uscite fisse" in Impostazioni e nel filtro del calendario; niente più "Pagamenti fissi" né "Spese del giorno"', async ({ browser }) => {
@@ -289,6 +402,41 @@ test.describe('v24 · requisiti di 03', () => {
     expect(errori).toEqual([]);
   });
 
+  test('D-077: pagamenti sbagliati su un progetto esistente (data impossibile, numero, pagato "yes"), id con HTML, colore non #rrggbb: Riepilogo e Tasse coerenti, nessun errore', async ({ browser }) => {
+    const { page, errori } = await telefono(browser);
+    await page.evaluate(() => { D().entrate = { 'v24|risposta': { risposta: 'no', updatedAt: 1 } }; changed(); });
+    // stesso progetto due volte: prima senza pagamenti (riferimento), poi con i pagamenti sbagliati
+    const prepara = sbagliati => page.evaluate(sbagliati => {
+      const pid = 'p"><b id="iniettato">x</b>'; const p = nuovoProgetto(); p.id = pid; p.nome = 'Squadra'; p.colore = sbagliati ? 'red;background:url(x)' : '#4a5f8a';
+      p.ore.attivo = true; p.ore.categoria = 'occasionale'; p.pagamento = { ritardo: 1 }; D().progetti = { [pid]: p }; D().eventi = {};
+      for (const [id, data] of [['e1', '2026-08-12'], ['e2', '2026-09-12'], ['e3', '2026-10-12']])
+        D().eventi[id] = { id, pid, data, tipo: 'altro', titolo: '', ore: true, fasce: [], fisso: '375', rimborso: false, spese: [], created: 1, updatedAt: 1 };
+      D().pagamenti = sbagliati ? { [`${pid}|2026-08|o`]: { pagato: true, data: '2026-13-45', updatedAt: 1 }, [`${pid}|2026-09|o`]: { pagato: true, data: 20261005, updatedAt: 1 },
+        [`${pid}|2026-10|o`]: { pagato: 'yes', data: '2026-11-05', updatedAt: 1 } } : {};
+      changed();
+      const A = aggrega('2026'); return { tot: A.tot, mesi: A.mesi.map(m => [m.netto, m.lordo, m.rit]), incasso: ['2026-08', '2026-09', '2026-10'].map(ym => meseIncasso(pid, ym, 'o')),
+        elenco: elencoPagamenti('2026').map(i => [i.ym, i.mi, i.data]), prog: ['2026-09', '2026-10', '2026-11'].map(ym => contiMese(ym).prog) };
+    }, sbagliati);
+    const rif = await prepara(false), bad = await prepara(true);
+    expect(bad).toEqual(rif); // i pagamenti sbagliati valgono "non entrati": stesse cifre in Riepilogo e Tasse
+    expect(bad.incasso).toEqual(['2026-09', '2026-10', '2026-11']); // mese previsto dal progetto
+    expect(bad.elenco.every(r => r[2] === null)).toBe(true);
+    // le pagine si disegnano: Riepilogo (mese e anno), Documenti, Tasse
+    for (const [t, ym, modo] of [['rie', '2026-11', 'mese'], ['rie', '2026-11', 'anno'], ['doc', '2026-10', 'mese'], ['tas', '2026-11', 'mese']])
+      await page.evaluate(([t, ym, modo]) => { cur = ym; rieMode = modo; tab = t; render(); }, [t, ym, modo]);
+    // colore non #rrggbb: nella pagina va il grigio (nessuno stile con url(x)); nei pulsanti dei pagamenti la chiave è protetta da esc()
+    // (l'id del progetto entra ancora senza esc() in altri attributi, per esempio in Documenti: segnalato nel report 24.1, fuori da D-077)
+    await page.evaluate(() => { cur = '2026-10'; tab = 'doc'; render(); });
+    expect(await page.evaluate(() => [document.querySelectorAll('[style*="url(x)"]').length, document.querySelectorAll('[data-pag] #iniettato, [data-unpag] #iniettato').length,
+      [...new Set([...document.querySelectorAll('[data-pag]')].map(b => b.dataset.pag))].sort()])).toEqual([0, 0, ['2026-08', '2026-09', '2026-10'].map(m => `p"><b id="iniettato">x</b>|${m}|o`)]);
+    // un pagamento valido sulla stessa chiave: il pulsante "✓ Entrati" porta la chiave intera, senza HTML inserito
+    await page.evaluate(() => { const pid = Object.keys(D().progetti)[0]; pagamenti()[`${pid}|2026-09|o`] = { pagato: true, data: '2026-10-05', updatedAt: 2 }; changed(); cur = '2026-09'; tab = 'doc'; render(); });
+    const k = await page.evaluate(() => [...document.querySelectorAll('[data-unpag]')].map(b => b.dataset.unpag));
+    expect(k).toContain('p"><b id="iniettato">x</b>|2026-09|o');
+    expect(await page.evaluate(() => document.querySelectorAll('[data-pag] #iniettato, [data-unpag] #iniettato').length)).toBe(0);
+    expect(errori).toEqual([]);
+  });
+
   test('importazioni tolte: niente schede di Strafobico e della vecchia app; i loro dati restano intatti (non vengono cancellati)', async ({ browser }) => {
     const ctxDati = async page => page.evaluate(() => new Promise(ok => { const r = indexedDB.open('strafobico', 1);
       r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => { const db = r.result; const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').put({ turni: [{ date: '2026-11-02', tipo: 'M' }] }, 'dati'); t.oncomplete = () => { db.close(); ok(); }; }; }));
@@ -347,13 +495,17 @@ test.describe('v24 · confronti con la 24csp pubblicata', () => {
   test('documenti: ricevuta, nota spese, prospetto ore (pixel) ed Excel delle ricevute identici alla 24csp, con logo salvato, luoghi e dati', async ({ browser }) => {
     const prima = sitoDaCommit(BASE_24CSP, 'SOLDIRINI_24CSP');
     test.skip(!prima.sito, prima.motivo);
-    const doc = page => page.evaluate(async () => {
-      const foto = []; const orig = window.html2canvas; window.html2canvas = async (...a) => { const c = await orig(...a); foto.push(c.toDataURL('image/png')); return c; };
+    // 24.1: impronte SHA-256 calcolate nella pagina (di ogni immagine PNG e di ogni parte degli Excel) al posto dei dati interi:
+    // stesso confronto, molta meno memoria (con i dati interi la pagina poteva chiudersi per memoria piena sotto carico)
+    const doc = async page => { try { return await page.evaluate(async () => {
+      const sha = async buf => [...new Uint8Array(await crypto.subtle.digest('SHA-256', buf))].map(x => x.toString(16).padStart(2, '0')).join('');
+      const png = c => new Promise(ok => c.toBlob(b => ok(b.arrayBuffer()), 'image/png'));
+      const foto = []; const orig = window.html2canvas; window.html2canvas = async (...a) => { const c = await orig(...a); foto.push(await sha(await png(c))); return c; };
       try { await pdfRimbBytes('pX', '2026-10'); const n = foto.length; await pagesToPdf(pagineOre('2026-10'));
         const mesi = [{ ym: '2026-10', d: docData('pX', '2026-10') }];
-        const parti = async b => { const z = await JSZip.loadAsync(b); const o = {}; for (const k of Object.keys(z.files).sort()) o[k] = [...await z.files[k].async('uint8array')].join(','); return JSON.stringify(o); };
+        const parti = async b => { const z = await JSZip.loadAsync(b); const o = {}; for (const k of Object.keys(z.files).sort()) o[k] = await sha(await z.files[k].async('uint8array')); return JSON.stringify(o); };
         const ric = await parti(await MODELLI.ricevute(await tpl('ricevuta.xlsx'), mesi, await logoSrc(prog('pX')))), nota = await parti(await MODELLI.note(await tpl('nota.xlsx'), mesi));
-        return { rimb: foto.slice(0, n), ore: foto.slice(n), ric, nota }; } finally { window.html2canvas = orig; } });
+        return { rimb: foto.slice(0, n), ore: foto.slice(n), ric, nota }; } finally { window.html2canvas = orig; } }); } finally { await page.context().close(); } };
     const a = await doc(await apri(browser, prima.sito)), b = await doc(await apri(browser, SITO));
     expect(a.rimb.length).toBeGreaterThanOrEqual(2); expect(a.ore.length).toBeGreaterThanOrEqual(1);
     expect(b.rimb.length).toBe(a.rimb.length); expect(b.ore.length).toBe(a.ore.length);

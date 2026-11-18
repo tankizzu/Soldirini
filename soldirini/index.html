@@ -318,6 +318,7 @@ body.nascondi :is(.hero b,.hero .rim b,.kv b,details.fold>summary .sum,#daySum b
 @keyframes swl{from{opacity:.2;transform:translateX(40px)}to{opacity:1;transform:none}}@keyframes swr{from{opacity:.2;transform:translateX(-40px)}to{opacity:1;transform:none}}
 .ev.fx{opacity:.9}
 #fxModal,#obModal,#mvModal{z-index:60}
+#tmModal{z-index:61}
 .fxr{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px dashed var(--line)}.fxr .tx{flex:1;display:flex;flex-direction:column;min-width:0}.fxr small{color:var(--mut)}
 .obp{margin:10px 0}.obp .bar{height:10px;border-radius:10px;background:var(--line);overflow:hidden;margin:6px 0}.obp .bar span{display:block;height:100%;background:#2f9e44;border-radius:10px;transition:width .5s ease}
 .rbars{display:grid;grid-template-columns:repeat(12,1fr);gap:4px;align-items:end;height:140px;margin:10px 0 4px}.rbar{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:3px}.rbar span{width:100%;border-radius:6px 6px 2px 2px;background:#2f9e44;min-height:2px;transition:height .5s ease}.rbar span.neg{background:#e8590c}.rbar small{font-size:10px;color:var(--mut)}
@@ -810,8 +811,15 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
     <label>Dal mese<input id="fxDal" type="month"></label><label>Durata<select id="fxDur"><option value="">senza fine</option><option value="rate">numero di rate</option><option value="al">fino al mese</option></select></label>
     <label id="fxRateL" hidden>Rate<input id="fxRate" type="number" inputmode="numeric" min="1"></label><label id="fxAlL" hidden>Fino al mese<input id="fxAl" type="month"></label>
     <label class="s2">Nota<input id="fxNota"></label></div>
-  <p class="muted sm" id="fxFineNota" hidden></p>
-  <div class="foot"><button class="btn ghost" id="fxDel">Elimina</button><button class="btn ghost" id="fxFine" hidden>Termina da questo mese</button><button class="btn" id="fxSave">Salva</button></div></div></div>
+  <div class="card" id="fxFineBox" hidden><b id="fxFineTit">Non la paghi più?</b><p class="muted sm" id="fxFineNota">Scegli l’ultimo giorno: i mesi prima restano come sono.</p><button class="btn ghost" id="fxFine">Termina</button></div>
+  <div class="foot"><button class="btn ghost" id="fxDel">Elimina</button><button class="btn" id="fxSave">Salva</button></div></div></div>
+<div class="modal" id="tmModal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="tmTit">
+  <div class="sheethead"><h2 id="tmTit">Termina</h2><button class="x" id="tmClose" aria-label="Chiudi">×</button></div>
+  <label>Ultimo giorno<input id="tmData" type="date"></label>
+  <p class="muted sm" style="margin:4px 0 0">Di solito è oggi. Puoi scegliere anche un giorno passato o futuro.</p>
+  <p class="sm" id="tmMsg" aria-live="polite"></p><p class="muted sm" id="tmPrima">I mesi prima restano come sono.</p>
+  <p class="sm warn" id="tmAvv" hidden></p>
+  <div class="foot"><button class="btn ghost" id="tmAnn">Annulla</button><button class="btn" id="tmOk">Termina</button></div></div></div>
 <div class="modal" id="obModal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="obTit">
   <div class="sheethead"><h2 id="obTit">Obiettivo</h2><button class="x" id="obClose" aria-label="Chiudi">×</button></div>
   <div class="g2"><label class="s2">Nome<input id="obNome" placeholder="es. Vacanze, Fondo emergenze, Auto"></label><label>Quanto €<input id="obTarget" inputmode="decimal"></label><label>Entro<input id="obEntro" type="month"></label></div>

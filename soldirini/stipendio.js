@@ -52,7 +52,7 @@ function chiudi(id){$(id).hidden=true;if([...MODALI,'evModal','pjModal','cuModal
 // ================= Impostazioni: elenco e modifica dei lavori =================
 function renderLavori(){
   const L=lavori();
-  $('lavList').innerHTML=L.map(l=>`<button class="card prow" data-lav="${l.id}" style="--c:${l.colore}"><i></i><span><b>${esc(l.nome||'Lavoro')}</b><small>${l.modo==='fisso'?'orario fisso':'a turni'} · ${l.paga.importo!==''?`paga ${l.paga.tipo==='mensile'?'mensile':'oraria'} ${eur(+l.paga.importo)}`:'paga da impostare'}</small></span><span class="chev">›</span></button>`).join('')
+  $('lavList').innerHTML=L.map(l=>`<button class="card prow" data-lav="${l.id}" style="--c:${colOk(l.colore)}"><i></i><span><b>${esc(l.nome||'Lavoro')}</b><small>${l.modo==='fisso'?'orario fisso':'a turni'} · ${l.paga.importo!==''?`paga ${l.paga.tipo==='mensile'?'mensile':'oraria'} ${eur(+l.paga.importo)}`:'paga da impostare'}</small></span><span class="chev">›</span></button>`).join('')
     ||'<p class="muted sm">Se sei dipendente, aggiungi qui il tuo lavoro: a orario fisso oppure a turni. Soldirini calcola ore, straordinari e una stima dello stipendio.</p>';
 }
 let lv=null; // lavoro in modifica
@@ -132,7 +132,7 @@ window.etichettaTurno=function(l,v){
     full=`${l.nome}, ${v.tipo.nome}${v.daS&&v.aS?' '+oraBreve(v.daS)+'–'+oraBreve(v.aS):''}`;}
   else{sig=`${oraBreve(v.daS)}–${oraBreve(v.aS)}`;nome=`${v.daS||''}–${v.aS||''}`;full=`${l.nome}, turno ${sig}`;}
   const bar=v.implicito&&l.modo==='fisso'&&calMostra(l)==='diversi';
-  return {bar,full,html:`<span class="ev tu${v.implicito?' imp':''}${bar?' bar':''}" data-lid="${l.id}" style="--c:${v.colore||l.colore}" title="${esc(full)}">${ico?`<span class="tui" aria-hidden="true">${esc(ico)}</span>`:''}<span class="tus" aria-hidden="true">${esc(sig)}</span><span class="tun" aria-hidden="true">${esc(nome)}</span><span class="vh">${esc(full)}</span></span>`};
+  return {bar,full,html:`<span class="ev tu${v.implicito?' imp':''}${bar?' bar':''}" data-lid="${l.id}" style="--c:${colOk(v.colore||l.colore)}" title="${esc(full)}">${ico?`<span class="tui" aria-hidden="true">${esc(ico)}</span>`:''}<span class="tus" aria-hidden="true">${esc(sig)}</span><span class="tun" aria-hidden="true">${esc(nome)}</span><span class="vh">${esc(full)}</span></span>`};
 };
 const _renderCal15=renderCal;
 renderCal=function(){
@@ -157,9 +157,9 @@ function renderTurniGiorno(d){
   let box=$('dayTurni');if(!box){box=document.createElement('div');box.id='dayTurni';$('dayBox').insertBefore(box,$('dayList'));}
   const L=lavori();if(!L.length){box.innerHTML='';return;}
   box.innerHTML=L.map(l=>{const G=C.vociGiorno(l,turniDi(l.id).filter(t=>t.data===d),d);
-    const voci=G.voci.map(v=>`<div class="tuv" style="--c:${v.colore||l.colore}"><span class="bar"></span><span class="tx"><b>${esc((v.tipo?.icona?v.tipo.icona+' ':'')+v.nome)}</b><small>${v.daS&&v.aS?esc(v.daS+'–'+v.aS):''}${v.ore!=null?` · ${nOre(v.ore)} ore`:''}${v.implicito?' · orario abituale':''}${v.nota?' · '+esc(v.nota):''}</small></span>${v.id?`<button class="btn ghost sm" data-tued="${l.id}|${v.id}">Modifica</button>`:''}</div>`).join('');
-    return `<div class="tubox"><div class="tuh" style="--c:${l.colore}"><i></i><b>${esc(l.nome)}</b>${G.fest?`<small class="muted">${esc(G.fest)}</small>`:''}</div>${voci||'<p class="muted sm">Niente in questo giorno.</p>'}
-      <div class="tuchips">${l.tipi.map(t=>`<button class="chip" style="--c:${t.colore||l.colore}" data-tuq="${l.id}|${t.id}">${esc((t.icona?t.icona+' ':'')+t.nome)}</button>`).join('')}<button class="chip" data-tuq="${l.id}|">Altro…</button>${l.modo==='turni'?`<button class="chip" data-ftopen="${l.id}">📷 Da foto</button>`:''}</div></div>`;}).join('');
+    const voci=G.voci.map(v=>`<div class="tuv" style="--c:${colOk(v.colore||l.colore)}"><span class="bar"></span><span class="tx"><b>${esc((v.tipo?.icona?v.tipo.icona+' ':'')+v.nome)}</b><small>${v.daS&&v.aS?esc(v.daS+'–'+v.aS):''}${v.ore!=null?` · ${nOre(v.ore)} ore`:''}${v.implicito?' · orario abituale':''}${v.nota?' · '+esc(v.nota):''}</small></span>${v.id?`<button class="btn ghost sm" data-tued="${l.id}|${v.id}">Modifica</button>`:''}</div>`).join('');
+    return `<div class="tubox"><div class="tuh" style="--c:${colOk(l.colore)}"><i></i><b>${esc(l.nome)}</b>${G.fest?`<small class="muted">${esc(G.fest)}</small>`:''}</div>${voci||'<p class="muted sm">Niente in questo giorno.</p>'}
+      <div class="tuchips">${l.tipi.map(t=>`<button class="chip" style="--c:${colOk(t.colore||l.colore)}" data-tuq="${l.id}|${t.id}">${esc((t.icona?t.icona+' ':'')+t.nome)}</button>`).join('')}<button class="chip" data-tuq="${l.id}|">Altro…</button>${l.modo==='turni'?`<button class="chip" data-ftopen="${l.id}">📷 Da foto</button>`:''}</div></div>`;}).join('');
 }
 // un tocco su un tipo: lo metto nel giorno (se servono le ore, apro la finestra)
 function serveOre(t){return !t||((t.cat==='variabile'||t.cat==='permesso'||t.aggiunta||t.cat==='nonretr')&&!(t.da&&t.a)&&t.ore==='');}
@@ -185,7 +185,7 @@ function apriTurno(dates,lid,turno){
   renderTuTipi();apri('tuModal');
 }
 function renderTuTipi(){const l=lav(tu.lid);
-  $('tuTipi').innerHTML=l.tipi.map(t=>`<button type="button" class="chip ${tu.tipo===t.id?'on':''}" style="--c:${t.colore||l.colore}" data-tut="${t.id}">${esc((t.icona?t.icona+' ':'')+t.nome)}</button>`).join('')+`<button type="button" class="chip ${tu.tipo===null?'on':''}" data-tut="">Orario diverso</button>`;
+  $('tuTipi').innerHTML=l.tipi.map(t=>`<button type="button" class="chip ${tu.tipo===t.id?'on':''}" style="--c:${colOk(t.colore||l.colore)}" data-tut="${t.id}">${esc((t.icona?t.icona+' ':'')+t.nome)}</button>`).join('')+`<button type="button" class="chip ${tu.tipo===null?'on':''}" data-tut="">Orario diverso</button>`;
   const t=C.tipoDi(l,tu.tipo);$('tuOrari').hidden=!!t&&!!(t.da&&t.a)&&t.cat!=='lavoro'&&!t.aggiunta;
   $('tuHint').textContent=!t?'Scrivi l’orario di questo giorno: sostituisce quello abituale.':t.da&&t.a?`Orario del tipo: ${t.da}–${t.a}. Cambialo qui solo se quel giorno è diverso.`:serveOre(t)?'Scrivi le ore (oppure dalle–alle).':C.PAGATE.includes(t.cat)?'Lascia vuoto per contare l’orario abituale del giorno.':'';
 }
@@ -213,7 +213,7 @@ function cardMese(l,ym){
   const E=M.E;const voce=(t,v)=>v?kv(t,eur(v)):'';
   const sal=[saldi.ferie?`Ferie: ${nOre(saldi.ferie.saldo)} ${saldi.ferie.unita}`:'',saldi.rol?`Permessi: ${nOre(saldi.rol.saldo)} ${saldi.rol.unita}`:'',saldi.exfest?`Ex festività: ${nOre(saldi.exfest.saldo)} ${saldi.exfest.unita}`:''].filter(Boolean);
   const diff=busta&&M.lordo!=null&&busta.lordo!==''?r2(+busta.lordo-M.lordo):null;
-  return `<div class="card lavcard" data-lavcard="${l.id}" style="--c:${l.colore}"><h3><i></i>${esc(l.nome)} <small class="muted">· lavoro dipendente</small></h3>
+  return `<div class="card lavcard" data-lavcard="${l.id}" style="--c:${colOk(l.colore)}"><h3><i></i>${esc(l.nome)} <small class="muted">· lavoro dipendente</small></h3>
     ${kv('Giorni lavorati',T.giorniLav)}${kv('Ore',ore.join(' · ')||'0')}${ass.length?kv('Assenze',ass.join(' · ')):''}
     ${M.lordo!=null?`${voce('Paga base',E.base)}${voce('Straordinari',E.stra)}${voce('Notturno',E.nott)}${voce('Festivi',E.fest)}${voce('Domeniche',E.dom)}
       <div class="kv big"><span>Lordo stimato</span><b>${eur(M.lordo)}</b></div>${netto!=null?`<div class="kv"><span>Netto stimato</span><b>${eur(netto)}</b></div><p class="muted sm">Trattenute ${nf(tr.p*100,1)}% ${tr.fonte==='busta'?'ricavate dalla busta di '+esc(monthName(tr.mese)):'impostate nel lavoro'}.</p>`:'<p class="muted sm">Carica una busta paga per stimare anche il netto.</p>'}
@@ -230,7 +230,7 @@ function cardAnno(l,y){
   for(let m=1;m<=12;m++){const ym=`${y}-${pad(m)}`;const M=C.calcolaMese(l,turniDi(l.id),ym);const b=B[`${l.id}|${ym}`];if(!M.T.lav&&!M.T.pagate&&!b)continue;
     tl+=M.lordo||0;to+=M.T.lav;tb+=b&&b.netto!==''?+b.netto:0;
     righe.push(`<div class="kv"><span>${MESI[m-1][0].toUpperCase()+MESI[m-1].slice(1)}</span><b>${nOre(M.T.lav)} ore${M.lordo!=null?' · '+eur(M.lordo):''}${b&&b.netto!==''?' · busta '+eur(+b.netto):''}</b></div>`+(ym<=today().slice(0,7)?(window.Entrate?Entrate.rigaStato(`lav|${l.id}|${ym}`):''):''));}
-  return `<div class="card lavcard" style="--c:${l.colore}"><h3><i></i>${esc(l.nome)} · ${y}</h3>${righe.join('')||'<p class="muted">Niente in questo anno.</p>'}
+  return `<div class="card lavcard" style="--c:${colOk(l.colore)}"><h3><i></i>${esc(l.nome)} · ${y}</h3>${righe.join('')||'<p class="muted">Niente in questo anno.</p>'}
     <div class="kv big"><span>Totale</span><b>${nOre(r2(to))} ore${tl?' · lordo stimato '+eur(r2(tl)):''}</b></div>${tb?`<div class="kv"><span>Netto dalle buste</span><b>${eur(r2(tb))}</b></div>`:''}
     <div class="acts"><button class="btn ghost sm" data-bparch="${l.id}">Archivio buste</button></div></div>`;
 }

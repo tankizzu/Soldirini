@@ -626,7 +626,7 @@ function mostraErrore(testo,nomi){
 function renderProposta(){
   const l=lav0(ft.lid);const giorni=Object.keys(ft.proposta).sort();
   $('ftLista').innerHTML=giorni.map(d=>{const g=parseYmd(d);const sel=ft.proposta[d];const dub=ft.dubbi.has(d);
-    return `<div class="ftg${dub?' dub':''}"><span class="ftd">${dub?'⚠ ':''}${GIORNI[g.getDay()].slice(0,3)} ${g.getDate()}</span><span class="ftc">${l.tipi.map(t=>`<button type="button" class="chip${sel.includes(t.id)?' on':''}" style="--c:${t.colore||l.colore}" data-ftd="${d}" data-ftt="${t.id}" title="${esc(t.nome)}">${esc(t.icona||t.sigla||t.nome)}</button>`).join('')}</span></div>`;}).join('');
+    return `<div class="ftg${dub?' dub':''}"><span class="ftd">${dub?'⚠ ':''}${GIORNI[g.getDay()].slice(0,3)} ${g.getDate()}</span><span class="ftc">${l.tipi.map(t=>`<button type="button" class="chip${sel.includes(t.id)?' on':''}" style="--c:${colOk(t.colore||l.colore)}" data-ftd="${d}" data-ftt="${t.id}" title="${esc(t.nome)}">${esc(t.icona||t.sigla||t.nome)}</button>`).join('')}</span></div>`;}).join('');
   const varT=l.tipi.find(t=>t.cat==='variabile'&&Object.values(ft.proposta).some(x=>x.includes(t.id)));
   $('ftOreBox').hidden=!varT;if(varT){$('ftOreBox').firstChild.nodeValue='Ore per ogni «'+varT.nome+'»';if(!$('ftOre').value)$('ftOre').value=varT.ore||4;}
   $('ftLegenda').innerHTML=l.tipi.map(t=>`${esc(t.icona||t.sigla||'')} = ${esc(t.nome)}`).join(' · ');
