@@ -58,10 +58,18 @@ test('anti-riquadro: dentro un iframe di un altro sito l\'app non compare; apert
   expect(await page.evaluate(() => getComputedStyle(document.documentElement).display)).not.toBe('none');
   await ctx.route('https://altro-sito.test/**', r => r.fulfill({ contentType: 'text/html', body: `<!doctype html><h1>Altro sito</h1><iframe id="f" src="${BASE}" width="390" height="600"></iframe>` }));
   const p2 = await ctx.newPage();
+  // v24b: app.js arriva in ritardo (come dopo una lettura lenta di IndexedDB): la pagina deve essere già nascosta da archivio.js
+  let rilascia; const appArrivato = new Promise(r => { rilascia = r; });
+  await p2.route('**/app.js', async r => { await appArrivato; await r.fallback(); });
   await p2.goto('https://altro-sito.test/');
   const f = p2.frameLocator('#f');
   await expect(f.locator('#toast')).toBeAttached(); // la pagina è stata caricata…
   const frame = p2.frames().find(x => x.url().startsWith(BASE));
+  // v24b: nascosta subito da archivio.js, prima che app.js sia caricato (dopo la lettura di IndexedDB)
+  await frame.waitForFunction(() => typeof Archivio !== 'undefined');
+  expect(await frame.evaluate(() => [typeof IN_RIQUADRO, getComputedStyle(document.documentElement).display])).toEqual(['undefined', 'none']);
+  rilascia();
+  await frame.waitForFunction(() => typeof IN_RIQUADRO !== 'undefined');
   expect(await frame.evaluate(() => [IN_RIQUADRO, getComputedStyle(document.documentElement).display])).toEqual([true, 'none']); // …ma resta nascosta
   await expect(f.locator('nav.tabs')).toBeHidden();
 });

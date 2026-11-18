@@ -14,10 +14,25 @@ async function nuovoDispositivo(browser, { drive, calendar, stato, telefono = tr
   if (ora) await ctx.clock.setFixedTime(new Date(ora));
   if (stato) await ctx.addInitScript(([k, v]) => { if (!sessionStorage.getItem('__statoMesso')) { localStorage.setItem(k, v); sessionStorage.setItem('__statoMesso', '1'); } }, ['soldirini-v1', JSON.stringify(stato)]);
   const page = await ctx.newPage();
+  conArchivio(page);
   const errori = [];
   page.on('pageerror', e => errori.push(e.message));
   await page.goto(BASE);
   return { ctx, page, errori };
+}
+
+// v24b: archivio.js legge i dati da IndexedDB e solo dopo carica gli altri file dell'app, anche dopo l'evento "load".
+// Dopo goto/reload si aspetta che l'app sia partita; prima di un reload si aspetta la fine della scrittura in corso
+// (come farebbe un telefono che resta aperto). Le versioni vecchie (senza Archivio) non aspettano niente.
+const avviata = page => page.waitForFunction(() => !window.Archivio || window.Archivio.avviata === true, null, { timeout: 20000 });
+function conArchivio(page) {
+  const goto = page.goto.bind(page), reload = page.reload.bind(page);
+  page.goto = async (...a) => { const r = await goto(...a); if (String(a[0]).startsWith(BASE)) await avviata(page); return r; };
+  page.reload = async (...a) => {
+    await page.evaluate(() => window.Archivio && window.Archivio.salvato && window.Archivio.salvato()).catch(() => {});
+    const r = await reload(...a); if (page.url().startsWith(BASE)) await avviata(page); return r;
+  };
+  return page;
 }
 
 async function testoSync(page) { return ((await page.textContent('#sync')) || '').trim(); }
@@ -58,4 +73,4 @@ async function accediEsistente(page) {
   await aspettaSync(page);
 }
 
-module.exports = { BASE, DriveFinto, CalendarFinto, nuovoDispositivo, accedi, accediEsistente, aspettaSync, sincronizza, statoSync, testoSync };
+module.exports = { BASE, DriveFinto, CalendarFinto, nuovoDispositivo, conArchivio, avviata, accedi, accediEsistente, aspettaSync, sincronizza, statoSync, testoSync };

@@ -51,10 +51,20 @@ const normT=t=>{const v=min(t);return v==null?'':`${Math.floor(v/60)}:${pad(v%60
 // ---------------- dati ----------------
 const STORE='soldirini-v1'; // v24 (D-070): codice della demo tolto
 const emptyData=()=>({v:1,pagamenti:{},impost:{soglie:null,tema:'auto',promemoria:false,updatedAt:0},profilo:{cognome:'',nome:'',natoA:'',dataNascita:'',residenza:'',via:'',cf:'',auto:{modello:'',targa:''},updatedAt:0},progetti:{},eventi:{},mesi:{},files:{},root:null});
-let DB=(()=>{try{return JSON.parse(localStorage.getItem(STORE)||'null');}catch(e){return null;}})()||{};
+// v24b (D-054, D-064): i dati arrivano da archivio.js (IndexedDB). Se IndexedDB non c'è o non risponde, come nella v24 da localStorage.
+const ARCH=window.Archivio&&Archivio.modo==='idb'?Archivio:null;
+let DB=(ARCH?ARCH.iniziale:(()=>{try{return JSON.parse(localStorage.getItem(STORE)||'null');}catch(e){return null;}})())||{};
 DB.data=DB.data||emptyData();
 DB.meta=Object.assign({dataId:null,seq:0,synced:0,lastSync:0,queue:{},account:null},DB.meta||{});
-function persist(){try{localStorage.setItem(STORE,JSON.stringify(DB));}catch(e){toast('Memoria del telefono piena: non riesco a salvare.','err');}}
+// v24b: persist() resta senza attesa; con IndexedDB la scrittura va in fila in archivio.js (una alla volta, sempre lo stato più recente)
+// v24b: dati già spostati in IndexedDB che ora non risponde: si vede la vecchia copia, ma non si riscrive (punto di ritorno)
+// e le modifiche non contano come salvate (Drive le riceve comunque alla sincronizzazione). Testo provvisorio, da confermare con 02.
+const LS_FERMO=!ARCH&&!!(window.Archivio&&Archivio.dopoSpostamento);
+const MSG_LS_FERMO='Non riesco a leggere i dati salvati sul telefono: le modifiche non restano sul telefono. Chiudi e riapri Soldirini.';
+function persist(){if(ARCH){ARCH.salva();return;}if(LS_FERMO){toast(MSG_LS_FERMO,'err');return;}try{localStorage.setItem(STORE,JSON.stringify(DB));}catch(e){toast('Memoria del telefono piena: non riesco a salvare.','err');}}
+// v24b: utente nuovo, o IndexedDB svuotato dopo lo spostamento: il primo salvataggio scrive il segno (R1.4)
+if(ARCH&&!DB.meta.archivio){DB.meta.archivio={da:ARCH.da||'nuovo',il:new Date().toISOString(),versione:'24b'};persist();}
+const salvataggioInErrore=()=>!!(ARCH&&ARCH.errore)||LS_FERMO; // R2.2: synced non avanza su dati mai salvati sul telefono
 const D=()=>DB.data;
 const progetti=(all)=>Object.values(D().progetti).filter(p=>all||!p.deleted).sort((a,b)=>(a.ordine??0)-(b.ordine??0)||a.nome.localeCompare(b.nome));
 const prog=id=>D().progetti[id];
@@ -154,7 +164,9 @@ async function login(){
     const prev=DB.meta.account?.email;
     if(prev&&prev!==me.user.emailAddress){
       if(!confirm(`Prima eri collegato come ${prev}. Vuoi passare a ${me.user.emailAddress}? I dati sul telefono verranno sostituiti con quelli del nuovo account.`)){TOK=null;return;}
+      if(!confermaFileInAttesa()){TOK=null;return;}
       DB.data=emptyData();DB.meta.dataId=null;DB.meta.queue={};
+      await togliDatiVecchi(); // v24b (R3.4, D-087 1b): anche la vecchia copia e buste/cedolini in attesa del vecchio account
     }
     DB.meta.account={email:me.user.emailAddress,name:me.user.displayName,photo:me.user.photoLink};persist();
     toast('Accesso fatto: '+me.user.emailAddress);
@@ -166,8 +178,21 @@ function logout(){
   if(!confirm('Vuoi uscire da questo account? I dati salvati su Drive restano lì.'))return;
   if(DB.meta.seq>DB.meta.synced&&!confirm('Ci sono modifiche non ancora salvate su Drive. Uscendo le perdi. Continuo?'))return;
   try{if(TOK?.access&&window.google?.accounts?.oauth2)google.accounts.oauth2.revoke(TOK.access,()=>{});}catch(e){}
+  if(!confermaFileInAttesa())return;
   TOK=null;localStorage.removeItem('soldirini-tok');
-  DB={data:emptyData(),meta:{dataId:null,seq:0,synced:0,lastSync:0,queue:{},account:null,skipWelcome:true}};persist();render();
+  // v24b (R3.4, R3.6, D-087 1b): dati in IndexedDB, vecchia copia soldirini-v1, token e soldirini-file; le altre app non si toccano
+  const segno=DB.meta.archivio;
+  DB={data:emptyData(),meta:{dataId:null,seq:0,synced:0,lastSync:0,queue:{},account:null,skipWelcome:true,archivio:segno}};persist();
+  togliDatiVecchi();if(ARCH)ARCH.esci();render();
+}
+// v24b: buste paga e cedolini caricati sul telefono e non ancora su Drive (restano in soldirini-file)
+const fileInAttesa=()=>['buste','cedolini'].reduce((n,k)=>n+Object.values(D()[k]||{}).filter(x=>x&&x.daCaricare&&!x.deleted).length,0);
+function confermaFileInAttesa(){const n=fileInAttesa();
+  return !n||confirm(n===1?'C’è 1 busta paga o cedolino non ancora caricato su Drive. Uscendo viene cancellato da questo telefono. Continuo?':`Ci sono ${n} buste paga o cedolini non ancora caricati su Drive. Uscendo vengono cancellati da questo telefono. Continuo?`);}
+async function togliDatiVecchi(){
+  try{localStorage.removeItem(STORE);}catch(e){}
+  if(window.Archivio){Archivio.togliVecchia();await Archivio.svuotaFile();}
+  else await new Promise(ok=>{try{const r=indexedDB.open('soldirini-file',1);r.onupgradeneeded=()=>r.result.createObjectStore('f');r.onsuccess=()=>{const d=r.result;const t=d.transaction('f','readwrite');t.objectStore('f').clear();t.oncomplete=t.onabort=()=>{d.close();ok();};};r.onerror=()=>ok();}catch(e){ok();}});
 }
 const errMsg=e=>(e&&e.message)||String(e);
 
@@ -312,7 +337,7 @@ async function sync(interactive){
     // eventi arrivati da altri dispositivi: niente da esportare qui (lo fa chi li ha creati)
     await salvaDati();
     for(const f of uniti)await metteDaParte(f);
-    if(DB.meta.seq===seq0)DB.meta.synced=seq0;
+    if(DB.meta.seq===seq0&&!salvataggioInErrore())DB.meta.synced=seq0;
     await processQueue();
     DB.meta.lastSync=Date.now();lastErr='';persist();
   }catch(e){lastErr=errMsg(e);if(e instanceof AuthErr)needLogin=true;
@@ -417,7 +442,7 @@ async function processQueue(){
   }
   queueBusy='';
   // se ho cambiato file o cartelle, salvo anche i dati (mai sopra un file dati che non si legge)
-  if(!datiIllegibili&&DB.meta.seq>DB.meta.synced){const s0=DB.meta.seq;await salvaDati();if(DB.meta.seq===s0)DB.meta.synced=s0;}
+  if(!datiIllegibili&&DB.meta.seq>DB.meta.synced){const s0=DB.meta.seq;await salvaDati();if(DB.meta.seq===s0&&!salvataggioInErrore())DB.meta.synced=s0;}
 }
 
 // ================= PDF =================
@@ -655,8 +680,8 @@ function renderProgetti(){
   if(document.activeElement!==$('pf-modello'))$('pf-modello').value=pr.auto?.modello||'';
   if(document.activeElement!==$('pf-targa'))$('pf-targa').value=pr.auto?.targa||'';
   const a=DB.meta.account,root=D().root;
-  $('accBox').innerHTML=a?`<p>Collegato come <b>${esc(a.email)}</b></p>${root?`<p class="muted sm">Cartella: <a href="${esc(root.link||'#')}" target="_blank" rel="noopener">Soldirini ↗</a> ${root.dove?'in '+esc(root.dove):''}</p>`:''}<div class="acts"><button class="btn ghost" id="syncNow">Sincronizza ora</button><button class="btn ghost" id="logout">Esci</button></div>`
-    :`<p>Accedi con Google per salvare tutto sul tuo Drive e usarla su più dispositivi.</p><button class="btn google" id="loginBtn2">Accedi con Google</button>`;
+  $('accBox').innerHTML=a?`<p>Collegato come <b>${esc(a.email)}</b></p>${root?`<p class="muted sm">Cartella: <a href="${esc(root.link||'#')}" target="_blank" rel="noopener">Soldirini ↗</a> ${root.dove?'in '+esc(root.dove):''}</p>`:''}${protRiga()}<div class="acts"><button class="btn ghost" id="syncNow">Sincronizza ora</button><button class="btn ghost" id="logout">Esci</button></div>`
+    :`<p>Accedi con Google per salvare tutto sul tuo Drive e usarla su più dispositivi.</p><button class="btn google" id="loginBtn2">Accedi con Google</button>${protRiga()}`;
 }
 let pe=null; // progetto in modifica
 function openProj(id){
@@ -769,7 +794,7 @@ function bind(){
   $('projNew').onclick=()=>openProj();
   $('projList').addEventListener('click',e=>{const b=e.target.closest('[data-proj]');if(b)openProj(b.dataset.proj);});
   $('pfSave').onclick=e=>saveProfilo(e);
-  $('accBox').addEventListener('click',e=>{if(e.target.id==='syncNow')sync(true);if(e.target.id==='logout')logout();if(e.target.id==='loginBtn2')login();});
+  $('accBox').addEventListener('click',e=>{if(e.target.id==='syncNow')sync(true);if(e.target.id==='logout')logout();if(e.target.id==='protChiedi')chiediProt();if(e.target.id==='vcRiga')apriVecchiaCopia();if(e.target.id==='loginBtn2')login();});
   $('backupBtn').onclick=e=>backup(e);
   // finestra progetto
   $('pjClose').onclick=e=>closeProj(e);$('pjSave').onclick=e=>saveProj(e);$('pjDel').onclick=e=>delProj(e);
@@ -806,3 +831,49 @@ async function toJpeg(file){
   return c.toDataURL('image/jpeg',0.86);
 }
 
+
+// ================= v24b: protezione dalla pulizia automatica e vecchia copia dei dati (testi di 02, report 02-ux-v24b-testi) =================
+function protRiga(){const A=window.Archivio;if(!A)return '';const p=A.prot,st=p.stato;
+  if(!st){A.controllaProtezione(false).then(aggiornaProt);} // "Controllo…" finché il navigatore non risponde
+  const lab={si:['si','Sì'],no:['no','No'],nd:['nd','Non si sa']}[st]||['nd','Controllo…'];
+  const nota=st==='si'?'Il telefono non cancella i dati di Soldirini per fare posto.'
+    :st==='no'?(p.rifiutata?'Il telefono per ora non l’ha concessa. Di solito la concede quando Soldirini è installata sulla schermata Home e la usi spesso. Puoi riprovare più avanti.'
+      :'Se lo spazio sul telefono finisce, il telefono può cancellare i dati di Soldirini per fare posto. Su iPhone, se Soldirini non è installata sulla schermata Home, i dati possono sparire anche dopo qualche giorno senza aprirla.') // D-093 punto 2 (testo di 03)
+    :st==='nd'?'Questo navigatore non dice se protegge i dati dalla pulizia.':'';
+  return vecchiaRiga()+`<div class="prot" id="protBox"><div class="kv"><span>Protezione dalla pulizia automatica</span><em class="pst ${lab[0]}">${lab[1]}</em></div>${nota?`<p class="muted sm">${nota}</p>`:''}${st==='no'?'<button class="btn ghost sm" id="protChiedi">Chiedi protezione</button>':''}</div>`;}
+// D-093 punto 1: riga "Dati salvati il {data}" con [Riprendi], finché la vecchia copia ha voci che qui mancano (testi provvisori di 01, da 02)
+function vecchiaRiga(){const v=window.Archivio&&Archivio.vecchiaCopia();if(!v||!v.mancanti)return '';
+  return `<div class="prot" id="vcRigaBox"><div class="kv"><span>${v.quando?'Dati salvati il '+gma(v.quando):'Dati salvati in precedenza'}</span><button class="btn ghost sm" id="vcRiga">Riprendi</button></div><p class="muted sm">Una copia più vecchia sul telefono ha ${v.mancanti===1?'1 voce che qui non c’è':v.mancanti+' voci che qui non ci sono'}.</p></div>`;}
+function aggiornaProt(){const b=$('protBox');if(b)b.outerHTML=protRiga();}
+async function chiediProt(){const b=$('protChiedi');if(b)b.disabled=true;const si=await Archivio.chiediProtezione();aggiornaProt();
+  if(si)toast('✓ Protezione attiva: il telefono non cancellerà i dati di Soldirini per fare posto.');}
+
+const gma=d=>`${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+let vecchiaInVista=null;
+// R3.2: la domanda compare solo se i dati attuali sono vuoti e la vecchia copia ha dati; con "Non ora" torna al prossimo avvio.
+// (La riga "Dati salvati il {data}" con [Riprendi] in Impostazioni aspetta la decisione dell'utente: basterà chiamare apriVecchiaCopia().)
+function apriVecchiaCopia(){const v=window.Archivio&&Archivio.vecchiaCopia();if(!v)return false;vecchiaInVista=v;
+  const q=v.quando?gma(v.quando):null;
+  $('vcTit').textContent=q?`Riprendere i dati salvati il ${q}?`:'Riprendere i dati salvati in precedenza?';
+  const vuoti=Archivio.datiVuoti();
+  $('vcTxt').innerHTML=!vuoti?`C’è una copia più vecchia dei dati di Soldirini${q?`, salvata il <b>${q}</b>`:''}. Riprendendola si aggiungono le voci che qui non ci sono; quelle che hai già restano come sono.` // provvisorio, da 02
+    :q?`Su questo telefono i dati di Soldirini risultano vuoti. C’è però una copia più vecchia, salvata il <b>${q}</b>.`:'Su questo telefono i dati di Soldirini risultano vuoti. C’è però una copia più vecchia.';
+  const riga=(t,x)=>`<div class="kv"><span>${t}</span><b>${x}</b></div>`;
+  $('vcSum').innerHTML=(v.attivita?riga('Attività',v.attivita+(v.ultima?' · fino al '+gma(parseYmd(v.ultima)):'')):'')+(v.progetti?riga('Progetti',v.progetti):'')+(v.spese?riga('Spese giornaliere',v.spese):'');
+  $('vcSum').hidden=!$('vcSum').innerHTML;
+  $('vcAvv').hidden=!vuoti;$('vcNota').hidden=!vuoti; // con i dati presenti l'unione non toglie niente: l'avviso non serve
+  $('vcAvv').textContent=q?`Mancherà quello che hai inserito o cambiato dopo il ${q}, e potrebbero tornare voci che avevi cancellato dopo quella data.`
+    :'Mancherà quello che hai inserito o cambiato dopo quella copia, e potrebbero tornare voci che avevi cancellato dopo quella data.';
+  $('vcDrive').hidden=!DB.meta.account;
+  $('vcModal').hidden=false;document.body.classList.add('noscroll');return true;}
+function chiudiVecchiaCopia(){$('vcModal').hidden=true;vecchiaInVista=null;if([...document.querySelectorAll('.modal')].every(m=>m.hidden))document.body.classList.remove('noscroll');}
+function riprendiVecchiaCopia(){const v=vecchiaInVista;if(!v)return;
+  // unione per updatedAt (come con Drive): con i dati vuoti è la copia; se intanto è arrivato qualcosa da Drive, non si perde
+  DB.data=mergeData(DB.data,v.data);changed();chiudiVecchiaCopia();render();
+  toast(v.quando?`✓ Dati del ${gma(v.quando)} ripresi: ${v.attivita} attività.`:`✓ Dati ripresi: ${v.attivita} attività.`);}
+window.dopoAvvioArchivio=()=>{
+  $('vcNo').onclick=chiudiVecchiaCopia;$('vcSi').onclick=riprendiVecchiaCopia;
+  if(LS_FERMO)toast(MSG_LS_FERMO,'err');
+  if(window.Archivio){Archivio.controllaProtezione(true).then(()=>{if($('protBox'))aggiornaProt();});
+    if(Archivio.datiVuoti())apriVecchiaCopia();}
+};
