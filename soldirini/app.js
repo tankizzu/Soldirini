@@ -30,6 +30,10 @@ const parseYmd=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,
 const eur=n=>Number(n||0).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
 const nf=(n,d=2)=>Number(n||0).toLocaleString('it-IT',{maximumFractionDigits:d});
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+// v24c (V7 di 03): valori dei dati negli attributi. Numeri: solo se sono numeri; date: solo AAAA-MM-GG; immagini: solo JPEG, PNG o WebP in base64
+const numAttr=v=>{if(v==null||v==='')return '';const n=Number(String(v).replace(',','.'));return Number.isFinite(n)?esc(v):'';};
+const dataAttr=v=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v)?v:'';
+const imgOk=v=>typeof v==='string'&&/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/.test(v)?v:'';
 const clone=o=>JSON.parse(JSON.stringify(o));
 const uid=()=>Date.now().toString(36).slice(-4)+Math.random().toString(36).slice(2,8);
 const r2=n=>Math.round((+n||0)*100)/100;
@@ -167,8 +171,9 @@ async function login(){
     if(prev&&prev!==me.user.emailAddress){
       if(!confirm(`Prima eri collegato come ${prev}. Vuoi passare a ${me.user.emailAddress}? I dati sul telefono verranno sostituiti con quelli del nuovo account.`)){TOK=null;return;}
       if(!await confermaFileInAttesa()){TOK=null;return;}
-      DB.data=emptyData();DB.meta.dataId=null;DB.meta.queue={};
+      if(ARCH)ARCH.blocca();DB.data=emptyData();DB.meta.dataId=null;DB.meta.queue={};DB.meta.gen=0;DB.meta.drivePausa=null;DB.meta.sostituzione=null;
       await togliDatiVecchi(); // v24b (R3.4, D-087 1b): anche la vecchia copia e buste/cedolini in attesa del vecchio account
+      if(ARCH)await ARCH.nuovaEpoca(); // v24c (V10)
     }
     DB.meta.account={email:me.user.emailAddress,name:me.user.displayName,photo:me.user.photoLink};persist();
     toast('Accesso fatto: '+me.user.emailAddress);
@@ -183,9 +188,10 @@ async function logout(){
   if(!await confermaFileInAttesa())return;
   TOK=null;localStorage.removeItem('soldirini-tok');
   // v24b (R3.4, R3.6, D-087 1b): dati in IndexedDB, vecchia copia soldirini-v1, token e soldirini-file; le altre app non si toccano
-  const segno=DB.meta.archivio;
+  const segno=DB.meta.archivio;if(ARCH)ARCH.blocca(); // v24c (V10): niente unione con un'altra scheda fino alla scrittura con l'epoca nuova
   DB={data:emptyData(),meta:{dataId:null,seq:0,synced:0,lastSync:0,queue:{},account:null,skipWelcome:true,archivio:segno}};persist();
-  togliDatiVecchi();if(ARCH)ARCH.esci();render();
+  // v24c (V10): scrittura senza unione con un'epoca nuova, così un'altra scheda aperta non rimette i dati
+  await togliDatiVecchi();if(ARCH){await ARCH.nuovaEpoca();ARCH.esci();}render();
 }
 // v24b: buste paga e cedolini caricati sul telefono e non ancora su Drive (restano in soldirini-file)
 const fileInAttesa=()=>['buste','cedolini'].reduce((n,k)=>n+Object.values(D()[k]||{}).filter(x=>x&&x.daCaricare&&!x.deleted).length,0);
@@ -199,7 +205,7 @@ async function confermaFileInAttesa(){const n=fileInAttesa();if(!n)return true;c
   try{return await ask(html,[{t:'Resta collegato',v:false,cls:'ghost'},{t:'Esci e cancella',v:true,cls:'danger'}],true);}finally{m.removeEventListener('click',fuori);}}
 async function togliDatiVecchi(){
   try{localStorage.removeItem(STORE);}catch(e){}
-  if(window.Archivio){Archivio.togliVecchia();await Archivio.svuotaFile();}
+  if(window.Archivio){Archivio.togliVecchia();await Archivio.svuotaFile();if(Archivio.togliParte)await Archivio.togliParte();} // v24c (V9): anche i dati messi da parte
   else await new Promise(ok=>{try{const r=indexedDB.open('soldirini-file',1);r.onupgradeneeded=()=>r.result.createObjectStore('f');r.onsuccess=()=>{const d=r.result;const t=d.transaction('f','readwrite');t.objectStore('f').clear();t.oncomplete=t.onabort=()=>{d.close();ok();};};r.onerror=()=>ok();}catch(e){ok();}});
 }
 const errMsg=e=>(e&&e.message)||String(e);
@@ -280,12 +286,31 @@ async function findDataFile(){return (await fileDati())[0]||null;}
 // quindi si confronta il numero di revisione del contenuto (headRevisionId) prima e dopo la scrittura.
 const revisione=id=>gfetch('GET',`${DRIVE}/files/${id}?fields=headRevisionId`).then(m=>m.headRevisionId||'');
 const MSG_CAMBIA='Il file dei dati su Drive viene modificato da un altro dispositivo proprio adesso: riprovo tra poco.';
+// v24c (D-097 punto 2, V11-V14 di 03): "generazione" del file dati nelle sue proprietà private (appProperties soldirini_gen,
+// soldirini_gen_il). Cresce di 1 a ogni "Sostituisci tutto" / "Rimetti". Un telefono che trova una generazione più alta della
+// sua non unisce e non scrive: chiede (domanda 23 di 02) e intanto Drive è in pausa. Le versioni vecchie non toccano queste proprietà.
+const metaDati=id=>gfetch('GET',`${DRIVE}/files/${id}?fields=headRevisionId,appProperties`);
+const genDi=m=>{const g=parseInt(m&&m.appProperties&&m.appProperties.soldirini_gen,10);return Number.isFinite(g)&&g>0?g:0;};
+const genIl=m=>{const d=m&&m.appProperties&&m.appProperties.soldirini_gen_il;return typeof d==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(d)?d:'';};
+class PausaErr extends Error{}
+const datiPieni=d=>!!d&&['eventi','progetti','lavori','fissi','spesePers','buste','cedolini','turni'].some(k=>Object.values(d[k]||{}).some(v=>v&&typeof v==='object'&&!v.deleted));
+// scrive il file dati senza unione, con la generazione nuova; restituisce false se il file è cambiato nel frattempo
+async function scriviGenerazione(id,rev,gen){
+  if(await revisione(id)!==rev)return false;
+  await uploadUpdate(id,{appProperties:{soldirini:'dati',soldirini_gen:String(gen),soldirini_gen_il:today()}},canon(D()),'application/json','id,headRevisionId');
+  DB.meta.gen=gen;persist();return true;
+}
 async function salvaDati(){
   const id=DB.meta.dataId;
   for(let giro=1;giro<=4;giro++){
-    const rev=await revisione(id);
+    const m=await metaDati(id),rev=m.headRevisionId||'',gen=genDi(m);
     const remote=leggiDati(await gfetch('GET',`${DRIVE}/files/${id}?alt=media`,{raw:true}).then(r=>r.text()));
     datiIllegibili=false;
+    // V12: controllo a ogni giro, subito prima dell'unione
+    if(gen>(DB.meta.gen||0)){
+      if(!datiPieni(D())){if(ARCH)ARCH.blocca();DB.data=remote;DB.meta.gen=gen;if(ARCH)await ARCH.nuovaEpoca();else persist();return;} // telefono senza dati: prende Drive senza chiedere
+      DB.meta.drivePausa={gen,il:genIl(m)};persist();throw new PausaErr('Drive in pausa');
+    }
     const merged=mergeData(D(),remote);DB.data=merged;persist();
     if(canon(merged)===canon(remote))return;
     if(await revisione(id)!==rev)continue;                       // cambiato mentre leggevo: rileggo e riunisco
@@ -303,6 +328,29 @@ function verificaDopo(id,mia){
   verificaTimer=setTimeout(async()=>{verificaTimer=null;
     try{if(DB.meta.dataId===id&&tokenOk()&&navigator.onLine&&await revisione(id)!==mia)scheduleSync(0);}catch(e){console.warn('Verifica dopo la scrittura non riuscita',e);}
   },TEMPI.verifica);
+}
+// v24c (V13): copia del file dati com'è adesso nella cartella "Copie di sicurezza" (contenuto copiato, senza le proprietà del file dati)
+async function copiaDatiSuDrive(id,nome){
+  let dir=DB.meta.backupDir;
+  if(!(dir&&await exists(dir))){const f=await createFolder('Copie di sicurezza',D().root.id,{soldirini:'backup'});dir=f.id;DB.meta.backupDir=dir;}
+  const testo=await gfetch('GET',`${DRIVE}/files/${id}?alt=media`,{raw:true}).then(r=>r.text());
+  const f=await uploadNew({name:`${nome} ${today()}.json`,parents:[dir]},new Blob([testo],{type:'application/json'}),'application/json');
+  if(!f||!f.id)throw new Error('Copia su Drive non riuscita.');
+}
+// v24c (V13, V15): "Sostituisci tutto" / "Rimetti" verso Drive, senza unione. Prima una copia del file su Drive (se è cambiato
+// dopo quella fatta al momento della sostituzione); le voci che su Drive ci sono e qui no restano come cancellate
+// (domanda 1 di 03, consiglio), così una versione vecchia o un ritardo non le rimette.
+async function inviaSostituzione(id){
+  for(let giro=1;giro<=3;giro++){
+    const S=DB.meta.sostituzione;if(!S)return;
+    const m=await metaDati(id),rev=m.headRevisionId||'';
+    if(!(S.copiata&&S.rev===rev))await copiaDatiSuDrive(id,'Soldirini copia prima della ripresa');
+    const remote=leggiDati(await gfetch('GET',`${DRIVE}/files/${id}?alt=media`,{raw:true}).then(r=>r.text()));
+    if(window.Copia)DB.data=Copia.conCancellate(D(),remote);
+    if(await scriviGenerazione(id,rev,Math.max(genDi(m),DB.meta.gen||0)+1)){DB.meta.sostituzione=null;DB.meta.drivePausa=null;persist();return;}
+    DB.meta.sostituzione={copiata:false};persist();
+  }
+  throw new Error(MSG_CAMBIA);
 }
 // v21: unisce i file dati in più dentro quello principale e li mette da parte (rinominati, non cancellati)
 async function unisciFileDati(altri){
@@ -325,6 +373,7 @@ async function sync(interactive){
     if(!interactive){needLogin=true;renderSync();return;}
     try{await getToken(true);}catch(e){toast(errMsg(e),'err');renderSync();return;}
   }
+  if(DB.meta.drivePausa){renderSync();if(window.Copia)Copia.domandaPausa(false);return;} // v24c (decisione 1 di 02): niente sincronizzazione finché non si risponde
   needLogin=false;syncing=true;renderSync();
   try{
     // v21: elenco dei file dati a ogni sincronizzazione (per trovare i doppioni). La ricerca di Drive può non vedere subito
@@ -340,6 +389,7 @@ async function sync(interactive){
       } else {syncing=false;showSetup=true;render();return;}
     }
     const seq0=DB.meta.seq;
+    if(DB.meta.sostituzione)await inviaSostituzione(DB.meta.dataId); // v24c (V13): prima la sostituzione da inviare, mai un'unione normale
     const uniti=altri.length?await unisciFileDati(altri):[];
     // v20: se il file non si legge salvaDati si ferma prima di qualsiasi scrittura (prima veniva sovrascritto con i soli dati del telefono)
     // eventi arrivati da altri dispositivi: niente da esportare qui (lo fa chi li ha creati)
@@ -348,7 +398,8 @@ async function sync(interactive){
     if(DB.meta.seq===seq0&&!salvataggioInErrore())DB.meta.synced=seq0;
     await processQueue();
     DB.meta.lastSync=Date.now();lastErr='';persist();
-  }catch(e){lastErr=errMsg(e);if(e instanceof AuthErr)needLogin=true;
+  }catch(e){if(e instanceof PausaErr){lastErr='';syncing=false;renderSync();if(window.Copia)Copia.domandaPausa(true);return;}
+    lastErr=errMsg(e);if(e instanceof AuthErr)needLogin=true;
     if(e instanceof IllegErr){if((!datiIllegibili||interactive)&&typeof ask==='function')ask(MSG_ILLEGGIBILE,[{t:'Ho capito',v:true}]);datiIllegibili=true;}
     console.warn(e);}
   finally{syncing=false;render();if(DB.meta.seq>DB.meta.synced&&!lastErr)scheduleSync(1500);}
@@ -377,7 +428,7 @@ const tplCache={};
 async function tpl(name){if(!tplCache[name]){const r=await fetch('tpl/'+name);if(!r.ok)throw new Error('Modello mancante: '+name);tplCache[name]=await r.arrayBuffer();}return tplCache[name].slice(0);}
 // v24 (D-049): il file logo-bulldogs.jpg è tolto. Dalla 23b il logo è salvato nei dati del progetto;
 // un valore '@bulldogs' rimasto (telefono mai aggiornato alla 23b) vale "nessun logo", senza errori.
-async function logoSrc(p){const l=p&&p.rimborso&&p.rimborso.logo;return typeof l==='string'&&l.startsWith('data:image/')?l:null;}
+async function logoSrc(p){const l=p&&p.rimborso&&p.rimborso.logo;return imgOk(l)||null;} // v24c (V7): solo immagini vere
 async function ensureFolder(p){
   if(p.cartella?.id&&await exists(p.cartella.id))return p.cartella.id;
   const parent=p.parent?.id||D().root?.id;if(!parent)throw new Error('Manca la cartella Soldirini.');
@@ -539,6 +590,7 @@ function renderSync(){
   else if(!navigator.onLine){txt='Offline'+(pendingCount()?' · '+pendingCount()+' da inviare':'');cls='off';}
   else if(syncing){txt=queueBusy?'Aggiorno: '+queueBusy:'Sincronizzo…';cls='busy';}
   else if(needLogin){txt='Tocca per riconnettere';cls='warn';}
+  else if(DB.meta.drivePausa){txt='Drive in pausa';cls='pausa';} // v24c (decisione 1 di 02; aspetto: 02, tornata 24 V3)
   else if(datiIllegibili){txt='File dati non si legge';cls='err';}
   // v21 (D-026): prima della prima sincronizzazione riuscita, scritte che dicono cosa manca; il giallo resta solo per ciò che è in corso
   else if(cartellaMancante()){txt='Scegli la cartella';cls='warn';}
@@ -547,7 +599,8 @@ function renderSync(){
   else if(inAttesa()){const n=inAttesa();txt=n===1?'1 elemento in attesa':n+' elementi in attesa';cls='warn';}
   else if(pendingCount()){txt=pendingCount()+' da inviare';cls='warn';}
   else {txt='Sincronizzato';cls='ok';}
-  c.textContent=txt;c.className='chip sync '+cls;c.title=lastErr||(inAttesa()?'Riprovo da solo tra qualche minuto: '+Object.values(codaAttesa).map(a=>a.err).join(' · '):'')||(DB.meta.lastSync?'Ultima sincronizzazione: '+new Date(DB.meta.lastSync).toLocaleString('it-IT'):'');
+  c.textContent=txt;c.className='chip sync '+cls;
+  if(cls==='pausa')c.setAttribute('aria-label','Drive in pausa: tocca per rispondere alla domanda sui dati sostituiti');else c.removeAttribute('aria-label');c.title=lastErr||(inAttesa()?'Riprovo da solo tra qualche minuto: '+Object.values(codaAttesa).map(a=>a.err).join(' · '):'')||(DB.meta.lastSync?'Ultima sincronizzazione: '+new Date(DB.meta.lastSync).toLocaleString('it-IT'):'');
 }
 function render(){
   renderSync();
@@ -629,7 +682,7 @@ function fillEv(e){
   $('evTitolo').value=e.tipo==='allenamento'?(e.squadra||''):(e.titolo||'');
   $('evTitolo').placeholder=e.tipo==='allenamento'?(p.rimborso.squadra||'es. Under15'):e.tipo==='lavoro'?'es. Turno pomeridiano':'';
   $('evRimb').checked=!!e.rimborso;$('evRimbBox').hidden=!e.rimborso;
-  $('evLuogo').innerHTML=p.rimborso.luoghi.map(l=>`<option value="${esc(l.id)}">${esc(l.nome)} · ${nf(l.km,1)} km</option>`).join('')+'<option value="__new">+ Nuovo luogo…</option>'+(e.luogoId&&!p.rimborso.luoghi.find(l=>l.id===e.luogoId)?`<option value="${e.luogoId}">${esc(e.luogo)}</option>`:'');
+  $('evLuogo').innerHTML=p.rimborso.luoghi.map(l=>`<option value="${esc(l.id)}">${esc(l.nome)} · ${nf(l.km,1)} km</option>`).join('')+'<option value="__new">+ Nuovo luogo…</option>'+(e.luogoId&&!p.rimborso.luoghi.find(l=>l.id===e.luogoId)?`<option value="${esc(e.luogoId)}">${esc(e.luogo)}</option>`:'');
   $('evLuogo').value=e.luogoId||(p.rimborso.luoghi.length?p.rimborso.luoghi[0].id:'__new');
   $('evNewLuogo').hidden=$('evLuogo').value!=='__new';
   $('evKm').value=e.km??'';
@@ -691,7 +744,7 @@ function renderProgetti(){
   if(document.activeElement!==$('pf-modello'))$('pf-modello').value=pr.auto?.modello||'';
   if(document.activeElement!==$('pf-targa'))$('pf-targa').value=pr.auto?.targa||'';
   const a=DB.meta.account,root=D().root;
-  $('accBox').innerHTML=a?`<p>Collegato come <b>${esc(a.email)}</b></p>${root?`<p class="muted sm">Cartella: <a href="${esc(root.link||'#')}" target="_blank" rel="noopener">Soldirini ↗</a> ${root.dove?'in '+esc(root.dove):''}</p>`:''}${protRiga()}<div class="acts"><button class="btn ghost" id="syncNow">Sincronizza ora</button><button class="btn ghost" id="logout">Esci</button></div>`
+  $('accBox').innerHTML=a?`<p>Collegato come <b>${esc(a.email)}</b></p>${root?`<p class="muted sm">Cartella: <a href="${esc(root.link||'#')}" target="_blank" rel="noopener">Soldirini ↗</a> ${root.dove?'in '+esc(root.dove):''}</p>`:''}${DB.meta.drivePausa?'<div class="drpausa" role="status"><b>Google Drive · In pausa</b><p class="muted sm" style="margin:2px 0 6px">Su un altro telefono o tablet i dati sono stati sostituiti con una copia di sicurezza. Finché non rispondi, Soldirini non legge e non scrive su Drive: le modifiche restano solo su questo telefono.</p><button class="btn ghost sm" id="pausaRispondi">Rispondi ora</button></div>':''}${protRiga()}<div class="acts"><button class="btn ghost" id="syncNow">Sincronizza ora</button><button class="btn ghost" id="logout">Esci</button></div>`
     :`<p>Accedi con Google per salvare tutto sul tuo Drive e usarla su più dispositivi.</p><button class="btn google" id="loginBtn2">Accedi con Google</button>${protRiga()}`;
 }
 let pe=null; // progetto in modifica
@@ -716,7 +769,7 @@ function openProj(id){
   chiudiSezioni($('pjModal'));$('pjModal').hidden=false;document.body.classList.add('noscroll');
 }
 function togglePj(){$('pjRimbBox').hidden=!$('pjRimb').checked;$('pjOreBox').hidden=!$('pjOre').checked;}
-function renderLuoghi(){$('pjLuoghi').innerHTML=pe.p.rimborso.luoghi.map((l,i)=>`<div class="luogo"><input value="${esc(l.nome)}" data-li="${i}" data-k="nome" placeholder="Luogo"><input inputmode="decimal" value="${l.km}" data-li="${i}" data-k="km" placeholder="km A/R"><button type="button" class="x" data-lrm="${i}">×</button></div>`).join('');}
+function renderLuoghi(){$('pjLuoghi').innerHTML=pe.p.rimborso.luoghi.map((l,i)=>`<div class="luogo"><input value="${esc(l.nome)}" data-li="${i}" data-k="nome" placeholder="Luogo"><input inputmode="decimal" value="${numAttr(l.km)}" data-li="${i}" data-k="km" placeholder="km A/R"><button type="button" class="x" data-lrm="${i}">×</button></div>`).join('');}
 function renderPjFasce(){$('pjFasce').innerHTML=pe.p.ore.fasce.map((f,i)=>`<div class="luogo"><input value="${esc(f.nome)}" data-pf="${i}" data-k="nome"><input type="time" value="${toTime(f.da)}" data-pf="${i}" data-k="da"><input type="time" value="${toTime(f.a)}" data-pf="${i}" data-k="a"><button type="button" class="x" data-pfrm="${i}">×</button></div>`).join('');}
 async function renderLogo(){const s=await logoSrc(pe.p);$('pjLogo').innerHTML=s?`<img src="${s}" alt="logo"><button type="button" class="btn ghost sm" id="pjLogoRm">Togli logo</button>`:'<span class="muted sm">Nessun logo</span>';}
 function readProj(){
@@ -755,14 +808,14 @@ function saveProfilo(){
 
 
 // ---- backup ----
-function backup(){download(new TextEncoder().encode(JSON.stringify(D(),null,1)),`soldirini-backup-${today()}.json`,'application/json');}
+// v24c: "Scarica backup" sostituito da "Salva una copia" (copia.js); i vecchi file .json si riprendono ancora
 
 // ================= eventi interfaccia =================
 // v21: i pulsanti chiamano la funzione per nome al momento del tocco, così usano sempre la versione attuale
 // (anche se un file successivo la ridefinisce), qualunque sia l'ordine in cui i file si caricano.
 function bind(){
   document.querySelector('.tabs').addEventListener('click',e=>{const b=e.target.closest('button[data-tab]');if(b){tab=b.dataset.tab;render();window.scrollTo(0,0);}});
-  $('sync').addEventListener('click',()=>{if(!DB.meta.account)login();else if(cartellaMancante()&&!syncing){showSetup=true;render();}else sync(true);});
+  $('sync').addEventListener('click',()=>{if(!DB.meta.account)login();else if(DB.meta.drivePausa&&window.Copia)Copia.domandaPausa(true);else if(cartellaMancante()&&!syncing){showSetup=true;render();}else sync(true);});
     $('prev').onclick=()=>shift(-1);$('next').onclick=()=>shift(1);$('oggi').onclick=()=>{cur=today().slice(0,7);selDay=today();render();};
   $('rPrev').onclick=()=>shift(rieMode==='anno'?-12:-1);$('rNext').onclick=()=>shift(rieMode==='anno'?12:1);
   // 24b.1 (D-098): le pagine di dettaglio del Riepilogo scorrono come il Riepilogo (mese o anno); Documenti non ha più una pagina sua
@@ -809,8 +862,7 @@ function bind(){
   $('projNew').onclick=()=>openProj();
   $('projList').addEventListener('click',e=>{const b=e.target.closest('[data-proj]');if(b)openProj(b.dataset.proj);});
   $('pfSave').onclick=e=>saveProfilo(e);
-  $('accBox').addEventListener('click',e=>{if(e.target.id==='syncNow')sync(true);if(e.target.id==='logout')logout();if(e.target.id==='protChiedi')chiediProt();if(e.target.id==='vcNascondi')nascondiVecchiaRiga();if(e.target.id==='vcRiga')apriVecchiaCopia();if(e.target.id==='loginBtn2')login();});
-  $('backupBtn').onclick=e=>backup(e);
+  $('accBox').addEventListener('click',e=>{if(e.target.id==='syncNow')sync(true);if(e.target.id==='logout')logout();if(e.target.id==='protChiedi')chiediProt();if(e.target.id==='vcNascondi')nascondiVecchiaRiga();if(e.target.id==='vcRiga')apriVecchiaCopia();if(e.target.id==='loginBtn2')login();if(e.target.id==='pausaRispondi'&&window.Copia)Copia.domandaPausa(true);});
   // finestra progetto
   $('pjClose').onclick=e=>closeProj(e);$('pjSave').onclick=e=>saveProj(e);$('pjDel').onclick=e=>delProj(e);
   $('pjModal').addEventListener('click',e=>{if(e.target.id==='pjModal')closeProj();});
@@ -924,12 +976,14 @@ window.dopoAvvioArchivio=()=>{
   if(LS_FERMO)fasciaLsFermo();
   // v24b: dati scritti alla chiusura della pagina in localStorage (archivio.js, scriviSubito) e forse non arrivati in IndexedDB:
   // si uniscono qui, dopo tutti i file (mergeData completo), poi la copia si cancella quando la scrittura è riuscita
-  const j=ARCH&&ARCH.diario();
-  if(j){const m=j.meta||{};
+  // v24c (V10b): anche la scrittura fatta alla chiusura (chiave "chiusura" di IndexedDB); valgono solo con la stessa epoca
+  const jj=(ARCH&&ARCH.diario())||[];
+  for(const j of jj){const m=j.meta||{};
     if(!(m.account&&DB.meta.account&&m.account.email!==DB.meta.account.email)){ // dati di un altro account: non si uniscono
       DB.data=mergeData(DB.data,j.data);DB.meta.seq=Math.max(DB.meta.seq||0,+m.seq||0);
-      DB.meta.queue=Object.assign({},m.queue||{},DB.meta.queue||{});persist();render();}
-    ARCH.salvato().then(()=>{if(!ARCH.errore)ARCH.togliDiario();});}
+      DB.meta.queue=Object.assign({},m.queue||{},DB.meta.queue||{});persist();render();}}
+  if(jj.length)ARCH.salvato().then(()=>{if(!ARCH.errore)ARCH.togliDiario();});
+  try{if(sessionStorage.getItem('soldirini-ricaricata')){sessionStorage.removeItem('soldirini-ricaricata');if(DB.meta.account||datiPieni(D()))toast('I dati sono stati sostituiti in un’altra finestra di Soldirini: qui sono stati ricaricati.','',7000);}}catch(e){}
   if(window.Archivio){Archivio.controllaProtezione(true).then(()=>{if($('protBox'))aggiornaProt();});
     if(Archivio.datiVuoti())apriVecchiaCopia();}
 };

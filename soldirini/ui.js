@@ -3,7 +3,7 @@
 // Calendario a schermo pieno: tocco = riepilogo del giorno, doppio tocco = nuova attività,
 // pressione lunga = selezione di più giorni. Documenti e Tasse sono sottopagine di Riepilogo.
 
-const APP_VERSIONE='24b.2';
+const APP_VERSIONE='24c';
 const SUB={tas:'rie'}; // sottopagina -> scheda madre
 // 24b.1 (D-098): pagine di dettaglio del Riepilogo, una per casella del riquadro (Documenti è dentro "Rimborsi spese")
 const PAG_RIE={dfx:'Uscite fisse',dsp:'Spese giornaliere',dlav:'Lavoro dipendente',drim:'Rimborsi spese',drit:'Ritenuta d’acconto',dinc:'Ancora da incassare'};
@@ -22,10 +22,14 @@ addEventListener('popstate',()=>{if(SUB[tab]){tab=SUB[tab];render();scrollTo(0,0
 
 const _render8=render;
 // 24b.1 (D-098, mockup 02 tornata 23 §2): testata scura delle pagine, con l'icona e lo stesso importo della casella toccata
-const TESTA={dfx:['💳',(m,a,y,f)=>a?`Uscite fisse ${y}${f?', fino a '+f:''}`:`Uscite fisse di ${m}`],dsp:['🛒',(m,a,y)=>a?`Spese giornaliere ${y}`:`Spese giornaliere di ${m}`],
-  dlav:['💼',(m,a,y)=>a?`Entrato da lavoro dipendente nel ${y}`:`Entrato da lavoro dipendente a ${m}`],pen:['🏛️',(m,a,y)=>a?`Pensione ${y}`:`Pensione di ${m}`],
-  drim:['🧾',(m,a,y)=>a?`Rimborsi spese ${y}`:`Rimborsi spese di ${m}`],drit:['📄',(m,a,y)=>a?`Ritenuta d’acconto ${y}`:`Ritenuta d’acconto di ${m}`],
-  dinc:['⏳',(m,a)=>a?'Ancora da incassare (tutto l’anno)':'Ancora da incassare']};
+// v24c (02, tornata 24 §1): nella vista Anno dell'anno in corso tutte le testate dicono "…, fino a {mese}", come il riquadro
+const fino=f=>f?', fino a '+f:'';
+const TESTA={dfx:['💳',(m,a,y,f)=>a?`Uscite fisse ${y}${fino(f)}`:`Uscite fisse di ${m}`],dsp:['🛒',(m,a,y,f)=>a?`Spese giornaliere ${y}${fino(f)}`:`Spese giornaliere di ${m}`],
+  dlav:['💼',(m,a,y,f)=>a?`Entrato da lavoro dipendente nel ${y}${fino(f)}`:`Entrato da lavoro dipendente a ${m}`],pen:['🏛️',(m,a,y,f)=>a?`Pensione ${y}${fino(f)}`:`Pensione di ${m}`],
+  drim:['🧾',(m,a,y,f)=>a?`Rimborsi spese ${y}${fino(f)}`:`Rimborsi spese di ${m}`],drit:['📄',(m,a,y,f)=>a?`Ritenuta d’acconto ${y}${fino(f)}`:`Ritenuta d’acconto di ${m}`],
+  dinc:['⏳',(m,a)=>a?'Ancora da incassare (tutto l’anno)':'Ancora da incassare'],
+  // arrivando dalla casella "Incassato dai progetti" (vista Anno) la testata mostra quella casella, con 💶 (02, tornata 24 §1-2)
+  inc:['💶',(m,a,y,f)=>`Incassato dai progetti nel ${y}${fino(f)}`]};
 // documenti dei progetti (prima in Documenti): rimborsi in "Rimborsi spese", ore, ritenuta e documento della società in "Ritenuta d'acconto".
 // È lo stesso #docList (con i suoi pulsanti), spostato nella pagina aperta; le schede dell'altra pagina restano nascoste.
 const docDi=c=>{const t=(c.querySelector('summary .st,h3')?.textContent||'');return /· rimborso spese$|· modello personalizzato$/.test(t.trim())?'drim':/· ore e ritenuta$|tutti i progetti$/.test(t.trim())||/^doc:word-/.test(c.dataset.fold||'')||c.dataset.fid?.startsWith('word-')?'drit':'';};
@@ -48,14 +52,15 @@ window.apriSezione=(dentro,titolo)=>{requestAnimationFrame(()=>{const d=[...docu
 render=function(){
   if(tab==='doc')tab='drim'; // nome vecchio della pagina Documenti
   _render8();
+  if(tab!=='dinc')window.testaInc=false; // la testata di "Incassato dai progetti" vale solo finché si resta in quella pagina
   if(PAG_RIE[tab]||tab==='pen'){
     renderRiepilogo(); // stessi conti e stesse sezioni del Riepilogo
     if(tab==='drim'||tab==='drit'){spostaDoc();renderDoc();docPerPagina();}mesiDoc();
     const anno=rieMode==='anno',y=cur.slice(0,4),m=MESI[+cur.slice(5)-1],per=anno?y:monthName(cur);
     document.querySelectorAll('#v-'+tab+' .pgper').forEach(x=>x.textContent=per);
-    const t=TESTA[tab],V=window.VALORI_RIE||{},ora=today().slice(0,7);
-    const fino=anno&&+y===+ora.slice(0,4)?MESI[(V.mesi||+ora.slice(5))-1]:'';
-    const box=$('v-'+tab).querySelector('.testa');if(box&&t)box.innerHTML=`<span class="ic" aria-hidden="true">${t[0]}</span><div><small>${t[1](m,anno,y,fino)}</small><b>${eur(V[tab]||0)}</b></div>`;
+    const inc=tab==='dinc'&&anno&&window.testaInc,t=TESTA[inc?'inc':tab],V=window.VALORI_RIE||{},ora=today().slice(0,7);
+    const f=anno&&+y===+ora.slice(0,4)?MESI[(V.mesi||+ora.slice(5))-1]:'';
+    const box=$('v-'+tab).querySelector('.testa');if(box&&t)box.innerHTML=`<span class="ic" aria-hidden="true">${t[0]}</span><div><small>${t[1](m,anno,y,f)}</small><b>${eur(V[inc?'inc':tab]||0)}</b></div>`;
   }
   // 02 (Decisione 2, consiglio): il pulsante Pensione resta solo per chi non ha né lavoro dipendente né profilo pensione
   const bp=document.querySelector('#v-rie .subnav [data-goto="pen"]');if(bp)bp.hidden=!!((typeof lavori==='function'&&lavori().length)||(window.Pensione&&Pensione.profilo()));

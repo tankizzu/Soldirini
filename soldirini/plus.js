@@ -46,7 +46,7 @@ async function fotoJpeg(file,max=1000,q=0.62){
 }
 function renderSpese(){
   const L=md.e.spese||[];
-  $('evSpese').innerHTML=L.map((x,i)=>`<div class="spesa">${x.foto?`<img src="${x.foto}" alt="scontrino" data-zoom="${i}">`:'<span class="nofoto">📄</span>'}<span><b>${esc(SPESE[x.tipo]||x.tipo)}${x.nota?' · '+esc(x.nota):''}</b><small>${eur(x.importo)}</small></span><button type="button" class="x" data-srm="${i}" aria-label="Togli">×</button></div>`).join('');
+  $('evSpese').innerHTML=L.map((x,i)=>`<div class="spesa">${x.foto?`<img src="${imgOk(x.foto)}" alt="scontrino" data-zoom="${i}">`:'<span class="nofoto">📄</span>'}<span><b>${esc(SPESE[x.tipo]||x.tipo)}${x.nota?' · '+esc(x.nota):''}</b><small>${eur(x.importo)}</small></span><button type="button" class="x" data-srm="${i}" aria-label="Togli">×</button></div>`).join('');
   $('evSpeseTot').textContent=L.length?`Totale spese: ${eur(L.reduce((a,x)=>a+(+x.importo||0),0))}`:'';
 }
 let spesaFoto=null;
@@ -169,7 +169,7 @@ function dovuti(prefix){
 async function chiediPagamento(key){
   const g=pagamenti()[key];const [pid,ym,t]=key.split('|');const p=prog(pid);
   const btns=[{t:'Annulla',v:null,cls:'ghost'}];if(g?.pagato)btns.push({t:'Non entrati',v:'no',cls:'danger'});btns.push({t:'Salva',v:'ok'});
-  const v=await ask(`<b>${esc(p?.nome||'')}</b> · ${t==='r'?'rimborso spese':'compensi'} di ${esc(monthName(ym))}<br><span class="muted sm">Quando hai ricevuto i soldi? Decide l’anno per le tasse.</span><input type="date" id="dlgDate" value="${g?.pagato&&g.data?g.data:today()}" style="margin-top:10px">`,btns,true);
+  const v=await ask(`<b>${esc(p?.nome||'')}</b> · ${t==='r'?'rimborso spese':'compensi'} di ${esc(monthName(ym))}<br><span class="muted sm">Quando hai ricevuto i soldi? Decide l’anno per le tasse.</span><input type="date" id="dlgDate" value="${g?.pagato&&dataAttr(g.data)?g.data:today()}" style="margin-top:10px">`,btns,true);
   if(v==='ok')setPagato(key,true,$('dlgDate').value||today());else if(v==='no')setPagato(key,false);
 }
 function setPagato(key,on,data){pagamenti()[key]={pagato:!!on,data:on?(data||today()):'',updatedAt:Date.now()};changed();render();toast(on?'Entrati il '+parseYmd(data||today()).toLocaleDateString('it-IT'):'Tolto “entrati”');return;pagamenti()[key]={pagato:!!on,data:on?today():'',updatedAt:Date.now()};changed();render();toast(on?'Segnato come pagato':'Tolto “pagato”');}
@@ -312,7 +312,7 @@ async function pdfRimbBytes(pid,ym){
 function paginaFoto(foto){
   const pages=[];for(let i=0;i<foto.length;i+=2){const pg=newPage();
     const box=el('div','position:absolute;left:48px;top:40px;width:698px;font-family:system-ui,Arial;color:#111');
-    box.innerHTML=`<div style="font:700 13pt system-ui;margin-bottom:8px">Allegati – documenti giustificativi</div>`+foto.slice(i,i+2).map((f,k)=>`<div style="margin-bottom:14px"><div style="font-size:10pt;margin-bottom:4px"><b>${i+k+1}.</b> ${parseYmd(f.data).toLocaleDateString('it-IT')} · ${esc(SPESE[f.tipo]||f.tipo)}${f.nota?' · '+esc(f.nota):''} · ${eur(f.importo)}</div><img src="${f.foto}" style="max-width:698px;max-height:470px;border:1px solid #ccc"></div>`).join('');
+    box.innerHTML=`<div style="font:700 13pt system-ui;margin-bottom:8px">Allegati – documenti giustificativi</div>`+foto.slice(i,i+2).map((f,k)=>`<div style="margin-bottom:14px"><div style="font-size:10pt;margin-bottom:4px"><b>${i+k+1}.</b> ${parseYmd(f.data).toLocaleDateString('it-IT')} · ${esc(SPESE[f.tipo]||f.tipo)}${f.nota?' · '+esc(f.nota):''} · ${eur(f.importo)}</div><img src="${imgOk(f.foto)}" style="max-width:698px;max-height:470px;border:1px solid #ccc"></div>`).join('');
     pg.appendChild(box);pages.push(pg);}
   return pages;
 }
@@ -469,21 +469,21 @@ renderDoc=function(){
         ${acaBanner(p)}
         <div class="kv"><span>Trasferte</span><b>${d.rows.length} · ${nf(d.km,1)} km</b></div>
         <div class="kv"><span>Km × ${nf(d.rate,4)} €</span><b>${eur(d.kmEur)}</b></div>
-        ${sp.voci.length?`<div class="kv"><span>Spese con scontrino (${sp.voci.length})</span><b>${eur(sp.voci.reduce((a,x)=>a+(+x.importo||0),0))}</b></div><div class="thumbs">${sp.foto.map(f=>`<img src="${f.foto}" alt="scontrino ${esc(SPESE[f.tipo])}" title="${esc(SPESE[f.tipo])} ${eur(f.importo)}">`).join('')}</div>`:''}
+        ${sp.voci.length?`<div class="kv"><span>Spese con scontrino (${sp.voci.length})</span><b>${eur(sp.voci.reduce((a,x)=>a+(+x.importo||0),0))}</b></div><div class="thumbs">${sp.foto.map(f=>`<img src="${imgOk(f.foto)}" alt="scontrino ${esc(SPESE[f.tipo])}" title="${esc(SPESE[f.tipo])} ${eur(f.importo)}">`).join('')}</div>`:''}
         <div class="kv big"><span>Totale ricevuta</span><b>${eur(d.tot)}</b></div>
         <details class="extra" data-pid="${esc(p.id)}"><summary>Altre spese e dati della ricevuta</summary>
           <p class="muted sm">Le spese aggiunte alle attività (con foto) si sommano da sole. Qui puoi aggiungerne altre a mano.</p>
           <div class="g2">
-            <label>Pedaggi €<input inputmode="decimal" data-x="pedaggi" value="${x.pedaggi||''}"></label>
-            <label>Altro €<input inputmode="decimal" data-x="altro" value="${x.altro||''}"></label>
+            <label>Pedaggi €<input inputmode="decimal" data-x="pedaggi" value="${numAttr(x.pedaggi||"")}"></label>
+            <label>Altro €<input inputmode="decimal" data-x="altro" value="${numAttr(x.altro||"")}"></label>
             <label class="s2">Altro: descrizione<input data-x="altroDesc" value="${esc(x.altroDesc)}"></label>
             <label>Pernottamenti n.<input data-x="pernN" value="${esc(x.pernN)}"></label>
-            <label>Pernottamenti €<input inputmode="decimal" data-x="pernEur" value="${x.pernEur||''}"></label>
+            <label>Pernottamenti €<input inputmode="decimal" data-x="pernEur" value="${numAttr(x.pernEur||"")}"></label>
             <label>Pasti n.<input data-x="pastiN" value="${esc(x.pastiN)}"></label>
-            <label>Pasti €<input inputmode="decimal" data-x="pastiEur" value="${x.pastiEur||''}"></label>
+            <label>Pasti €<input inputmode="decimal" data-x="pastiEur" value="${numAttr(x.pastiEur||"")}"></label>
             <label>Allegati n.<input data-x="allegati" value="${esc(x.allegati)}" placeholder="${sp.foto.length||''}"></label>
             <label>Data firma<input type="date" data-x="dataFirma" value="${esc(x.dataFirma||d.dataFirma)}"></label>
-            <label>Tariffa ACI €/km<input inputmode="decimal" data-x="tariffa" value="${x.tariffa}"></label>
+            <label>Tariffa ACI €/km<input inputmode="decimal" data-x="tariffa" value="${numAttr(x.tariffa)}"></label>
             <label>Calcolata il<input data-x="tariffaData" value="${esc(x.tariffaData)}"></label>
           </div></details>
         <div class="acts"><button class="btn" data-pdf="${esc(p.id)}" ${d.tot?'':'disabled'}>Scarica PDF</button><button class="btn ghost" data-inv="${esc(p.id)}" ${d.tot?'':'disabled'}>Invia</button>
@@ -539,13 +539,13 @@ function initFirma(){
       if(x1<=x0)return null;const m=8;x0=Math.max(0,x0-m);y0=Math.max(0,y0-m);x1=Math.min(c.width,x1+m);y1=Math.min(c.height,y1+m);
       const o=document.createElement('canvas');o.width=x1-x0;o.height=y1-y0;o.getContext('2d').drawImage(c,x0,y0,o.width,o.height,0,0,o.width,o.height);return o.toDataURL('image/png');}};
 }
-function renderFirma(){const f=D().profilo.firma;$('firmaPrev').innerHTML=f?`<img src="${f}" alt="La tua firma"><span class="muted sm">Firma salvata: comparirà sulle ricevute PDF.</span>`:'<span class="muted sm">Nessuna firma salvata.</span>';$('firmaRm').hidden=!f;}
+function renderFirma(){const f=D().profilo.firma;$('firmaPrev').innerHTML=f?`<img src="${imgOk(f)}" alt="La tua firma"><span class="muted sm">Firma salvata: comparirà sulle ricevute PDF.</span>`:'<span class="muted sm">Nessuna firma salvata.</span>';$('firmaRm').hidden=!f;}
 
 // ---------- impostazioni ----------
 function applyTema(){const t=impost().tema;if(t==='auto')delete document.documentElement.dataset.theme;else document.documentElement.dataset.theme=t;}
 function renderImpost(){
   const I=impost();$('tema').value=I.tema||'auto';$('promem').checked=!!I.promemoria;
-  $('soglieEd').innerHTML=I.soglie.map((s,i)=>`<label>${esc(s.nome)}<input inputmode="decimal" data-sg="${i}" value="${s.limite}"></label>`).join('');
+  $('soglieEd').innerHTML=I.soglie.map((s,i)=>`<label>${esc(s.nome)}<input inputmode="decimal" data-sg="${i}" value="${numAttr(s.limite)}"></label>`).join('');
 }
 
 // ---------- estensioni di render e progetti ----------

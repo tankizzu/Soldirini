@@ -74,7 +74,7 @@ renderRiepilogo=function(){_renderRie18();
   hero.innerHTML=`<button type="button" class="rim${C.rimanenti<0?' neg':''}" aria-controls="heroDet"><small class="tit">Soldi rimanenti</small>${sotto?`<small class="dm">${sotto}</small>`:''}<b>${imp}</b><small class="det">Entrate ${eur(C.entrate)} · Uscite ${eur(C.usciti)}</small><span class="vh">, dettagli</span></button><div id="heroDet" class="heroDet">${det}</div>`;
   heroStato(hero);
   // 24b.1 (D-098, 02 §2): la testata di ogni pagina mostra lo stesso importo della sua casella
-  window.VALORI_RIE={dfx:C.fTot,dsp:C.sp,dlav:lavV,pen:penV,drim:tot.rimb,drit:tot.rit,dinc:daInc,mesi:C.mesi};
+  window.VALORI_RIE={dfx:C.fTot,dsp:C.sp,dlav:lavV,pen:penV,drim:tot.rimb,drit:tot.rit,dinc:daInc,inc:anno?r2(tot.netto+tot.rimb):0,mesi:C.mesi};
   // uscite fisse del mese (D-065: "Uscite fisse" ovunque; righe "addebitata il N" / "addebito il N")
   const box=$('rieFix'); // 24b.1 (D-098): nella pagina "Uscite fisse"
   const F=anno?[]:fissiDel(cur);
@@ -137,7 +137,7 @@ const salvaNascosti=()=>{try{localStorage.setItem('soldirini-nascosti',JSON.stri
 let popAperto=false;
 const _renderCal18=renderCal;
 renderCal=function(){_renderCal18();
-  for(const x of fissiDel(cur)){if(nascosti.has('fx'))break;const b=document.querySelector(`#grid [data-day="${x.data}"] .evs`);if(b)b.insertAdjacentHTML('beforeend',`<span class="ev fx" style="--c:#868e96">${fcat(x.f.cat)[1]} ${esc(x.f.nome)}</span>`);}
+  for(const x of fissiDel(cur)){if(nascosti.has('fx'))break;const b=document.querySelector(`#grid [data-day="${CSS.escape(x.data)}"] .evs`);if(b)b.insertAdjacentHTML('beforeend',`<span class="ev fx" style="--c:#868e96">${fcat(x.f.cat)[1]} ${esc(x.f.nome)}</span>`);}
   // tolgo dalla griglia i calendari nascosti
   if(nascosti.has('sp'))document.querySelectorAll('#grid .ev.sp').forEach(e=>e.remove());
   for(const l of lavori())if(nascosti.has('l:'+l.id))document.querySelectorAll('#grid .ev.tu').forEach(e=>{if(e.dataset.lid===l.id)e.remove();});
@@ -187,7 +187,7 @@ function bind18(){
   try{occhio(localStorage.getItem('soldirini-occhio')==='1');}catch(e){}
   swipe($('v-cal'),()=>$('next').click(),()=>$('prev').click());
   swipe($('rieTot'),()=>$('rNext').click(),()=>$('rPrev').click());
-  $('rieTot').addEventListener('click',e=>{const pg=e.target.closest('[data-vai]');if(pg){vaiA(pg.dataset.vai);if(pg.textContent.startsWith('Incassato dai progetti'))apriSezione('#rieAnno','Mese per mese');return;} // 24b.1 (D-098)
+  $('rieTot').addEventListener('click',e=>{const pg=e.target.closest('[data-vai]');if(pg){const inc=pg.textContent.startsWith('Incassato dai progetti');window.testaInc=inc;vaiA(pg.dataset.vai);if(inc)apriSezione('#rieAnno','Mese per mese');return;} // 24b.1 (D-098)
     const h=e.target.closest('.hero');if(!h||!h.querySelector('#heroDet')||e.target.closest('[data-b]'))return;heroAperto=!heroAperto;heroStato(h);});
   $('filtri').addEventListener('click',e=>{if(e.target.closest('#calBtn')){popAperto=!popAperto;filtriPop();e.stopImmediatePropagation();}},true);
   $('filtri').addEventListener('change',e=>{const t=e.target;if(t.name==='cf'){filtro=t.value;render();return;}

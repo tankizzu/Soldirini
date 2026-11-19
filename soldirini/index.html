@@ -369,6 +369,27 @@ body.nascondi .hero small.det{filter:blur(6px)}
 tr.trvai{cursor:pointer}tr.trvai:hover td,tr.trvai:focus-visible td{background:color-mix(in srgb,var(--mut) 10%,transparent)}tr.trvai:focus-visible{outline:2px solid var(--pri);outline-offset:-2px}
 .mesi .mrow{display:flex;align-items:center;gap:8px;width:100%;padding:8px 0;border:0;border-bottom:1px dashed var(--line);background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;min-height:44px}.mesi .mrow:last-child{border-bottom:0}.mesi .mrow .tx{flex:1;display:flex;flex-direction:column}.mesi .mrow small{color:var(--mut)}.mesi .mrow::after{content:"›";content:"›"/"";color:var(--mut);font-size:20px}
 .pgsez{margin:18px 2px 8px;font-size:15px}
+/* v24c: copia di sicurezza (mockup 02-mockup-v24c-riprendi-copia) */
+#toast{white-space:pre-line}
+.cprow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:space-between;margin:6px 0 0;font-weight:650;font-size:14px}
+.cprow .seg button{min-height:40px;min-width:52px}
+.cpparte{border-top:1px dashed var(--line);margin-top:14px;padding-top:10px}
+.cpinvio,.drpausa{border:1px solid #e9c46a;border-left:4px solid #e0a93a;border-radius:12px;padding:10px 12px;margin-top:12px}.drpausa b{color:var(--warn)}
+.chip.sync.pausa{background:#f3c969;color:#2b2100;min-height:32px}
+.cpopt{display:flex;flex-direction:column;gap:3px;width:100%;text-align:left;border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;margin-top:10px;background:var(--card);color:var(--ink);font:inherit;cursor:pointer;min-height:44px}
+.cpopt b{font-size:16px}.cpopt span{font-size:13.5px}.cpopt .pro{color:var(--ok)}.cpopt .con{color:var(--warn)}
+.cpopt.on{border-color:var(--pri);box-shadow:0 0 0 2px var(--pri)}
+.cpopt .tag{font-size:11.5px;font-weight:750;padding:2px 8px;border-radius:999px;background:color-mix(in srgb,var(--ok) 14%,var(--card));color:var(--ok);margin-left:6px}
+.cpwarn{background:color-mix(in srgb,#e9c46a 22%,var(--card));border:1px solid #e9c46a;border-radius:12px;padding:10px 12px;font-size:13.5px;margin-top:12px}
+.cpsum{margin-top:4px}.cpsum .kv b{text-align:right}
+#cpBody .err{color:var(--err);font-weight:650;font-size:13px;margin:8px 0 0}
+#cpBody label{margin-top:10px}
+.cpfile{margin-top:8px}
+.spin{display:inline-block;width:15px;height:15px;border:2.5px solid currentColor;border-right-color:transparent;border-radius:50%;margin-right:8px;vertical-align:-2px;animation:gira .8s linear infinite}
+@keyframes gira{to{transform:rotate(360deg)}}
+.rem{display:flex;gap:10px;align-items:flex-start;background:var(--card);border:1px solid var(--line);border-left:4px solid #e0a93a;border-radius:12px;padding:10px 12px;margin:0 0 12px}
+.rem .i{font-size:20px;line-height:1.2}.rem .tx{flex:1;font-size:14px}.rem small{display:block;color:var(--mut);font-size:12.5px;margin-top:2px}
+.rem .b{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}.rem .b .btn{min-height:44px}
 .pagrie .monthbar h2{text-transform:none} /* 24b.1: i titoli delle pagine si scrivono come nel riquadro ("Ritenuta d’acconto") */
 .hero .heroDet>button.hcel{font:inherit;color:inherit;text-align:left;border:0;cursor:pointer;position:relative;padding-right:24px;width:100%}
 .hero .heroDet>button.hcel::after{content:"›";content:"›"/"";position:absolute;right:9px;top:50%;transform:translateY(-50%);opacity:.7;font-size:18px} /* il segno non entra nel testo letto */
@@ -631,7 +652,7 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
         <div class="card"><h3>Blocco dell’app</h3><div id="sicBox"></div></div>
         <div class="card"><h3>Cestino</h3><p class="muted sm" style="margin-top:0">Le attività e i progetti eliminati restano qui 30 giorni.</p><div id="cestBox"></div></div>
         <div class="card"><h3>Storico modifiche</h3><div id="storBox" class="storbox"></div></div>
-        <div class="card"><h3>Copia di sicurezza</h3><p class="muted sm">Scarica tutti i tuoi dati in un file.</p><button class="btn ghost sm" id="backupBtn">Scarica backup</button></div>
+        <div class="card"><h3>Copia di sicurezza</h3><div id="cpBox"></div></div>
       </div>
     </div>
   </section>
@@ -977,6 +998,10 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
   <p class="muted sm" id="vcDrive" hidden>Con Google Drive collegato, dopo la ripresa la sincronizzazione aggiunge le modifiche salvate su Drive.</p>
   <div class="foot"><button class="btn ghost" id="vcNo">Non ora</button><button class="btn" id="vcSi">Riprendi</button></div>
   <p class="muted sm" id="vcNota">Con «Non ora» la domanda torna al prossimo avvio. Puoi riprendere la copia anche da Impostazioni → Account.</p></div></div>
+<!-- v24c: copia di sicurezza (schermate 12, 13, 21a-21c, 22, 23 di 02); il contenuto lo scrive copia.js -->
+<div class="modal" id="cpModal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="cpTit">
+  <div class="sheethead"><h2 id="cpTit"></h2><button class="x" id="cpX" type="button" aria-label="Chiudi">×</button></div>
+  <div id="cpBody"></div></div></div>
 <div class="toast" id="toast"></div>
 <div class="busyov" id="busy" hidden><div id="busyMsg">Attendi…</div></div>
 <!-- v24b: archivio.js legge i dati (IndexedDB) e poi carica gli altri file nell'ordine di sempre -->
