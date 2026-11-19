@@ -13,7 +13,10 @@ Su GitHub, con il workflow `.github/workflows/android-notifiche.yml` ("App di pr
 1. prove del lettore (`app/src/test`, solo esempi inventati);
 2. APK di debug;
 3. controllo dell'APK (`controlla-apk.sh`): nessun permesso, nessun provider o receiver, solo due componenti esportati, `<queries>` con i soli pacchetti ING, `allowBackup` falso, regole dei dati; stampa l'impronta SHA-256 e il certificato di firma;
-4. l'APK `prova-notifiche.apk` resta allegato alla run per 7 giorni.
+4. l'APK `prova-notifiche.apk` resta allegato alla run per 7 giorni;
+5. solo per un caricamento su `main`, il job "pubblica" mette **lo stesso APK** (stessa impronta SHA-256, controllata) nella pre-release fissa **`prova-notifiche`** (titolo "App di prova notifiche"), sostituendo il file della volta prima (D-108). Nelle note: SHA-256, commit e run. Link diretto, sempre uguale:
+   `https://github.com/tankizzu/Soldirini/releases/download/prova-notifiche/prova-notifiche.apk`
+   È l'unico job con `contents: write`; usa solo il `GITHUB_TOKEN` della run, nessun altro segreto.
 
 In locale, con Android SDK e JDK 17: `gradle :app:testDebugUnitTest :app:assembleDebug` dentro questa cartella (Gradle 9.6.1 o successivo).
 
@@ -34,8 +37,12 @@ Versioni: Android Gradle Plugin 9.5.0, Gradle 9.6.1, JDK 17, `compileSdk`/`targe
 
 ## Guida per l'utente (03, tornata 27: G1-G5)
 **Installare**
-1. Nella run verde di "App di prova notifiche", in fondo alla pagina, sezione "Artifacts": tocca `prova-notifiche.apk`. Arriva già come file `.apk`, non come zip. Serve essere entrati su GitHub.
-2. Apri il file dalla notifica del download o dall'app File.
+1. Sul telefono apri questo link (dal browser, per esempio Chrome):
+   `https://github.com/tankizzu/Soldirini/releases/download/prova-notifiche/prova-notifiche.apk`
+   Scarica direttamente il file `prova-notifiche.apk`. Non serve essere entrati su GitHub. Se il browser avvisa che il file può essere dannoso, tocca **Scarica comunque**.
+   - Non usare più gli "Artifacts" della run dal telefono: arrivano chiusi in uno zip e non si installano.
+   - Per essere sicuri che è il file giusto: la pagina `https://github.com/tankizzu/Soldirini/releases/tag/prova-notifiche` mostra nelle note l'impronta SHA-256 e il commit.
+2. Apri il file dalla notifica del download, oppure dall'app File → Download.
 3. Se il telefono dice che non può installare app da questa fonte: **Impostazioni** → **"Consenti da questa fonte"** → torna indietro → **Installa**.
 4. **Subito dopo l'installazione** rispegni "Consenti da questa fonte" per l'app che hai usato (browser, File o WhatsApp). Lasciato acceso, quell'app potrebbe installare altre app senza chiedere.
 5. Play Protect:

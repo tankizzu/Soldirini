@@ -1,7 +1,9 @@
 # App Android di prova delle notifiche (D-102), cartella "android-notifiche".
 # Separata da Soldirini: non pubblica niente sul sito. Fa le prove del lettore, crea l'APK di debug,
 # controlla che l'APK non chieda permessi (niente INTERNET) e che il backup sia spento, poi lo allega alla run.
-# Senza segreti e senza pull_request_target (A2 di 03). Versioni controllate il 18/11/2026: tag dei repository delle azioni (tutte su Node 24) e pagina ufficiale di AGP 9.5.
+# Solo per push su main, il job "pubblica" mette lo stesso APK nella pre-release fissa "prova-notifiche" (D-108):
+# link diretto sempre uguale, che dal telefono scarica il file .apk e non uno zip.
+# Senza segreti e senza pull_request_target (A2 di 03): solo il GITHUB_TOKEN della run. Versioni controllate il 18/11/2026: tag dei repository delle azioni (tutte su Node 24) e pagina ufficiale di AGP 9.5.
 name: App di prova notifiche
 on:
   push:
@@ -19,6 +21,8 @@ jobs:
     name: Prove e APK
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    outputs:
+      sha256: ${{ steps.controllo.outputs.sha256 }}
     defaults:
       run:
         working-directory: android-notifiche
@@ -36,6 +40,7 @@ jobs:
       - name: APK di debug
         run: gradle --no-daemon :app:assembleDebug
       - name: Controllo dell'APK
+        id: controllo
         # A1 di 03: nessun permesso, nessun provider/receiver, solo 2 componenti esportati, <queries> con i soli
         # pacchetti ING, backup spento; stampa impronta SHA-256 e certificato di firma.
         run: |
@@ -43,6 +48,7 @@ jobs:
           mkdir -p ../consegna
           cp app/build/outputs/apk/debug/app-debug.apk ../consegna/prova-notifiche.apk
           sha256sum ../consegna/prova-notifiche.apk
+          echo "sha256=$(sha256sum ../consegna/prova-notifiche.apk | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v7
         with:
           path: consegna/prova-notifiche.apk
@@ -57,3 +63,47 @@ jobs:
           path: android-notifiche/app/build/reports/tests/
           retention-days: 7
           if-no-files-found: ignore
+
+  pubblica:
+    # D-108. Job a parte perché i permessi si danno al job, non al singolo passo: solo qui contents: write,
+    # e qui non si compila niente e non si scarica il codice. Usa l'APK già controllato dal job "apk".
+    name: APK nella pre-release "prova-notifiche"
+    needs: apk
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      # azione ufficiale di GitHub, compagna di upload-artifact@v7: la v8 è la prima che legge gli artefatti con
+      # archive: false; controlla anche l'impronta del file scaricato (digest-mismatch: error)
+      - uses: actions/download-artifact@v8
+        with:
+          name: prova-notifiche.apk
+          path: consegna
+          digest-mismatch: error
+      - name: Pubblica prova-notifiche.apk
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          SHA_ATTESA: ${{ needs.apk.outputs.sha256 }}
+        run: |
+          set -euo pipefail
+          apk=$(find consegna -type f -name prova-notifiche.apk | head -n 1)
+          [ -n "$apk" ] || { echo "::error::prova-notifiche.apk non trovato tra gli artefatti."; exit 1; }
+          sha=$(sha256sum "$apk" | cut -d' ' -f1)
+          [ "$sha" = "$SHA_ATTESA" ] || { echo "::error::L'impronta non è quella dell'APK controllato."; exit 1; }
+          note="App di prova delle notifiche (D-102), solo per il telefono dell'utente. Si sostituisce a ogni compilazione.
+
+          SHA-256 di prova-notifiche.apk: $sha
+          Commit: $GITHUB_SHA
+          Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          if gh release view prova-notifiche > /dev/null 2>&1; then
+            gh release upload prova-notifiche "$apk" --clobber
+            gh release edit prova-notifiche --prerelease --title "App di prova notifiche" --notes "$note"
+          else
+            gh release create prova-notifiche "$apk" --prerelease --latest=false --target "$GITHUB_SHA" \
+              --title "App di prova notifiche" --notes "$note"
+          fi
+          echo "SHA-256: $sha"
+          gh release view prova-notifiche --json assets --jq '.assets[] | "\(.name)  \(.url)"'
