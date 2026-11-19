@@ -109,7 +109,7 @@ test.describe('v24c · formato e cifratura (C1-C5, V1-V5)', () => {
     await page.fill('#cpP1', 'aaaaaaaa'); await page.fill('#cpP2', 'aaaaaaaa'); await page.click('[data-cp=salvapw]');
     await expect(page.locator('#cpErr')).toHaveText(/troppo facile da indovinare/);
     for (const p of ['12345678', 'abcdefgh', '87654321']) { await page.fill('#cpP1', p); await page.fill('#cpP2', p); await page.click('[data-cp=salvapw]'); await expect(page.locator('#cpErr')).toHaveText(/troppo facile/); }
-    await page.fill('#cpP1', 'corta'); await page.fill('#cpP2', 'corta'); await page.click('[data-cp=salvapw]'); await expect(page.locator('#cpErr')).toHaveText('Servono almeno 8 caratteri.');
+    await page.fill('#cpP1', 'corta'); await page.fill('#cpP2', 'corta'); await page.click('[data-cp=salvapw]'); await expect(page.locator('#cpErr')).toHaveText('La password è troppo corta: servono almeno 8 caratteri.');
     await page.fill('#cpP1', PW); await page.fill('#cpP2', PW + 'x'); await page.click('[data-cp=salvapw]'); await expect(page.locator('#cpErr')).toHaveText('Le due password non sono uguali.');
     await page.fill('#cpP2', PW);
     const [dl] = await Promise.all([page.waitForEvent('download'), page.click('[data-cp=salvapw]')]);
@@ -260,7 +260,7 @@ test.describe('v24c · Unisci, Sostituisci, Rimetti sul telefono (C6, C7, V9, V1
     await expect(page.locator('#cpTit')).toHaveText('Rimettere i dati messi da parte?');
     await expect(page.locator('#cpBody')).toContainText('Ora ci sono 3 attività (fino al 10/11/2026). Dopo tornano i dati messi da parte il 18/11/2026: 1 attività (fino al 15/11/2026).');
     await page.click('[data-cp=rimettisi]');
-    await expect(page.locator('#toast')).toHaveText('✓ Rimessi i dati messi da parte il 18/11/2026.');
+    await expect(page.locator('#toast')).toHaveText('✓ Rimessi i dati messi da parte il 18/11/2026. Quelli che c’erano prima ora sono messi da parte.');
     expect(await page.evaluate(() => Object.keys(D().eventi).filter(k => !D().eventi[k].deleted))).toEqual(['z1']);
     expect(Object.keys(JSON.parse((await recIdb(page, 'da-parte')).testo).eventi).filter(k => k !== 'z1').sort()).toEqual(['e1', 'e2', 'e3']);
     // "Esci" cancella anche i dati messi da parte
@@ -315,7 +315,7 @@ test.describe('v24c · Sostituisci tutto con Google Drive (C8, V11-V14)', () => 
     await A.page.fill('#cpPwIn', PW); await A.page.click('[data-cp=apri]');
     await expect(A.page.locator('#cpBody .cpopt[data-modo=sostituisci]')).toContainText('Con Google Drive: la sostituzione vale anche per Drive e per gli altri dispositivi collegati.');
     await A.page.click('#cpBody .cpopt[data-modo=sostituisci]'); await A.page.click('[data-cp=usa]');
-    await expect(A.page.locator('#cpBody .cpwarn')).toContainText('in fondo a Impostazioni deve dire «versione 24c» o più nuova. Con una versione più vecchia prende i dati della copia senza chiederlo e senza mettere da parte i suoi.');
+    await expect(A.page.locator('#cpBody .cpwarn')).toContainText('in fondo a Impostazioni deve dire «versione 24c» o più nuova. Una versione più vecchia prende i dati della copia senza chiederlo e senza mettere da parte i suoi. Poi può rimettere i pagamenti, le entrate e i documenti dei progetti segnati come fatti o inviati che la copia non ha, e le modifiche fatte lì più di recente.');
     await A.page.click('[data-cp=sostituisci]');
     await expect(A.page.locator('#toast')).toHaveText('✓ Dati sostituiti con la copia del 18/11/2026.');
     await expect.poll(() => A.page.evaluate(() => !DB.meta.sostituzione && !syncing), { timeout: 20000 }).toBe(true);

@@ -124,9 +124,15 @@ function provenienza(v){const f=v.pr.fonte;const i=v.pr.imp!=null?eur(v.pr.imp):
 // ---------- scheda "In arrivo" sotto i soldi rimanenti (E-7) ----------
 // 24b.2 (D-099 punto 1): nel Riepilogo solo i compensi dei progetti, in una scheda nello stile di Tasse e Risparmi;
 // stipendio e pensione in arrivo in cima alle pagine Lavoro dipendente e Pensione (stesse righe, stesso "È entrato")
-function righeInArrivo(L,ora){return L.map(v=>{const vecchia=mesiTra(v.ym,ora)>2;
-    const det=[esc(v.fonteNome),v.pr.imp!=null?eur(v.pr.imp)+(v.pr.fonte==='stima'?' (stima)':''):'importo da scrivere',v.tipo==='prog'&&v.previsto?'previsti a '+esc(MESE(v.previsto)):''].filter(Boolean).join(' · ');
-    return `<div class="ir${vecchia?' old':''}"><span class="tx"><b>${esc(v.titolo)}</b><small>${det}</small>${vecchia?'<small class="w">⚠ Da più di 2 mesi: controlla se è entrato</small>':''}</span><button type="button" class="btn sm" data-en="${esc(v.key)}">${v.tipo==='pen'?'È entrata':v.tipo==='prog'?'Entrati':'È entrato'}</button></div>`;}).join('');}
+// 24c.1 (02, tornata 27 §2-3): importo a destra; sotto il titolo progetto, lavoro ("· stima") o "dal cedolino"/"stima";
+// pulsanti alti 44 px con un'etichetta che dice quale voce si segna (con più righe tutti i pulsanti dicevano solo "Entrati")
+function righeInArrivo(L,ora){return L.map(v=>{const vecchia=mesiTra(v.ym,ora)>2,f=v.pr.fonte;
+    const da=v.tipo==='pen'?(f==='cedolino'?'dal cedolino':f==='stima'?'stima':''):[esc(v.fonteNome),f==='stima'?'stima':''].filter(Boolean).join(' · ');
+    const det=[da,v.pr.imp==null?'importo da scrivere':'',v.tipo==='prog'&&v.previsto?'previsti a '+esc(MESE(v.previsto)):''].filter(Boolean).join(' · ');
+    const tit=esc(v.titolo),lab=v.tipo==='prog'?`Segna come entrati i ${tit.charAt(0).toLowerCase()+tit.slice(1)}, ${esc(v.fonteNome)}`:v.tipo==='pen'?`${tit}: è entrata`:`${tit}, ${esc(v.fonteNome)}: è entrato`;
+    return `<div class="ir${vecchia?' old':''}"><span class="tx"><b>${tit}</b>${det?`<small>${det}</small>`:''}${vecchia?'<small class="w">⚠ Da più di 2 mesi: controlla se è entrato</small>':''}</span>${v.pr.imp!=null?`<b class="imp">${eur(v.pr.imp)}</b>`:''}<button type="button" class="btn sm${v.tipo==='prog'?' ghost':''}" data-en="${esc(v.key)}" aria-label="${lab}">${v.tipo==='pen'?'È entrata':v.tipo==='prog'?'Entrati':'È entrato'}</button></div>`;}).join('');}
+// clessidra a linea, stesso tratto dei disegni dei pulsanti Tasse e Risparmi (02, tornata 27 §2)
+const CLESSIDRA='<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12M6 21h12"/><path d="M7 3c0 4 5 5.5 5 9s-5 5-5 9M17 3c0 4-5 5.5-5 9s5 5 5 9"/></svg>';
 function contenitore(id,dove){let box=$(id);if(!dove)return box;if(!box){box=document.createElement('div');box.id=id;box.className='cards';}if(dove.previousElementSibling!==box)dove.before(box);return box;}
 function renderInArrivo(){
   const tot=$('rieTot');if(!tot)return;
@@ -136,8 +142,8 @@ function renderInArrivo(){
   const ora=ymOra();const tutte=rieMode==='anno'||cur!==ora?[]:voci(ora).filter(v=>!v.ent&&(v.pr.imp!=null||v.pr.fonte==='lordo')).sort((a,b)=>a.ym.localeCompare(b.ym)||a.titolo.localeCompare(b.titolo));
   const di=t=>tutte.filter(v=>v.tipo===t),somma=L=>eur(r2(L.reduce((a,v)=>a+(v.pr.imp||0),0)));
   const P=di('prog');
-  box.innerHTML=P.length?`<div class="card inarr insub"><div class="inhead"><span class="ico" aria-hidden="true">⏳</span><span class="tx"><b>Compensi non ancora entrati</b><small>${somma(P)} · non contati nei soldi rimanenti</small></span></div>${righeInArrivo(P,ora)}</div>`:'';
-  for(const [b,L] of [[lav,di('lav')],[pen,di('pen')]])if(b)b.innerHTML=L.length?`<div class="card inarr"><h3>In arrivo <span class="muted sm">${somma(L)} · non contati</span></h3>${righeInArrivo(L,ora)}</div>`:'';}
+  box.innerHTML=P.length?`<section class="card inarr insub" aria-labelledby="inCmpT"><div class="inhead"><span class="ico">${CLESSIDRA}</span><span class="tx"><b id="inCmpT">Compensi non ancora entrati</b><small>${somma(P)} in tutto · non contati nei soldi rimanenti</small></span></div>${righeInArrivo(P,ora)}</section>`:'';
+  for(const [b,L,id] of [[lav,di('lav'),'inLavT'],[pen,di('pen'),'inPenT']])if(b)b.innerHTML=L.length?`<section class="card inarr" aria-labelledby="${id}"><h3 id="${id}">In arrivo <small class="muted">· non contato nei soldi rimanenti</small></h3>${righeInArrivo(L,ora)}</section>`:'';}
 
 // ---------- primo avvio della v24 (E-10, D-051, D-071) ----------
 // una sola volta per apertura dell'app, alla prima occasione (avvio o prima sincronizzazione): mai a metà dell'uso

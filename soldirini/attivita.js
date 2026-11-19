@@ -53,12 +53,13 @@ function renderLav(){
   const d0=md.dates[0];let oggi='';
   if(md.dates.length===1){const G=C.vociGiorno(l,turniDi(l.id).filter(t=>t.data===d0),d0);oggi=G.voci.map(v=>esc((v.tipo?.icona?v.tipo.icona+' ':'')+v.nome+(v.daS&&v.aS?' '+v.daS+'–'+v.aS:'')+(v.implicito?' (abituale)':''))).join(' · ');}
   const t=st.tipo?C.tipoDi(l,st.tipo):null;const scelto=st.tipo!==undefined;
-  const servOrari=scelto&&(!t||t.cat==='lavoro'||t.cat==='variabile');const servOre=scelto&&(!t||!(t.da&&t.a));
+  const ass=scelto&&t&&window.testoAssenza?testoAssenza(l,t,d0.slice(0,7),true):null; // a turni: testo 1e (02, 04)
+  const servOrari=scelto&&(!t||t.cat==='lavoro'||t.cat==='variabile');const servOre=scelto&&(!t||!(t.da&&t.a)||!!ass);
   box.innerHTML=(L.length>1?`<label>Lavoro<select id="evLavSel">${L.map(x=>`<option value="${esc(x.id)}" ${x.id===l.id?'selected':''}>${esc(x.nome)}</option>`).join('')}</select></label>`:`<p class="sm" style="margin-top:0"><b>${esc(l.nome)}</b></p>`)+
     (oggi?`<p class="muted sm">Già segnato: ${oggi}</p>`:'')+
     `<div class="tuchips">${l.tipi.map(x=>`<button type="button" class="chip ${st.tipo===x.id?'on':''}" style="--c:${colOk(x.colore||l.colore)}" data-lt="${esc(x.id)}">${esc((x.icona?x.icona+' ':'')+x.nome)}</button>`).join('')}<button type="button" class="chip ${st.tipo===null?'on':''}" data-lt="">Orario diverso</button></div>`+
     (scelto?`<div class="g2" style="margin-top:8px">${servOrari?`<label>Dalle<input type="time" data-lk="da" value="${esc(st.da)}"></label><label>Alle<input type="time" data-lk="a" value="${esc(st.a)}"></label><label>Pausa (min)<input type="number" inputmode="numeric" data-lk="pausa" value="${esc(st.pausa)}"></label>`:''}${servOre?`<label>Ore<input type="number" inputmode="decimal" step="0.25" data-lk="ore" value="${esc(st.ore)}"></label>`:''}<label class="s2">Nota<input data-lk="nota" value="${esc(st.nota)}"></label></div>
-      <p class="muted sm">${!t?'Sostituisce l’orario di quel giorno.':t.da&&t.a?`Orario del tipo: ${t.da}–${t.a}. Cambialo solo se quel giorno è diverso.`:C.PAGATE.includes(t.cat)?'Lascia vuote le ore per contare l’orario abituale del giorno.':'Scrivi le ore (oppure dalle–alle).'}</p>`:'<p class="muted sm">Tocca un tipo per segnarlo in questo giorno.</p>');
+      <p class="muted sm">${!t?'Sostituisce l’orario di quel giorno.':ass?ass:t.da&&t.a?`Orario del tipo: ${t.da}–${t.a}. Cambialo solo se quel giorno è diverso.`:((t.cat==='permesso'||t.cat==='nonretr')&&t.ore===''?'Scrivi le ore (oppure dalle–alle).':C.PAGATE.includes(t.cat)||t.cat==='nonretr'?'Lascia vuote le ore per contare l’orario abituale del giorno.':'Scrivi le ore (oppure dalle–alle).')}</p>`:'<p class="muted sm">Tocca un tipo per segnarlo in questo giorno.</p>');
 }
 const lav0=id=>(D().lavori||{})[id];
 function letturaLav(){const st=S.lav;if(!st)return;document.querySelectorAll('#evLav [data-lk]').forEach(i=>st[i.dataset.lk]=i.value.trim());}

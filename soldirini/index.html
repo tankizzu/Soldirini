@@ -15,7 +15,7 @@
 <style>@font-face{font-family:"Nunito";src:url(nunito.woff2) format("woff2");font-weight:400 800;font-style:normal;font-display:swap}</style>
 <link rel="stylesheet" href="fonts.css">
 <style>
-:root{--bg:#f1f0ee;--card:#fff;--ink:#1b1c1e;--mut:#6b6a68;--line:#e2e0dc;--pri:#2a2c30;--pri2:#3d4046;--pri-ink:#fff;--top:#17191c;--gold:#e0a93a;--err:#a33a28;--ok:#356d47;--warn:#a8460d;--field:#8d8983;--tabmix:85%;--sezink:80%;--sez:#5b6475;--shadow:0 1px 2px rgba(20,20,20,.05),0 4px 14px rgba(20,20,20,.05);--r:14px;--font:"Nunito",ui-rounded,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+:root{--gold-chiaro:#f3c969;--gold-scuro:#d49a12;--bg:#f1f0ee;--card:#fff;--ink:#1b1c1e;--mut:#6b6a68;--line:#e2e0dc;--pri:#2a2c30;--pri2:#3d4046;--pri-ink:#fff;--top:#17191c;--gold:#e0a93a;--err:#a33a28;--ok:#356d47;--warn:#a8460d;--field:#8d8983;--tabmix:85%;--sezink:80%;--sez:#5b6475;--shadow:0 1px 2px rgba(20,20,20,.05),0 4px 14px rgba(20,20,20,.05);--r:14px;--font:"Nunito",ui-rounded,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 :root[data-theme="dark"]{--bg:#0f1011;--card:#1a1b1e;--ink:#ebeae7;--mut:#a09e9a;--line:#2c2d31;--pri:#e6e4df;--pri2:#c9c7c2;--pri-ink:#16171a;--top:#0b0c0d;--err:#f2857a;--ok:#74c08c;--warn:#f5a066;--field:#76757a;--tabmix:60%;--sezink:55%;--shadow:none;color-scheme:dark}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1011;--card:#1a1b1e;--ink:#ebeae7;--mut:#a09e9a;--line:#2c2d31;--pri:#e6e4df;--pri2:#c9c7c2;--pri-ink:#16171a;--top:#0b0c0d;--err:#f2857a;--ok:#74c08c;--warn:#f5a066;--field:#76757a;--tabmix:60%;--sezink:55%;--shadow:none;color-scheme:dark}}
 *{box-sizing:border-box}
@@ -29,7 +29,7 @@ header.top img{width:34px;height:34px;border-radius:50%}
 header.top h1{font-size:19px;margin:0;font-weight:750;letter-spacing:.2px;flex:1}
 #acc{font-size:13px;opacity:.85;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .chip{border:0;border-radius:999px;padding:6px 11px;font-size:12.5px;font-weight:650;cursor:pointer;white-space:nowrap;max-width:46vw;overflow:hidden;text-overflow:ellipsis}
-.sync.ok{background:rgba(255,255,255,.18);color:#fff}.sync.busy{background:#f2b632;color:#3b2a00}.sync.off{background:#dbe3e0;color:#334}.sync.warn{background:#fff;color:#1b1c1e}.sync.err{background:#fde2e0;color:#b42318}
+.sync.ok{background:rgba(255,255,255,.18);color:#fff}.sync.busy{background:var(--gold-chiaro);color:#3b2a00}.sync.off{background:#dbe3e0;color:#334}.sync.warn{background:#fff;color:#1b1c1e}.sync.err{background:#fde2e0;color:#a33a28}
 nav.tabs{display:flex;gap:4px;padding:6px 10px;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:calc(env(safe-area-inset-top) + 50px);z-index:19;overflow-x:auto}
 nav.tabs button{flex:1;border:0;background:none;padding:9px 8px;border-radius:10px;font-weight:650;color:var(--mut);cursor:pointer;white-space:nowrap}
 nav.tabs button.on{background:color-mix(in srgb,var(--pri) 13%,transparent);color:var(--pri)}
@@ -132,7 +132,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--pri)}
 .foot{display:flex;gap:8px;margin-top:16px;position:sticky;bottom:-16px;background:var(--card);padding:10px 0}
 .foot .btn{flex:1}
 .toast{position:fixed;left:50%;bottom:calc(90px + env(safe-area-inset-bottom));transform:translate(-50%,20px);background:var(--pri);color:var(--pri-ink);padding:11px 16px;border-radius:12px;opacity:0;pointer-events:none;transition:.25s;z-index:80;max-width:min(92vw,520px);font-weight:550;text-align:center}
-.toast.show{opacity:1;transform:translate(-50%,0)}.toast.err{background:#b42318}
+.toast.show{opacity:1;transform:translate(-50%,0)}.toast.err{background:#a33a28;color:#fff}
 .busyov{position:fixed;inset:0;background:rgba(255,255,255,.6);z-index:90;display:grid;place-items:center}
 .busyov div{background:var(--card);padding:16px 20px;border-radius:14px;box-shadow:var(--shadow);font-weight:650;color:var(--ink)}
 .welcome{background:linear-gradient(135deg,#2a2c30,#3a3d43);color:#fff;border:0}
@@ -219,7 +219,7 @@ nav.tabs button{padding:9px 4px}
 i.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px}
 
 /* colore di ogni sezione (toni spenti) */
-body[data-tab="cal"]{--sez:#5b6475}body[data-tab="rie"]{--sez:#6e6079}body[data-tab="doc"]{--sez:#776a52}body:is([data-tab="dfx"],[data-tab="dsp"],[data-tab="dlav"],[data-tab="drit"],[data-tab="dinc"]){--sez:#6e6079}body[data-tab="drim"]{--sez:#776a52}body[data-tab="tas"]{--sez:#7d5c52}body[data-tab="pro"]{--sez:#58665f}
+body[data-tab="cal"]{--sez:#5b6475}body[data-tab="rie"]{--sez:#6e6079}body[data-tab="doc"]{--sez:#776a52}body:is([data-tab="dfx"],[data-tab="dsp"],[data-tab="dlav"],[data-tab="drim"],[data-tab="drit"],[data-tab="dinc"]){--sez:#6e6079}body[data-tab="tas"]{--sez:#7d5c52}body[data-tab="pro"]{--sez:#58665f}
 :root[data-theme="dark"] body{--sez-l:55%}
 nav.tabs button.on{background:color-mix(in srgb,var(--sez) 16%,transparent);color:color-mix(in srgb,var(--sez) 85%,var(--ink))}
 nav.tabs{box-shadow:inset 0 -2px 0 color-mix(in srgb,var(--sez) 45%,transparent)}
@@ -259,7 +259,10 @@ body[data-tab="cal"] main{padding-bottom:12px}
 .subnav button[data-goto="doc"] .ico{background:#776a52}.subnav button[data-goto="tas"] .ico{background:#7d5c52}
 .subnav .tx{display:flex;flex-direction:column;flex:1;min-width:0}.subnav .tx b{font-size:16px}.subnav .tx small{color:var(--mut);font-size:13px}
 .subnav .chev{font-size:24px;color:var(--mut)}
-.back{border:0;background:none;color:var(--mut);font-weight:650;font-size:15px;padding:4px 0 10px;cursor:pointer}
+.indietro{display:inline-flex;align-items:center;gap:6px;min-height:44px;min-width:44px;margin:0 0 12px;padding:0 14px 0 10px;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:11px;box-shadow:var(--shadow);font:inherit;font-size:15px;font-weight:650;line-height:1;cursor:pointer}.indietro svg{width:20px;height:20px;flex:none}.indietro:focus-visible{outline:2px solid var(--gold-scuro);outline-offset:2px}
+.pagrie>.indietro,.cascata.pagrie>.indietro{animation:none} /* 02 §7.1: arriva con la pagina, non nella cascata */
+.oregiorno{margin-top:14px}.oregiorno>label{margin:0 0 4px}.conunita{display:flex;align-items:center;gap:8px}.conunita input{flex:1}.conunita .unita{color:var(--mut)}.oregiorno .err{margin:4px 0 0}
+.cpinvio.cima{margin:0 0 12px}.avvore{margin:0 0 12px}.avvore p{margin:4px 0 8px}
 nav.tabs button{display:flex;align-items:center;justify-content:center;gap:6px}
 
 .wdoc{max-height:46vh;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fff;color:#111;font:13px/1.45 Arial,sans-serif;-webkit-user-select:text;user-select:text}
@@ -295,7 +298,7 @@ input.manca{border-color:var(--err)}
 #v-pro .stack>details.fold{margin-bottom:0}
 /* v17 */
 .ev.tu.imp{font-weight:600;opacity:.85}
-.bdg{display:inline-block;margin-top:3px;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:700;background:var(--line);color:var(--ink)}.bdg.ok{background:color-mix(in srgb,#2f9e44 18%,var(--card));color:#2f9e44}.bdg.warn{background:color-mix(in srgb,#e8590c 18%,var(--card));color:#c2410c}
+.bdg{display:inline-block;margin-top:3px;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:700;background:var(--line);color:var(--ink)}.bdg.ok{background:color-mix(in srgb,var(--ok) 14%,var(--card));color:var(--ok)}.bdg.warn{background:color-mix(in srgb,var(--warn) 14%,var(--card));color:var(--warn)}
 #rieLav{margin-bottom:12px}
 .ic{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:9px;margin-right:10px;font-size:16px;flex:none;background:color-mix(in srgb,var(--ic) 22%,var(--card));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ic) 35%,transparent)}
 #v-pro details.fold>summary .st{display:inline-flex;align-items:center}
@@ -349,10 +352,12 @@ body.nascondi :is(.hero b,.hero .rim b,.kv b,details.fold>summary .sum,#daySum b
 .hero .heroDet>.lungo{grid-column:1/-1}
 @media(max-width:699px){.hero .heroDet>.dispari{grid-column:1/-1}}
 /* 24b.2 (D-101): "Mi dispiace che non hai entrate" al posto delle caselle delle entrate (stile provvisorio: aspetta il mockup di 02) */
-.hero .heroDet>.hnone{grid-column:1/-1;margin:0;padding:12px 10px;border-radius:11px;background:rgba(255,255,255,.06);border:1px dashed rgba(255,255,255,.22);text-align:center;font-weight:650;font-size:14.5px}
+/* 24c.1 (02, tornata 27 §1): la frase non è un pulsante: niente fondo pieno, bordo tratteggiato; stessa altezza e raggio delle caselle */
+.hero .heroDet>.nient{grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:8px;min-height:58px;margin:0;padding:10px 12px;border-radius:11px;border:1px dashed rgba(255,255,255,.28);background:none;font-size:14.5px;font-weight:650;color:rgba(255,255,255,.92);text-align:center;animation:apri calc(280ms*var(--t,.7)) cubic-bezier(.2,.8,.2,1) both}
+.hero .heroDet>.nient .em{font-size:18px;line-height:1}
 .fxr{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px dashed var(--line)}.fxr .tx{flex:1;display:flex;flex-direction:column;min-width:0}.fxr small{color:var(--mut)}
-.obp{margin:10px 0}.obp .bar{height:10px;border-radius:10px;background:var(--line);overflow:hidden;margin:6px 0}.obp .bar span{display:block;height:100%;background:#2f9e44;border-radius:10px;transition:width .5s ease}
-.rbars{display:grid;grid-template-columns:repeat(12,1fr);gap:4px;align-items:end;height:140px;margin:10px 0 4px}.rbar{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:3px}.rbar span{width:100%;border-radius:6px 6px 2px 2px;background:#2f9e44;min-height:2px;transition:height .5s ease}.rbar span.neg{background:#e8590c}.rbar small{font-size:10px;color:var(--mut)}
+.obp{margin:10px 0}.obp .bar{height:10px;border-radius:10px;background:var(--line);overflow:hidden;margin:6px 0}.obp .bar span{display:block;height:100%;background:var(--ok);border-radius:10px;transition:width .5s ease}
+.rbars{display:grid;grid-template-columns:repeat(12,1fr);gap:4px;align-items:end;height:140px;margin:10px 0 4px}.rbar{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:3px}.rbar span{width:100%;border-radius:6px 6px 2px 2px;background:var(--ok);min-height:2px;transition:height .5s ease}.rbar span.neg{background:var(--warn)}.rbar small{font-size:10px;color:var(--mut)}
 #filtri{display:block;position:relative}.calpop{position:absolute;z-index:20;left:0;top:46px;width:min(320px,100%);max-height:60vh;overflow:auto}.calpop .crow{flex-direction:row;font-size:15px;color:var(--ink);font-weight:600;margin:0}.calpop .crow input{width:auto;margin:0;flex:none;accent-color:var(--pri)}
 body.nascondi .hero small.det{filter:blur(6px)}
 /* 24b.1 (D-098): pagine di dettaglio del Riepilogo e caselle del riquadro che ci portano (stile provvisorio, aspetta il mockup di 02) */
@@ -375,7 +380,7 @@ tr.trvai{cursor:pointer}tr.trvai:hover td,tr.trvai:focus-visible td{background:c
 .cprow .seg button{min-height:40px;min-width:52px}
 .cpparte{border-top:1px dashed var(--line);margin-top:14px;padding-top:10px}
 .cpinvio,.drpausa{border:1px solid #e9c46a;border-left:4px solid #e0a93a;border-radius:12px;padding:10px 12px;margin-top:12px}.drpausa b{color:var(--warn)}
-.chip.sync.pausa{background:#f3c969;color:#2b2100;min-height:32px}
+.chip.sync.pausa{background:var(--gold-chiaro);color:#2b2100;min-height:32px;position:relative;overflow:visible}.chip.sync.pausa::before{content:"";position:absolute;inset:-6px -4px}
 .cpopt{display:flex;flex-direction:column;gap:3px;width:100%;text-align:left;border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;margin-top:10px;background:var(--card);color:var(--ink);font:inherit;cursor:pointer;min-height:44px}
 .cpopt b{font-size:16px}.cpopt span{font-size:13.5px}.cpopt .pro{color:var(--ok)}.cpopt .con{color:var(--warn)}
 .cpopt.on{border-color:var(--pri);box-shadow:0 0 0 2px var(--pri)}
@@ -469,17 +474,18 @@ input:focus,select:focus,textarea:focus{border-color:var(--sez)}
 .fchip.on:not([style]),.pchip.on:not([style]){border-color:var(--sez)}
 nav.tabs button.on{color:color-mix(in srgb,var(--sez) var(--tabmix),var(--ink))}
 .sechead .badge{color:color-mix(in srgb,var(--sez) var(--sezink),var(--ink))}
-.bdg.ok{background:color-mix(in srgb,var(--ok) 18%,var(--card));color:var(--ok)}
-.bdg.warn{background:color-mix(in srgb,var(--warn) 18%,var(--card));color:var(--warn)}
 /* v24csp: diagnostica dei blocchi di sicurezza (testi di 02) */
 .cspbox{margin-top:12px;padding:12px 14px;border-radius:12px;background:color-mix(in srgb,var(--warn) 12%,var(--card))}
 .cspbox .csptit{margin:0 0 4px;font-weight:750}.cspbox .csptit span{color:var(--warn)}.cspbox p.sm{margin:4px 0}
 .csptab{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}.csptab th,.csptab td{text-align:left;padding:4px 6px;border-bottom:1px solid var(--line);vertical-align:top}.csptab td:first-child{white-space:nowrap}.csptab td:last-child{overflow-wrap:anywhere}
 /* v24 (D-009): voci "In arrivo", righe di stato "In attesa / ✓ Entrato", finestra "È entrato" */
 .hero .rim small.dm{display:block;font-size:11.5px;margin-top:-2px}.hero .rim small.hl{display:block;opacity:.85;border-top:1px solid rgba(255,255,255,.18);margin-top:6px;padding-top:6px}.hero .rim small.hl+small.hl{border:0;margin-top:0;padding-top:2px}
-.inarr h3{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
-/* 24b.2 (D-099 punto 1): compensi non ancora entrati nello stile dei pulsanti Tasse e Risparmi (provvisorio: aspetta il mockup di 02) */
-.insub .inhead{display:flex;align-items:center;gap:14px;margin-bottom:4px}.insub .inhead .ico{width:46px;height:46px;border-radius:12px;display:grid;place-items:center;flex:none;background:#776a52;font-size:22px}
+/* 24c.1 (02, tornata 27 §2-3): "In arrivo" con la nota piccola accanto al titolo; compensi con la testa dei pulsanti Tasse e Risparmi
+   (quadrato colorato con un disegno a linea, niente "›"); importo a destra; pulsanti alti 44 px */
+.inarr h3{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}.inarr h3 small{font-weight:600;font-size:12.5px}
+.insub .inhead{display:flex;align-items:center;gap:14px;padding-bottom:10px;border-bottom:1px solid var(--line);margin-bottom:2px}.insub .inhead .ico{width:46px;height:46px;border-radius:12px;display:grid;place-items:center;flex:none;background:#776a52;color:#fff}
+#lavIn:not(:empty),#penIn:not(:empty){margin-bottom:12px}
+.inarr .ir b.imp{font-variant-numeric:tabular-nums;white-space:nowrap}.inarr .ir .btn{min-height:44px;flex:none}
 .insub .inhead .tx{display:flex;flex-direction:column;min-width:0}.insub .inhead .tx b{font-size:16px}.insub .inhead .tx small{color:var(--mut);font-size:13px}.inarr .ir{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px dashed var(--line)}.inarr .ir:last-child{border:0}
 .ir .tx,.enst .tx{flex:1;display:flex;flex-direction:column;font-size:14px;min-width:0}.ir .tx small,.enst .tx small{color:var(--mut)}.ir small.w{color:var(--warn);font-weight:700}
 .enst{display:flex;align-items:center;gap:8px;width:100%;padding:8px 0;margin-top:6px;border-top:1px dashed var(--line);background:none;border-left:0;border-right:0;border-bottom:0;color:var(--ink);font:inherit;text-align:left;min-height:44px}
@@ -530,7 +536,7 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
   </section>
 
   <section id="v-rie" hidden>
-    <div class="monthbar"><button class="ib" id="rPrev">‹</button><h2 id="rieTitle"></h2><div class="seg" id="rieSeg"><button data-m="mese">Mese</button><button data-m="anno">Anno</button></div><button class="ib" id="rNext">›</button></div>
+    <div class="monthbar"><button class="ib" id="rPrev" aria-label="Periodo prima">‹</button><h2 id="rieTitle"></h2><div class="seg" id="rieSeg"><button data-m="mese">Mese</button><button data-m="anno">Anno</button></div><button class="ib" id="rNext" aria-label="Periodo dopo">›</button></div>
     <div id="rieTot"></div>
     <div class="subnav">
       <button data-goto="tas"><span class="ico"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M9 17l6-6"/><circle cx="9.5" cy="11.5" r=".9"/><circle cx="14.5" cy="16.5" r=".9"/></svg></span><span class="tx"><b>Tasse</b><small>Quanto mettere da parte, soglie, commercialista</small></span><span class="chev">›</span></button>
@@ -540,7 +546,7 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
   </section>
 
   <section id="v-dfx" class="pagrie" hidden>
-    <button class="back" data-goto="rie">‹ Riepilogo</button>
+    <button type="button" class="back indietro" data-goto="rie" aria-label="Indietro al Riepilogo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span>Indietro</span></button>
     <div class="monthbar"><h2>Uscite fisse</h2></div>
     <div class="per"><button class="ib pgPrev" aria-label="Periodo prima">‹</button><span class="pgper"></span><button class="ib pgNext" aria-label="Periodo dopo">›</button></div>
     <div class="testa"></div>
@@ -548,7 +554,7 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
   </section>
 
   <section id="v-dsp" class="pagrie" hidden>
-    <button class="back" data-goto="rie">‹ Riepilogo</button>
+    <button type="button" class="back indietro" data-goto="rie" aria-label="Indietro al Riepilogo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span>Indietro</span></button>
     <div class="monthbar"><h2>Spese giornaliere</h2></div>
     <div class="per"><button class="ib pgPrev" aria-label="Periodo prima">‹</button><span class="pgper"></span><button class="ib pgNext" aria-label="Periodo dopo">›</button></div>
     <div class="testa"></div>
@@ -556,7 +562,7 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
   </section>
 
   <section id="v-dlav" class="pagrie" hidden>
-    <button class="back" data-goto="rie">‹ Riepilogo</button>
+    <button type="button" class="back indietro" data-goto="rie" aria-label="Indietro al Riepilogo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span>Indietro</span></button>
     <div class="monthbar"><h2>Lavoro dipendente</h2></div>
     <div class="per"><button class="ib pgPrev" aria-label="Periodo prima">‹</button><span class="pgper"></span><button class="ib pgNext" aria-label="Periodo dopo">›</button></div>
     <div class="testa"></div>
@@ -565,7 +571,7 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
   </section>
 
   <section id="v-drim" class="pagrie" hidden>
-    <button class="back" data-goto="rie">‹ Riepilogo</button>
+    <button type="button" class="back indietro" data-goto="rie" aria-label="Indietro al Riepilogo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span>Indietro</span></button>
     <div class="monthbar"><h2>Rimborsi spese</h2></div>
     <div class="per"><button class="ib pgPrev" aria-label="Periodo prima">‹</button><span class="pgper"></span><button class="ib pgNext" aria-label="Periodo dopo">›</button></div>
     <div class="testa"></div>
@@ -574,7 +580,7 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
   </section>
 
   <section id="v-drit" class="pagrie" hidden>
-    <button class="back" data-goto="rie">‹ Riepilogo</button>
+    <button type="button" class="back indietro" data-goto="rie" aria-label="Indietro al Riepilogo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span>Indietro</span></button>
     <div class="monthbar"><h2>Ritenuta d’acconto</h2></div>
     <div class="per"><button class="ib pgPrev" aria-label="Periodo prima">‹</button><span class="pgper"></span><button class="ib pgNext" aria-label="Periodo dopo">›</button></div>
     <div class="testa"></div>
@@ -583,7 +589,7 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
   </section>
 
   <section id="v-dinc" class="pagrie" hidden>
-    <button class="back" data-goto="rie">‹ Riepilogo</button>
+    <button type="button" class="back indietro" data-goto="rie" aria-label="Indietro al Riepilogo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span>Indietro</span></button>
     <div class="monthbar"><h2>Ancora da incassare</h2></div>
     <div class="per"><button class="ib pgPrev" aria-label="Periodo prima">‹</button><span class="pgper"></span><button class="ib pgNext" aria-label="Periodo dopo">›</button></div>
     <div class="testa"></div>
@@ -593,13 +599,13 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
   </section>
 
   <section id="v-ris" hidden>
-    <button class="back" data-goto="rie">‹ Riepilogo</button>
+    <button type="button" class="back indietro" data-goto="rie" aria-label="Indietro al Riepilogo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span>Indietro</span></button>
     <div class="monthbar"><h2>Risparmi</h2></div>
     <div id="risBody"></div>
   </section>
 
   <section id="v-pen" class="pagrie" hidden>
-    <button class="back" data-goto="rie">‹ Riepilogo</button>
+    <button type="button" class="back indietro" data-goto="rie" aria-label="Indietro al Riepilogo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span>Indietro</span></button>
     <div class="monthbar"><h2>Pensione</h2></div>
     <div class="per"><button class="ib pgPrev" aria-label="Periodo prima">‹</button><span class="pgper"></span><button class="ib pgNext" aria-label="Periodo dopo">›</button></div>
     <div class="testa"></div>
@@ -609,7 +615,7 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
 
 
   <section id="v-tas" hidden>
-    <button class="back" data-goto="rie">‹ Riepilogo</button>
+    <button type="button" class="back indietro" data-goto="rie" aria-label="Indietro al Riepilogo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span>Indietro</span></button>
     <div class="monthbar"><button class="ib" id="tPrev" aria-label="Anno prima">‹</button><h2 id="tasTitle"></h2><button class="ib" id="tNext" aria-label="Anno dopo">›</button></div>
     <div class="cards" id="tasList"></div>
     <div class="cards" id="tasComm"></div>
@@ -785,12 +791,12 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
   <div class="stack">
     <div class="g2"><label class="s2">Nome (es. il datore di lavoro)<input id="lvNome"></label></div>
     <div class="row"><label class="check"><input type="radio" name="lvModo" value="fisso"> Orario fisso</label><label class="check"><input type="radio" name="lvModo" value="turni"> A turni</label><label style="width:64px">Colore<input type="color" id="lvColore"></label></div>
-    <details class="card fold" id="lvDocBox"><summary><span class="st">📄 Compila dai documenti</span></summary><div class="fbody">
+    <details class="card fold" id="lvDocBox"><summary><span class="st">📥 Compila dai documenti</span></summary><div class="fbody">
       <p class="muted sm" style="margin-top:0">Carica il contratto o una busta paga (PDF o foto): cerco paga, maggiorazioni, ferie e permessi e te li propongo. Controlli tu prima di applicarli.</p>
       <div class="acts"><label class="btn sm filebtn">Busta paga<input type="file" id="lvDocBusta" accept="application/pdf,image/*" hidden></label><label class="btn ghost sm filebtn">Contratto<input type="file" id="lvDocContr" accept="application/pdf,image/*" hidden></label></div>
       <div id="lvDocProg" hidden><div class="bpbar"><span id="lvDocBar"></span></div><p class="muted sm" id="lvDocFase"></p></div>
       <div id="lvDocRis"></div><p class="muted sm" id="lvDocFile"></p></div></details>
-    <details class="card fold" id="lvPagaBox"><summary><span class="st">💶 Paga</span><span class="sum" id="lvPagaSum"></span></summary><div class="fbody"><div class="g2"><label>Tipo<select id="lvPagaTipo"><option value="mensile">Mensile (lorda)</option><option value="giornaliera">Giornaliera (lorda)</option><option value="oraria">Oraria (lorda)</option></select></label><label>Importo lordo €<input id="lvPaga" type="number" inputmode="decimal" step="0.01" placeholder="vuoto = solo ore"></label>
+    <details class="card fold" id="lvPagaBox"><summary><span class="st">💰 Paga</span><span class="sum" id="lvPagaSum"></span></summary><div class="fbody"><div class="g2"><label>Tipo<select id="lvPagaTipo"><option value="mensile">Mensile (lorda)</option><option value="giornaliera">Giornaliera (lorda)</option><option value="oraria">Oraria (lorda)</option></select></label><label>Importo lordo €<input id="lvPaga" type="number" inputmode="decimal" step="0.01" placeholder="vuoto = solo ore"></label>
       <label class="s2" id="lvDivBox">Ore al mese per la paga oraria (divisore del contratto)<input id="lvDiv" type="number" inputmode="numeric" placeholder="168"></label></div>
       <p class="muted sm">Lo trovi in busta paga o nel contratto. Se lo lasci vuoto, Soldirini conta solo le ore.</p></div></details>
     <details class="card fold" id="lvFissoBox"><summary><span class="st">🗓️ Orario settimanale</span></summary><div class="fbody"><p class="muted sm" style="margin-top:0">Il mese si riempie da solo con questo orario: nel calendario segni solo le eccezioni.</p>
@@ -798,7 +804,10 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
       <fieldset class="lvcal"><legend>Nel calendario mostra</legend><label class="check"><input type="radio" name="lvCalMostra" value="diversi"> Solo i giorni diversi dal solito</label><label class="check"><input type="radio" name="lvCalMostra" value="tutti"> Tutti i giorni di lavoro</label><p class="muted sm">I giorni diversi sono ferie, permessi, malattia, straordinari e orari cambiati.</p></fieldset>
       <div class="g2"><label>Dal giorno (inizio)<input type="date" id="lvDal"></label><label>Fino al (fine contratto)<input type="date" id="lvAl"></label></div></div></details>
     <details class="card fold" id="lvTurniBox"><summary><span class="st">⏱️ Straordinario</span></summary><div class="fbody"><label>Ore al mese oltre le quali è straordinario<input id="lvOreMese" type="number" inputmode="decimal" placeholder="vuoto = nessuno straordinario automatico"></label></div></details>
-    <details class="card fold"><summary><span class="st" id="lvTipiTit">Tipi di turno</span></summary><div class="fbody"><div id="lvTipi"></div><button type="button" class="btn ghost sm" id="lvTipiAdd">+ Aggiungi tipo</button></div></details>
+    <details class="card fold"><summary><span class="st" id="lvTipiTit">Tipi di turno</span></summary><div class="fbody"><div id="lvTipi"></div><button type="button" class="btn ghost sm" id="lvTipiAdd">+ Aggiungi tipo</button>
+      <div class="oregiorno" id="lvOreGiornoBox"><label for="lvOreGiorno">Ore di una giornata</label><span class="conunita"><input id="lvOreGiorno" type="text" inputmode="decimal" autocomplete="off" placeholder="es. 8" aria-describedby="lvOreGiornoNota lvOreGiornoErr"><span class="unita" aria-hidden="true">ore</span></span>
+        <p class="muted sm" id="lvOreGiornoNota">Quanto vale un giorno di ferie, malattia, permesso o altra assenza quando non scrivi le ore. In quel giorno i turni di lavoro non contano.<span id="lvOreGiornoVuoto" hidden><br>Se lo lasci vuoto, Soldirini divide le «Ore al mese oltre le quali è straordinario» per i giorni dal lunedì al venerdì del mese, senza le feste.</span></p>
+        <p class="err sm" id="lvOreGiornoErr" role="alert" hidden>Scrivi un numero di ore tra 0,5 e 24, per esempio 8 o 7,5.</p></div></div></details>
     <details class="card fold"><summary><span class="st">📈 Maggiorazioni (%)</span></summary><div class="fbody"><p class="muted sm" style="margin-top:0">Lasciale vuote se non le conosci: le trovi nel contratto o in busta paga. Vuote = ore pagate come normali.</p>
       <div class="g2"><label>Straordinario<input id="lvM-stra" type="number" inputmode="decimal"></label><label>Notturno<input id="lvM-nott" type="number" inputmode="decimal"></label>
       <label>Festivo<input id="lvM-fest" type="number" inputmode="decimal"></label><label>Domenica<input id="lvM-dom" type="number" inputmode="decimal"></label>
@@ -807,7 +816,7 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
     <details class="card fold"><summary><span class="st">🏖️ Ferie e permessi</span></summary><div class="fbody"><div class="g2"><label>Ferie in<select id="lvFerieU"><option value="giorni">giorni</option><option value="ore">ore</option></select></label><label>Ferie all’anno<input id="lvFerieA" type="number" inputmode="decimal"></label>
       <label>Ferie residue anno prima<input id="lvFerieR" type="number" inputmode="decimal"></label><label>Permessi in<select id="lvPermU"><option value="ore">ore</option><option value="giorni">giorni</option></select></label>
       <label class="s2">Permessi (ROL) all’anno<input id="lvPermA" type="number" inputmode="decimal"></label></div><p class="muted sm">Quando carichi una busta paga, i saldi si prendono da lì.</p></div></details>
-    <details class="card fold"><summary><span class="st">🧾 Netto e contratto</span></summary><div class="fbody"><label>Trattenute % (facoltativo)<input id="lvTratt" type="number" inputmode="decimal" placeholder="vuoto = le calcolo dalle buste paga"></label>
+    <details class="card fold"><summary><span class="st">📋 Netto e contratto</span></summary><div class="fbody"><label>Trattenute % (facoltativo)<input id="lvTratt" type="number" inputmode="decimal" placeholder="vuoto = le calcolo dalle buste paga"></label>
       <label>Contratto (facoltativo)<input id="lvContratto" placeholder="es. Commercio, livello 4"></label><p class="muted sm" id="lvContrFile"></p></div></details>
   </div>
   <div class="foot"><button class="btn ghost" id="lvDel">Elimina</button><button class="btn" id="lvSave">Salva lavoro</button></div></div></div>

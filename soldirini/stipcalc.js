@@ -53,6 +53,22 @@
     let t=0;for(const [x,y] of fasce)t+=Math.max(0,Math.min(e,y)-Math.max(s,x));return t;
   }
   const tipoDi=(lv,id)=>(lv.tipi||[]).find(t=>t.id===id)||null;
+  // giorni dal lunedì al venerdì del mese che non sono festivi (anche le feste locali)
+  function giorniLavorativi(ym,locali){let n=0;for(let d=1;d<=giorniDelMese(ym);d++){const iso=`${ym}-${pad(d)}`;if(giornoSett(iso)<=5&&!festivo(iso,locali))n++;}return n;}
+  // 24c.1 · R-TURNI-1 (04, tornata 29) e D-110: ore di un giorno di assenza (ferie, permesso, malattia, altra assenza
+  // pagata o non pagata). Vale il primo valore trovato; "punto" dice da dove viene. Punti 1-4: ore scritte dall'utente.
+  function oreAssenza(lv,t,tp,iso){
+    const pausa=num(t.pausa)??num(tp&&tp.pausa)??0;
+    const dalle=(da,a)=>{const x=toMin(da),y=toMin(a);if(x==null||y==null)return null;let e=y;if(e<=x)e+=1440;return Math.max(0,e-x-pausa)/60;};
+    let o=num(t.ore);if(o!=null)return {ore:o,punto:1};                  // 1. ore scritte nel turno
+    o=dalle(t.da,t.a);if(o!=null)return {ore:o,punto:2};                 // 2. "dalle–alle" del turno, meno la pausa
+    o=tp?num(tp.ore):null;if(o!=null)return {ore:o,punto:3};             // 3. ore del tipo
+    o=tp?dalle(tp.da,tp.a):null;if(o!=null)return {ore:o,punto:4};       // 4. "dalle–alle" del tipo, meno la pausa
+    if(lv.modo!=='turni'){const p=previsto(lv,iso);return {ore:p?p.min/60:0,punto:5};} // 5. orario fisso: l'orario previsto del giorno
+    o=num(lv.oreGiorno);if(o!=null&&o>0)return {ore:o,punto:6};          // 6. turni: "Ore di una giornata" del lavoro
+    const om=num(lv.oreMese);if(om!=null&&om>0){const g=giorniLavorativi(iso.slice(0,7),parseLocali(lv.locali));if(g)return {ore:r2(om/g),punto:7};} // 7. ore al mese ÷ giorni lavorativi
+    return {ore:0,punto:8};                                               // 8. niente: 0 ore e avviso nella pagina del mese
+  }
 
   // voci di un giorno: turni scritti + (se orario fisso) l'orario previsto quando non è sostituito
   function vociGiorno(lv,turniGiorno,iso){
@@ -63,44 +79,58 @@
       const tp=tipoDi(lv,t.tipo);const cat=tp?tp.cat:'lavoro';
       const da=t.da!=null&&t.da!==''?t.da:tp?.da,a=t.a!=null&&t.a!==''?t.a:tp?.a;
       const pausa=num(t.pausa)??num(tp?.pausa)??0;const ore=num(t.ore)??num(tp?.ore);
-      voci.push({id:t.id,tipo:tp,nome:tp?tp.nome:'Turno',sigla:tp?.sigla||'',colore:tp?.colore||lv.colore,cat,da:toMin(da),a:toMin(a),daS:da||'',aS:a||'',pausa,ore,aggiunta:!!tp?.aggiunta,nota:t.nota||''});
+      const ass=PAGATE.includes(cat)||cat==='nonretr'?oreAssenza(lv,t,tp,iso):null;
+      voci.push({id:t.id,tipo:tp,nome:tp?tp.nome:'Turno',sigla:tp?.sigla||'',colore:tp?.colore||lv.colore,cat,da:toMin(da),a:toMin(a),daS:da||'',aS:a||'',pausa,ore,ass,aggiunta:!!tp?.aggiunta,nota:t.nota||''});
     }
-    // un'assenza di poche ore (es. permesso di 2 ore) non toglie tutto l'orario del giorno: lo riduce
-    const parziale=v=>pv&&(PAGATE.includes(v.cat)||v.cat==='nonretr')&&v.ore!=null&&v.ore*60<pv.min;
+    // un'assenza di poche ore scritte (es. permesso di 2 ore, o "dalle 08 alle 10") non toglie tutto l'orario del giorno: lo riduce
+    const parziale=v=>pv&&v.ass&&v.ass.punto<=4&&v.ass.ore*60<pv.min;
     const sostituisce=voci.some(v=>!v.aggiunta&&!parziale(v));
     if(pv&&!sostituisce)voci.unshift({id:null,implicito:true,nome:'Orario',sigla:'',colore:lv.colore,cat:'lavoro',da:pv.da,a:pv.a,daS:(lv.settimana[giornoSett(iso)]||{}).da,aS:(lv.settimana[giornoSett(iso)]||{}).a,pausa:pv.pausa,ore:null});
-    return {voci,fest,previsto:pv};
+    // D-110 punto 2 (lavoro a turni): un'assenza senza ore scritte vale la giornata intera e i turni di lavoro di quel giorno non contano
+    const senza=lv.modo==='turni'?voci.filter(v=>v.ass&&v.ass.punto>=6):[];
+    const annulla=senza.length>0;
+    // D-114 (04, tornata 30, decisione 1 A): una giornata sola per lavoro e per giorno. Le ore scritte delle altre assenze restano;
+    // le assenze senza ore si prendono il resto (mai meno di 0) nell'ordine di 04 (tornata 31 §1a): malattia → ferie → permesso →
+    // altra assenza pagata → assenza non pagata (le pagate prima: un'unione di telefoni non toglie soldi dalla stima); le seguenti valgono 0
+    if(senza.length){
+      const scritte=voci.filter(v=>v.ass&&v.ass.punto<=4).reduce((a,v)=>a+v.ass.ore,0);let resto=Math.max(0,r2(senza[0].ass.ore-scritte));
+      const ORDINE={malattia:0,ferie:1,permesso:2,retribuita:3,nonretr:4};
+      for(const v of senza.slice().sort((a,b)=>ORDINE[a.cat]-ORDINE[b.cat])){const o=resto;resto=0;v.ass=Object.assign({},v.ass,{ore:o,zero:o===0&&v.ass.punto!==8});}
+    }
+    return {voci,fest,previsto:pv,annulla};
   }
 
   // calcolo di un mese. turni = tutti i turni del lavoro (non eliminati)
   function calcolaMese(lv,turni,ym){
     const h=oraria(lv),P=lv.magg||{};const pS=pct(P.stra),pN=pct(P.nott),pF=pct(P.fest),pD=pct(P.dom);
     const perData={};for(const t of turni)if(t.data&&t.data.startsWith(ym))(perData[t.data]=perData[t.data]||[]).push(t);
-    const T={giorniPag:0,giorniLav:0,lav:0,ord:0,stra:0,nott:0,fest:0,dom:0,pagate:0,ferie:0,ferieOre:0,perm:0,mal:0,nonretr:0,variab:0};
+    const T={giorniPag:0,giorniLav:0,lav:0,ord:0,stra:0,nott:0,fest:0,dom:0,pagate:0,ferie:0,ferieOre:0,perm:0,mal:0,nonretr:0,variab:0,senzaOre:0};
     const giorni=[];let cum=0;const soglia=lv.modo==='turni'?num(lv.oreMese):null;
     for(let d=1;d<=giorniDelMese(ym);d++){
       const iso=`${ym}-${pad(d)}`;const G=vociGiorno(lv,(perData[iso]||[]).filter(t=>!t.deleted),iso);
-      let W=0,N=0,PG=0;const pvMin=G.previsto?G.previsto.min:0;
-      const assParz=G.voci.filter(v=>!v.implicito&&!LAVORO.includes(v.cat)&&v.ore!=null).reduce((a,v)=>a+v.ore*60,0);
+      let W=0,N=0,PG=0,senzaOre=false;const pvMin=G.previsto?G.previsto.min:0;
+      const assParz=G.voci.filter(v=>v.ass&&v.ass.punto<=4).reduce((a,v)=>a+v.ass.ore*60,0);
       for(const v of G.voci){
         if(v.implicito){const m=Math.max(0,pvMin-assParz);N+=Math.min(m,minNotte(lv,v.da,v.a));v.min=m;W+=m;continue;}
         if(LAVORO.includes(v.cat)){
+          if(G.annulla){v.min=0;v.annullato=true;continue;} // D-110: c'è un'assenza della giornata intera
           let m=0;
           if(v.da!=null&&v.a!=null){let e=v.a;if(e<=v.da)e+=1440;m=Math.max(0,e-v.da-(v.pausa||0));N+=Math.min(m,minNotte(lv,v.da,e));}
           else if(v.ore!=null)m=v.ore*60;
           if(v.cat==='variabile')T.variab+=m/60;
           v.min=m;W+=m;
         } else if(PAGATE.includes(v.cat)||v.cat==='nonretr'){
-          // ore dell'assenza: scritte nel turno, altrimenti quelle del tipo, altrimenti l'orario previsto del giorno
-          const prev=previsto(lv,iso);const o=v.ore!=null?v.ore:(prev?prev.min/60:0);v.min=o*60;
-          if(v.cat==='nonretr')T.nonretr+=o;else{T.pagate+=o;PG++;}
-          if(v.cat==='ferie'){T.ferie+=1;T.ferieOre+=o;}if(v.cat==='permesso')T.perm+=o;if(v.cat==='malattia')T.mal+=o;
+          // ore dell'assenza: R-TURNI-1 (oreAssenza)
+          const o=v.ass.ore;v.min=o*60;if(v.ass.punto===8)senzaOre=true;
+          if(v.cat==='nonretr')T.nonretr+=o;else{T.pagate+=o;if(!v.ass.zero)PG++;}
+          if(v.cat==='ferie'&&!v.ass.zero){T.ferie+=1;T.ferieOre+=o;}if(v.cat==='permesso')T.perm+=o;if(v.cat==='malattia')T.mal+=o;
         }
       }
       let S=0;
       if(lv.modo==='fisso')S=Math.max(0,W-pvMin);
       else if(soglia!=null){const resto=Math.max(0,soglia*60-cum);S=Math.max(0,W-resto);}
       cum+=W;
+      if(senzaOre)T.senzaOre++; // giorni con un'assenza contata 0 ore (punto 8): avviso nella pagina del mese
       if(W>0)T.giorniLav++;else if(PG)T.giorniPag++;
       T.lav+=W/60;T.stra+=S/60;T.ord+=(W-S)/60;T.nott+=N/60;
       if(G.fest&&W)T.fest+=W/60;else if(giornoSett(iso)===7&&W)T.dom+=W/60;
@@ -128,8 +158,10 @@
 
   // saldi di ferie e permessi: dall'ultima busta che li riporta, meno quanto usato dopo; altrimenti dalle impostazioni
   function saldi(lv,turni,buste,fino){
-    const usate=(cat,daYm,aYm,ore)=>{let n=0;for(const t of turni){if(t.deleted||!t.data)continue;const ym=t.data.slice(0,7);if(ym<=daYm||ym>aYm)continue;const tp=tipoDi(lv,t.tipo);if(!tp||tp.cat!==cat)continue;
-      if(ore){const o=num(t.ore)??num(tp.ore)??(previsto(lv,t.data)?.min||0)/60;n+=o;}else n+=1;}return Math.round(n*100)/100;};
+    // 24c.1: stessa regola di calcolaMese (R-TURNI-1, D-110, D-114): le ore di ogni assenza si calcolano giorno per giorno
+    const usate=(cat,daYm,aYm,ore)=>{const perData={};for(const t of turni){if(t.deleted||!t.data)continue;const ym=t.data.slice(0,7);if(ym<=daYm||ym>aYm)continue;(perData[t.data]=perData[t.data]||[]).push(t);}
+      let n=0;for(const [iso,L] of Object.entries(perData))for(const v of vociGiorno(lv,L,iso).voci){if(!v.ass||!v.tipo||v.cat!==cat)continue;if(ore)n+=v.ass.ore;else if(!v.ass.zero)n+=1;}
+      return Math.round(n*100)/100;};
     const B=Object.values(buste||{}).filter(b=>!b.deleted&&b.mese<=fino).sort((a,c)=>c.mese.localeCompare(a.mese));
     const out={};const y=fino.slice(0,4);
     const F=lv.ferie||{};const fOre=F.unita==='ore';
@@ -145,5 +177,5 @@
     return out;
   }
 
-  g.StipCalc={pad,r2,num,toMin,giornoSett,pasqua,festivo,parseLocali,CAT,PAGATE,LAVORO,oraria,previsto,minNotte,vociGiorno,calcolaMese,trattenute,saldi,tipoDi};
+  g.StipCalc={pad,r2,num,toMin,giornoSett,pasqua,festivo,parseLocali,CAT,PAGATE,LAVORO,oraria,previsto,oreAssenza,giorniLavorativi,minNotte,vociGiorno,calcolaMese,trattenute,saldi,tipoDi};
 })(typeof window!=='undefined'?window:globalThis);

@@ -39,7 +39,7 @@ const TIPI_FISSO=()=>[
 function nuovoLavoro(modo){
   const used=new Set([...progetti().map(p=>p.colore),...lavori().map(l=>l.colore)]);
   return {id:uid(),nome:'',colore:COLORI.find(c=>!used.has(c))||COLORI[0],ordine:lavori().length,modo,dal:today().slice(0,7)+'-01',
-    paga:{tipo:modo==='fisso'?'mensile':'oraria',importo:'',divisore:168},oreMese:'',settimana:{},tipi:modo==='fisso'?TIPI_FISSO():TIPI_TURNI(),
+    paga:{tipo:modo==='fisso'?'mensile':'oraria',importo:'',divisore:168},oreMese:'',oreGiorno:'',settimana:{},tipi:modo==='fisso'?TIPI_FISSO():TIPI_TURNI(),
     magg:{stra:'',nott:'',fest:'',dom:''},nott:{da:'22:00',a:'06:00'},locali:'',ferie:{unita:'giorni',anno:'',residuo:''},perm:{unita:'ore',anno:''},
     tratt:'',contratto:'',drive:null,updatedAt:Date.now()};
 }
@@ -66,7 +66,7 @@ function apriLavoro(l,isNew){
   $('lvNome').value=x.nome;$('lvColore').value=x.colore;
   document.querySelectorAll('[name=lvModo]').forEach(r=>r.checked=r.value===x.modo);
   $('lvPagaTipo').value=x.paga.tipo;$('lvPaga').value=x.paga.importo;$('lvDiv').value=x.paga.divisore||168;
-  $('lvOreMese').value=x.oreMese;$('lvDal').value=x.dal||'';$('lvAl').value=x.al||'';
+  $('lvOreMese').value=x.oreMese;$('lvOreGiorno').value=x.oreGiorno||'';$('lvOreGiornoErr').hidden=true;notaOreGiorno();$('lvDal').value=x.dal||'';$('lvAl').value=x.al||'';
   for(const k of ['stra','nott','fest','dom'])$('lvM-'+k).value=x.magg[k]??'';
   $('lvNottDa').value=x.nott?.da||'';$('lvNottA').value=x.nott?.a||'';
   $('lvLocali').value=x.locali||'';$('lvFerieU').value=x.ferie.unita;$('lvFerieA').value=x.ferie.anno;$('lvFerieR').value=x.ferie.residuo;
@@ -75,8 +75,12 @@ function apriLavoro(l,isNew){
   $('lvContrFile').innerHTML=x.contrattoFile?(x.contrattoFile.file?.link?`Contratto su Drive: <a href="${esc(x.contrattoFile.file.link)}" target="_blank" rel="noopener">${esc(x.contrattoFile.nome)} ↗</a>`:`Contratto “${esc(x.contrattoFile.nome)}” da caricare su Drive`):'';
   renderSett();renderTipi();aggiornaModo();apri('lvModal');
 }
+// 24c.1 (02, tornata 30 §1): "Ore di una giornata", solo a turni. Vuoto = valido; altrimenti un numero tra 0,5 e 24 (con la virgola)
+const oreGiornoOk=v=>{v=String(v||'').trim();if(!v)return true;if(!/^\d{1,2}([.,]\d{1,2})?$/.test(v))return false;const n=C.num(v);return n>=0.5&&n<=24;};
+function notaOreGiorno(){$('lvOreGiornoVuoto').hidden=!!$('lvOreGiorno').value.trim()||!C.num($('lvOreMese').value);}
+function controllaOreGiorno(){const ok=oreGiornoOk($('lvOreGiorno').value);$('lvOreGiornoErr').hidden=ok;$('lvOreGiorno').setAttribute('aria-invalid',String(!ok));return ok;}
 function aggiornaModo(){const m=document.querySelector('[name=lvModo]:checked')?.value||lv.l.modo;lv.l.modo=m;
-  $('lvFissoBox').hidden=m!=='fisso';$('lvTurniBox').hidden=m!=='turni';const pt=$('lvPagaTipo').value;$('lvDivBox').hidden=pt==='oraria';$('lvDivBox').firstChild.nodeValue=pt==='giornaliera'?'Ore di una giornata (per calcolare straordinari e maggiorazioni)':'Ore al mese per la paga oraria (divisore del contratto)';$('lvDiv').placeholder=pt==='giornaliera'?'8':'168';
+  $('lvFissoBox').hidden=m!=='fisso';$('lvTurniBox').hidden=m!=='turni';$('lvOreGiornoBox').hidden=m!=='turni';const pt=$('lvPagaTipo').value;$('lvDivBox').hidden=pt==='oraria';$('lvDivBox').firstChild.nodeValue=pt==='giornaliera'?'Ore di una giornata (per calcolare straordinari e maggiorazioni)':'Ore al mese per la paga oraria (divisore del contratto)';$('lvDiv').placeholder=pt==='giornaliera'?'8':'168';
   $('lvTipiTit').textContent=m==='fisso'?'Eccezioni (straordinari, ferie, permessi…)':'Tipi di turno';}
 function renderSett(){const S=lv.l.settimana||{};
   $('lvSett').innerHTML=[1,2,3,4,5,6,7].map(d=>{const s=S[d]||{};return `<div class="srow" data-d="${d}"><b>${SETT[d].slice(0,3)}</b><input type="time" data-k="da" value="${esc(s.da||'')}" aria-label="${SETT[d]} dalle"><input type="time" data-k="a" value="${esc(s.a||'')}" aria-label="${SETT[d]} alle"><input type="number" inputmode="numeric" min="0" step="5" data-k="pausa" value="${esc(s.pausa??'')}" placeholder="pausa" aria-label="${SETT[d]} pausa in minuti"></div>`;}).join('');}
@@ -95,7 +99,7 @@ function leggiLavoro(){
   const x=lv.l;leggiTipi();
   x.nome=$('lvNome').value.trim();x.colore=$('lvColore').value;x.modo=document.querySelector('[name=lvModo]:checked').value;
   x.paga={tipo:$('lvPagaTipo').value,importo:$('lvPaga').value.trim(),divisore:$('lvDiv').value.trim()||168};
-  x.oreMese=$('lvOreMese').value.trim();x.dal=$('lvDal').value;x.al=$('lvAl').value;x.settimana=leggiSett();
+  x.oreMese=$('lvOreMese').value.trim();x.oreGiorno=$('lvOreGiorno').value.trim();x.dal=$('lvDal').value;x.al=$('lvAl').value;x.settimana=leggiSett();
   x.magg={};for(const k of ['stra','nott','fest','dom'])x.magg[k]=$('lvM-'+k).value.trim();
   x.nott={da:$('lvNottDa').value,a:$('lvNottA').value};x.locali=$('lvLocali').value.trim();
   x.ferie={unita:$('lvFerieU').value,anno:$('lvFerieA').value.trim(),residuo:$('lvFerieR').value.trim()};
@@ -105,6 +109,7 @@ function leggiLavoro(){
 }
 function salvaLavoro(){
   const x=leggiLavoro();if(!x.nome){toast('Scrivi il nome del lavoro (es. il datore di lavoro).','err');$('lvNome').focus();return;}
+  if(x.modo==='turni'&&!controllaOreGiorno()){const d=$('lvOreGiornoBox').closest('details');if(d)d.open=true;$('lvOreGiorno').focus();return;}
   if(x.modo==='fisso'&&!Object.keys(x.settimana).length){toast('Scrivi l’orario di almeno un giorno della settimana.','err');return;}
   x.updatedAt=Date.now();LAV()[x.id]=x;changed();chiudi('lvModal');render();toast('Lavoro salvato.');
   salvaDocInAttesa(x.id).catch(e=>toast(errMsg(e),'err'));
@@ -184,10 +189,26 @@ function apriTurno(dates,lid,turno){
   $('tuDel').hidden=!turno;$('tuClear').hidden=!!turno;
   renderTuTipi();apri('tuModal');
 }
+// 24c.1 (02, tornata 30 §3): sotto le ore di un'assenza, a turni. HTML con soli numeri e mese (nessun testo dell'utente)
+const oreTesto=n=>String(r2(n)).replace('.',',');
+function testoAssenza(l,t,ym,attivita){ // attivita: testo di Nuova attività (02, tornata 31 §3: "Lascia vuote le ore…")
+  if(!l||l.modo!=='turni'||!t||!(C.PAGATE.includes(t.cat)||t.cat==='nonretr')||serveOre(t))return null; // permesso e assenza non pagata senza ore: le ore restano obbligatorie (decisione in attesa)
+  const fisso='Se scrivi le ore o «dalle–alle», conta solo quella parte e i turni di lavoro restano.';
+  const lv=attivita?'Lascia vuote le ore':'Lascia vuoto';
+  // quarta variante (04, tornata 31 §2; provvisoria, 02 può ritoccarla): il tipo ha già le ore o "dalle–alle" (punti 3-4 di R-TURNI-1)
+  const delTipo=C.oreAssenza(l,{},t,ym+'-01');if(delTipo.punto===3||delTipo.punto===4)return `${lv} per contare le ore del tipo «${esc(t.nome)}»: <b>${oreTesto(delTipo.ore)} ore</b>. I turni di lavoro di questo giorno restano.`;
+  const og=C.num(l.oreGiorno),om=C.num(l.oreMese);
+  if(og>0)return `${lv} per contare una giornata intera: <b>${oreTesto(og)} ore</b>. In quel caso i turni di lavoro di questo giorno non contano.<br>${fisso}`;
+  if(om>0){const g=C.giorniLavorativi(ym,C.parseLocali(l.locali));if(g)return `${lv} per contare una giornata intera: <b>${oreTesto(om/g)} ore</b> a ${MESI[+ym.slice(5,7)-1]}, calcolate dalle ore al mese del lavoro. In quel caso i turni di lavoro di questo giorno non contano.<br>${fisso}`;}
+  return `${lv} per contare una giornata intera. Prima scrivi le «Ore di una giornata» nel lavoro: senza, il giorno conta 0 ore.<br>${fisso}`;
+}
+window.testoAssenza=testoAssenza;
 function renderTuTipi(){const l=lav(tu.lid);
   $('tuTipi').innerHTML=l.tipi.map(t=>`<button type="button" class="chip ${tu.tipo===t.id?'on':''}" style="--c:${colOk(t.colore||l.colore)}" data-tut="${esc(t.id)}">${esc((t.icona?t.icona+' ':'')+t.nome)}</button>`).join('')+`<button type="button" class="chip ${tu.tipo===null?'on':''}" data-tut="">Orario diverso</button>`;
-  const t=C.tipoDi(l,tu.tipo);$('tuOrari').hidden=!!t&&!!(t.da&&t.a)&&t.cat!=='lavoro'&&!t.aggiunta;
-  $('tuHint').textContent=!t?'Scrivi l’orario di questo giorno: sostituisce quello abituale.':t.da&&t.a?`Orario del tipo: ${t.da}–${t.a}. Cambialo qui solo se quel giorno è diverso.`:serveOre(t)?'Scrivi le ore (oppure dalle–alle).':C.PAGATE.includes(t.cat)?'Lascia vuoto per contare l’orario abituale del giorno.':'';
+  const t=C.tipoDi(l,tu.tipo);const ass=!serveOre(t)?testoAssenza(l,t,tu.dates[0].slice(0,7)):null;
+  $('tuOrari').hidden=!ass&&!!t&&!!(t.da&&t.a)&&t.cat!=='lavoro'&&!t.aggiunta; // a turni l'assenza con "dalle–alle" nel tipo mostra i campi: "Lascia vuoto" deve avere un campo
+  if(ass){$('tuHint').innerHTML=ass;return;}
+  $('tuHint').textContent=!t?'Scrivi l’orario di questo giorno: sostituisce quello abituale.':t.da&&t.a?`Orario del tipo: ${t.da}–${t.a}. Cambialo qui solo se quel giorno è diverso.`:serveOre(t)?'Scrivi le ore (oppure dalle–alle).':C.PAGATE.includes(t.cat)||t.cat==='nonretr'?'Lascia vuoto per contare l’orario abituale del giorno.':'';
 }
 function salvaTurno(){
   const extra={da:$('tuDa').value,a:$('tuA').value,pausa:$('tuPausa').value.trim(),ore:$('tuOre').value.trim(),nota:$('tuNota').value.trim()};
@@ -245,7 +266,10 @@ renderRiepilogo=function(){_renderRie15();const L=lavori();let box=$('rieLav');
   // 24b.1 (D-098): il contenitore è nella pagina "Lavoro dipendente"
   if(!L.length){box.innerHTML='';return;}
   const anno=rieMode==='anno',y=cur.slice(0,4);
-  box.innerHTML=L.map(l=>{const h=anno?cardAnno(l,y):cardMese(l,cur);const n=anno?null:nettoMese(l,cur);
+  // 24c.1 (02, tornata 30 §2): riquadro arancio per ogni lavoro a turni con assenze contate 0 ore nel mese (punto 8 di R-TURNI-1)
+  const avvisi=anno?'':L.filter(l=>l.modo==='turni').map(l=>{const n=C.calcolaMese(l,turniDi(l.id),cur).T.senzaOre;if(!n)return '';
+    return `<div class="vcavv avvore" role="note" data-avvore="${esc(l.id)}"><b>⚠ ${n===1?'1 giorno di assenza contato 0 ore':n+' giorni di assenza contati 0 ore'}</b><p class="sm">Nel lavoro «${esc(l.nome||'Lavoro')}» manca quante ore vale una giornata. Finché manca, ferie, malattia e altre assenze senza ore non entrano nella stima né nei saldi.</p><button type="button" class="btn ghost sm" data-oregiorno="${esc(l.id)}" aria-label="Scrivi le ore di una giornata per il lavoro ${esc(l.nome||'Lavoro')}">Scrivi le ore di una giornata</button></div>`;}).join('');
+  box.innerHTML=avvisi+L.map(l=>{const h=anno?cardAnno(l,y):cardMese(l,cur);const n=anno?null:nettoMese(l,cur);
     return h.replace('<div class="card lavcard"',`<div class="card lavcard" data-fid="lav-${esc(l.id)}" data-sum="${n&&n.v?eur(n.v):''}"`);}).join('');
   foldify(box,'lav');
   // totali generali: progetti + lavoro dipendente
@@ -459,6 +483,8 @@ renderProgetti=function(){_renderProg15();renderLavori();};
 function bind15(){
   $('lavNew').onclick=nuovo;
   $('lavList').addEventListener('click',e=>{const b=e.target.closest('[data-lav]');if(b)apriLavoro(lav(b.dataset.lav),false);});
+  $('lvOreGiorno').addEventListener('blur',controllaOreGiorno);
+  $('lvOreGiorno').addEventListener('input',()=>{notaOreGiorno();if(!$('lvOreGiornoErr').hidden)controllaOreGiorno();});$('lvOreMese').addEventListener('input',notaOreGiorno);
   $('lvClose').onclick=()=>chiudi('lvModal');$('lvSave').onclick=salvaLavoro;$('lvDel').onclick=eliminaLavoro;
   $('lvModal').addEventListener('change',e=>{if(e.target.name==='lvModo'||e.target.id==='lvPagaTipo'){leggiTipi();aggiornaModo();renderTipi();}if(['cat','aggiunta'].includes(e.target.dataset?.k)){leggiTipi();renderTipi();}});
   $('lvDocBusta').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)leggiDoc(f,'busta');};
@@ -482,7 +508,9 @@ function bind15(){
   $('tuLav').onchange=()=>{tu.lid=$('tuLav').value;tu.tipo=lav(tu.lid).tipi[0]?.id||null;renderTuTipi();};
   $('tuTipi').addEventListener('click',e=>{const b=e.target.closest('[data-tut]');if(!b)return;tu.tipo=b.dataset.tut||null;renderTuTipi();});
   // buste
-  document.addEventListener('click',e=>{const n=e.target.closest('[data-bpnew]');if(n){apriBusta(n.dataset.bpnew,cur);return;}
+  document.addEventListener('click',e=>{const og=e.target.closest('[data-oregiorno]');if(og){const l=lav(og.dataset.oregiorno);if(!l)return;
+      apriLavoro(l,false);const d=$('lvOreGiornoBox').closest('details');if(d)d.open=true;requestAnimationFrame(()=>{$('lvOreGiorno').focus();$('lvOreGiornoBox').scrollIntoView({block:'center'});});return;}
+    const n=e.target.closest('[data-bpnew]');if(n){apriBusta(n.dataset.bpnew,cur);return;}
     const a=e.target.closest('[data-bparch]');if(a){apriArchivio(a.dataset.bparch);return;}
     const ed=e.target.closest('[data-bped]');if(ed){const [lid,m]=ed.dataset.bped.split('|');apriBusta(lid,m,true);$('bpDel').hidden=false;return;}
     if(e.target.id==='baTutte')caricaPendenti(false).then(()=>renderArchivio());});

@@ -58,16 +58,20 @@ renderRiepilogo=function(){_renderRie18();
   // o stipendio/pensione in arrivo, che stanno nella loro pagina). I calcoli non cambiano.
   const conVoce=tipo=>{if(!window.Entrate)return false;const fino=anno?(+y<+ora.slice(0,4)?y+'-12':ora):(cur<ora?cur:ora);
     return Entrate.voci(fino).some(v=>v.tipo===tipo&&(anno?v.ym.startsWith(y+'-'):v.ym===cur||(cur===ora&&!v.ent)));};
-  const uscite=[C.fTot?cella('Uscite fisse',eur(C.fTot),'','','dfx'):null,C.sp?cella('Spese giornaliere',eur(C.sp),'','','dsp'):null].filter(Boolean);
-  const entrate=[lavV||(lavori().length&&conVoce('lav'))?cella('Lavoro dipendente',eur(lavV),'','','dlav'):null,
-    penV||conVoce('pen')?cella('Pensione',eur(penV),'','','pen'):null,
+  // 24c.1 (richiesta dell'utente confermata il 19/11, punto 4b): prima le entrate, poi le uscite in fondo
+  const uscite=[C.sp?cella('Spese giornaliere',eur(C.sp),'','','dsp'):null,C.fTot?cella('Uscite fisse',eur(C.fTot),'','','dfx'):null].filter(Boolean);
+  // 24c.1 (02, tornata 27 §3): casella a 0,00 € che c'è solo per una voce in arrivo → nota "stipendio/pensione in arrivo", senza importo
+  const inArrivo=t=>!anno&&cur===ora&&!!window.Entrate&&Entrate.voci(ora).some(v=>v.tipo===t&&!v.ent);
+  const entrate=[lavV||(lavori().length&&conVoce('lav'))?cella('Lavoro dipendente',eur(lavV),'',!lavV&&inArrivo('lav')?'stipendio in arrivo':'','dlav'):null,
+    penV||conVoce('pen')?cella('Pensione',eur(penV),'',!penV&&inArrivo('pen')?'pensione in arrivo':'','pen'):null,
     anno&&r2(tot.netto+tot.rimb)?cella('Incassato dai progetti',eur(r2(tot.netto+tot.rimb)),'','','dinc'):null, // 02 (Decisione 3): "Mese per mese (incassi)"
-    tot.rimb?cella('Rimborsi spese',eur(tot.rimb),'','','drim'):null,tot.rit?cella('Ritenuta d’acconto',eur(tot.rit),'','','drit'):null,daInc?cella('Ancora da incassare',eur(daInc),'','','dinc'):null].filter(Boolean);
-  const caselle=uscite.concat(entrate);
-  // D-101: nessuna entrata nel periodo e nessuna casella delle entrate → la frase dell'utente (testo e stile provvisori, mockup di 02)
-  const nessuna=!C.entrate&&!entrate.length?'<p class="hnone" role="note"><span aria-hidden="true">🙁</span> Mi dispiace che non hai entrate</p>':'';
+    daInc?cella('Ancora da incassare',eur(daInc),'','','dinc'):null,tot.rimb?cella('Rimborsi spese',eur(tot.rimb),'','','drim'):null,tot.rit?cella('Ritenuta d’acconto',eur(tot.rit),'','','drit'):null].filter(Boolean);
+  const caselle=entrate.concat(uscite);
+  // D-101: nessuna entrata nel periodo e nessuna casella delle entrate → la frase dell'utente (stile di 02, tornata 27 §1)
+  const nessuna=!C.entrate&&!entrate.length?'<p class="nient" role="note"><span class="em" aria-hidden="true">🙁</span><span>Mi dispiace che non hai entrate</span></p>':'';
   // con due colonne, se l'ultima casella resta sola occupa tutta la larghezza (classe "dispari")
-  const det=caselle.map((c,i)=>c.h(i===caselle.length-1&&caselle.length%2?'dispari':'')).join('')+nessuna+
+  // la frase sta nel posto delle entrate, prima delle uscite (varianti V4 e V5 del disegno dell'utente)
+  const det=nessuna+caselle.map((c,i)=>c.h(i===caselle.length-1&&caselle.length%2?'dispari':'')).join('')+
     (anno&&C.fResto?cella('Uscite fisse ancora da addebitare entro dicembre',eur(C.fResto),'lungo','Non contate nei soldi rimanenti: dicembre non è ancora iniziato.','dfx').h():'');
   // D-092: anche nella vista Anno il titolo è "Soldi rimanenti"; sotto zero il segno è "−" (02)
   const imp=eur(C.rimanenti).replace(/^-/,'−');

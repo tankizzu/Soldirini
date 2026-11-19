@@ -40,8 +40,9 @@ test.describe('v24 · finestra "È entrato" e "In arrivo"', () => {
     await expect(rim.locator('b')).toHaveText('1150,00 €');
     await expect(rim.locator('.det')).toHaveText('Entrate 1800,00 € · Uscite 650,00 €');
     await rim.click();
-    await expect(page.locator('#heroDet > *').nth(0)).toHaveText('Uscite fisse570,00 €, apri la pagina');
-    await expect(page.locator('#heroDet > *').nth(1)).toHaveText('Spese giornaliere80,00 €, apri la pagina');
+    // 24c.1 (4b): prima le entrate, poi Spese giornaliere e Uscite fisse in fondo
+    await expect(page.locator('#heroDet > *').nth(-2)).toHaveText('Spese giornaliere80,00 €, apri la pagina');
+    await expect(page.locator('#heroDet > *').nth(-1)).toHaveText('Uscite fisse570,00 €, apri la pagina');
     await expect(page.locator('#rieTot .hero')).not.toContainText('Pagamenti fissi');
     await expect(page.locator('#rieFix summary .st')).toHaveText('💳 Uscite fisse');
     await expect(page.locator('#rieFix .kv span').filter({ hasText: 'Affitto' })).toContainText('addebitata il 3');
@@ -59,10 +60,11 @@ test.describe('v24 · finestra "È entrato" e "In arrivo"', () => {
     await expect(page.locator('#rieIn')).not.toContainText('Stipendio');
     await vaiPag(page, 'dlav');
     const box = page.locator('#lavIn .inarr');
-    await expect(box.locator('.ir').filter({ hasText: 'Stipendio di novembre' })).toContainText('1480,00 € (stima)');
+    const nov = box.locator('.ir').filter({ hasText: 'Stipendio di novembre' });
+    await expect(nov.locator('.imp')).toHaveText('1480,00 €'); await expect(nov.locator('small').first()).toHaveText(/ · stima$/); // 24c.1: importo a destra, "· stima" sotto
     await expect(box.locator('.ir').filter({ hasText: 'Stipendio di agosto' })).toContainText('⚠ Da più di 2 mesi: controlla se è entrato');
     await expect(box.locator('.ir').filter({ hasText: 'Stipendio di settembre' })).not.toContainText('⚠');
-    await expect(box.locator('h3')).toContainText('non contati');
+    await expect(box.locator('h3')).toHaveText('In arrivo · non contato nei soldi rimanenti');
     await vaiPag(page, 'dlav', '2026-12'); await expect(page.locator('#lavIn .inarr')).toHaveCount(0);
     await vaiRie(page, '2026-12'); await expect(page.locator('#rieFix .kv span').filter({ hasText: 'Affitto' })).toContainText('addebito il 3');
     await vaiPag(page, 'dlav', '2026-11', 'anno'); await expect(page.locator('#lavIn .inarr')).toHaveCount(0);
@@ -118,7 +120,7 @@ test.describe('v24 · finestra "È entrato" e "In arrivo"', () => {
       D().eventi[id] = { id, pid: p.id, data: '2026-10-12', tipo: 'altro', titolo: '', ore: true, fasce: [], fisso: '375', rimborso: false, spese: [], created: 1, updatedAt: 1 }; changed(); return `${p.id}|2026-10|o`; });
     await vaiRie(page);
     const riga = page.locator('#rieIn .ir').filter({ hasText: 'Compensi di ottobre' });
-    await expect(riga).toContainText('Squadra · 300,00 € · previsti a novembre');
+    await expect(riga.locator('small').first()).toHaveText('Squadra · previsti a novembre'); await expect(riga.locator('.imp')).toHaveText('300,00 €'); // 24c.1: importo a destra
     await riga.locator('button').click();
     await expect(page.locator('#enImpNota')).toContainText('La data decide anche l’anno per le tasse.');
     await page.locator('#enSave').click();

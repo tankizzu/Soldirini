@@ -27,14 +27,17 @@
     password: 'Password sbagliata. Se l’hai dimenticata, questa copia non si può aprire: prova con un’altra copia.',
     diverse: 'Le due password non sono uguali.',
     facile: 'Questa password è troppo facile da indovinare. Evita lettere o numeri tutti uguali o in fila, come "aaaaaaaa" o "12345678".',
-    corta: 'Servono almeno 8 caratteri.', // provvisorio (01): 02 ha solo la nota "Almeno 8 caratteri."
+    corta: 'La password è troppo corta: servono almeno 8 caratteri.', // 02, tornata 29 §2
     salva: 'Non è stato possibile salvare la copia. Controlla che ci sia spazio sul telefono e riprova.',
     // 02, tornata 24 (V1-V4)
     driveNo: 'Soldirini non è riuscita a salvare su Google Drive i dati di adesso, quindi non ha sostituito niente. Controlla la connessione e riprova.',
     pausa: 'Drive in pausa: le modifiche restano su questo telefono finché non rispondi. Tocca «Drive in pausa» in alto quando vuoi.', // provvisorio (decisione 1 di 02)
     cifraNo: 'Questo navigatore non riesce a proteggere la copia con una password. Aggiorna il navigatore e riprova.',
     apriNo: 'Questo navigatore non riesce ad aprire le copie protette. Aggiorna il navigatore e riprova.',
-    parte: 'Non riesco a mettere da parte i dati di adesso: non ho cambiato niente.' // provvisorio (01)
+    parte: 'Soldirini non è riuscita a mettere da parte i dati di adesso, quindi non ha cambiato niente.', // 02, tornata 29 §2
+    driveCon: 'Per prendere i dati di Drive servono la connessione e l’accesso a Google. Controlla e riprova.', // 02, tornata 29 §2
+    primaSost: 'Per sostituire i dati con questa copia, prima rispondi a questa domanda.', // 02, tornata 30 §4 (2.A di 03)
+    primaRimetti: 'Per rimettere i dati messi da parte, prima rispondi a questa domanda.'
   };
   const cifraOk = () => !!(g.crypto && crypto.subtle && crypto.getRandomValues);
   const inAttesaDrive = ' su questo telefono. Google Drive verrà aggiornato appena c’è connessione.'; // V2 di 02
@@ -106,9 +109,10 @@
 
   // ---------- lettura: il file non è fidato ----------
   // V6: solo le parti conosciute, raccolte = oggetti di oggetti, niente id pericolosi, updatedAt mai nel futuro
+  // 24c.1 (proposta 2 di 03, tornata 29): una copia è sempre fatta nel passato, quindi una data oltre adesso diventa adesso
   function pulisci(o) {
     if (!piano(o)) throw new CopiaErr('rovinato');
-    const ora = Date.now(), lim = ora + GG;
+    const ora = Date.now(), lim = ora;
     const fix = v => { if (v.updatedAt != null && !(+v.updatedAt <= lim)) v.updatedAt = Number.isFinite(+v.updatedAt) ? ora : 0; return v; };
     const d = emptyData();
     for (const k of RACCOLTE) {
@@ -153,10 +157,21 @@
     if (piano(o) && o.v === 1 && (piano(o.eventi) || piano(o.progetti) || piano(o.profilo))) return { dati: pulisci(o), file: [], data: '', vecchia: true };
     throw new CopiaErr('rovinato');
   }
+  // 24c.1 (proposta 3 di 03, tornata 29): un pezzo dello zip si legge a blocchi e ci si ferma appena supera il limite,
+  // così un file "gonfiato" (pochi KB che diventano GB) non riempie la memoria prima del controllo
+  function leggiFino(f, max) {
+    return new Promise((ok, ko) => {
+      const parti = []; let n = 0, finito = false; const s = f.internalStream('uint8array');
+      s.on('data', c => { if (finito) return; n += c.length; if (n > max) { finito = true; s.pause(); ko(new CopiaErr('grande')); return; } parti.push(c); })
+        .on('error', () => { if (!finito) { finito = true; ko(new CopiaErr('rovinato')); } })
+        .on('end', () => { if (finito) return; finito = true; const b = new Uint8Array(n); let o = 0; for (const c of parti) { b.set(c, o); o += c.length; } ok(b); })
+        .resume();
+    });
+  }
   async function apriNuova(u, pw) {
     let z; try { z = await JSZip.loadAsync(u); } catch (e) { throw new CopiaErr('rovinato'); }
     const fi = z.file('info.json'), fc = z.file('contenuto'); if (!fi || !fc) throw new CopiaErr('rovinato');
-    const infoB = await fi.async('uint8array'); if (infoB.length > 4000) throw new CopiaErr('rovinato'); // V1: questi byte, così come sono
+    let infoB; try { infoB = await leggiFino(fi, 4000); } catch (e) { throw new CopiaErr('rovinato'); } // V1: questi byte, così come sono
     let info; try { info = JSON.parse(dec.decode(infoB)); } catch (e) { throw new CopiaErr('rovinato'); }
     if (!piano(info) || info.app !== 'soldirini' || typeof info.formato !== 'number') throw new CopiaErr('rovinato');
     if (info.formato > FORMATO) throw new CopiaErr('nuova');
@@ -169,15 +184,14 @@
       if (!cifraOk()) throw new CopiaErr('apriNo');
       if (pw == null) return { serve: 'password' };
     }
-    let corpo = await fc.async('uint8array'), tot = corpo.length;
-    if (tot > MAX_ESTRATTO) throw new CopiaErr('grande');
+    let corpo = await leggiFino(fc, MAX_ESTRATTO), tot = corpo.length;
     if (info.protetta) {
       try { corpo = new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv, additionalData: infoB }, await chiave(pw, sale, info.kdf.iterazioni), corpo)); }
       catch (e) { throw new CopiaErr('password'); }
     }
     let zi; try { zi = await JSZip.loadAsync(corpo); } catch (e) { throw new CopiaErr('rovinato'); }
     // V5: si estraggono solo i pezzi attesi, uno alla volta, contando i byte
-    const pezzo = async nome => { const f = zi.file(nome); if (!f) return null; const b = await f.async('uint8array'); tot += b.length; if (tot > MAX_ESTRATTO) throw new CopiaErr('grande'); return b; };
+    const pezzo = async nome => { const f = zi.file(nome); if (!f) return null; const b = await leggiFino(f, MAX_ESTRATTO - tot); tot += b.length; return b; };
     const bd = await pezzo('dati.json'); if (!bd) throw new CopiaErr('rovinato');
     let o; try { o = parseSicuro(dec.decode(bd)); } catch (e) { throw new CopiaErr('rovinato'); }
     const dati = pulisci(o);
@@ -237,6 +251,16 @@
   // "Sostituisci tutto" (D-097 punto 1-2, V9, V10, V13) e "Rimetti questi dati" (stessa cosa con i dati messi da parte).
   // fase(testo) aggiorna il pulsante (V1 di 02). Restituisce { err } (niente è cambiato) oppure { inviata } (Drive aggiornato o no).
   async function sostituisci(dati, file, fase, rimetti) {
+    // 24c.1 (V13): finché la sostituzione non è pronta non parte nessuna sincronizzazione (un'unione normale con Drive arriverebbe
+    // dopo i dati nuovi); quella già in corso finisce prima della copia
+    syncFermo = true;
+    let S;
+    try { S = await preparaSostituzione(dati, file, fase, rimetti); } finally { syncFermo = false; }
+    if (S && S.err) return S;
+    render();
+    return { inviata: S ? await invia() : true };
+  }
+  async function preparaSostituzione(dati, file, fase, rimetti) {
     let S = null;
     if (conDrive()) {
       if (!navigator.onLine || !tokenOk()) return { err: MSG.driveNo };
@@ -249,11 +273,12 @@
     try { await Archivio.salvato(); } catch (e) { }
     if (!await Archivio.mettiDaParte({ il: today(), testo: JSON.stringify(D()) })) return { err: MSG.parte };
     Archivio.blocca(); DB.data = conCancellate(dati, D());
-    await rimettiFile(file);
+    // 24c.1: il segno della sostituzione va messo insieme ai dati nuovi. Prima veniva dopo rimettiFile e una
+    // sincronizzazione partita in quell'attimo faceva un'unione normale con Drive (contro V13).
     DB.meta.seq++; if (S) DB.meta.sostituzione = S;
+    await rimettiFile(file);
     if (Archivio.modo === 'idb') await Archivio.nuovaEpoca(); else persist();
-    render();
-    return { inviata: S ? await invia() : true };
+    return S;
   }
 
   // ---------- finestra unica della copia ----------
@@ -261,6 +286,7 @@
   const M = () => $('cpModal');
   function mostra(tit, html, chiudibile) {
     $('cpTit').textContent = tit; $('cpBody').innerHTML = html; $('cpX').hidden = !chiudibile;
+    const sh = M().querySelector('[role=dialog]'); if ($('cpMotivo')) sh.setAttribute('aria-describedby', 'cpMotivo'); else sh.removeAttribute('aria-describedby'); // 02, tornata 30 §4
     M().hidden = false; document.body.classList.add('noscroll');
     const f = $('cpBody').querySelector('input:not([type=file]):not([type=checkbox]),.foot .btn:last-child'); if (f) try { f.focus(); } catch (e) { }
   }
@@ -347,10 +373,14 @@
       <button type="button" class="cpopt" role="radio" aria-checked="false" data-modo="sostituisci"><b>♻️ Sostituisci tutto</b><span class="con">Toglie i dati di questo telefono e mette solo quelli della copia.</span><span>Prima Soldirini mette da parte i dati di adesso: puoi rimetterli da Impostazioni.</span>${conDrive() ? '<span>Con Google Drive: la sostituzione vale anche per Drive e per gli altri dispositivi collegati.</span>' : ''}</button></div>
       <div class="foot"><button class="btn ghost" data-cp="annulla">Annulla</button><button class="btn" data-cp="usa">Riprendi</button></div>`, true);
   }
-  // V5 di 02 (provvisorio: vale con le voci cancellate, domanda 1 di 03, che la v24c segue come consigliato)
-  const avvisoAltri = '<div class="cpwarn"><b>Usi Soldirini anche su un altro telefono o tablet?</b><br>Prima aggiornalo: in fondo a Impostazioni deve dire «versione 24c» o più nuova. Con una versione più vecchia prende i dati della copia senza chiederlo e senza mettere da parte i suoi.</div>';
+  // V5 di 02, testo della tornata 31 §2 (con le voci cancellate, D-105; anche i documenti dei progetti)
+  const avvisoAltri = '<div class="cpwarn"><b>Usi Soldirini anche su un altro telefono o tablet?</b><br>Prima aggiornalo: in fondo a Impostazioni deve dire «versione 24c» o più nuova. Una versione più vecchia prende i dati della copia senza chiederlo e senza mettere da parte i suoi. Poi può rimettere i pagamenti, le entrate e i documenti dei progetti segnati come fatti o inviati che la copia non ha, e le modifiche fatte lì più di recente.</div>';
   // 21c · conferma di "Sostituisci tutto"
+  // 24c.1 (2.A di 03, tornata 29): con "Drive in pausa" si risponde prima alla domanda 23, poi si può sostituire
+  // la riga va in cima alla finestra 23 (02, tornata 30 §4); dopo la risposta l'azione non riparte da sola
+  function primaLaPausa(motivo) { if (!DB.meta.drivePausa) return false; domandaPausa(true, motivo); return true; }
   function confermaSostituisci() {
+    if (primaLaPausa(MSG.primaSost)) return;
     passo = 'conferma'; const a = conteggi(D()), b = conteggi(aperta.dati);
     mostra('Sostituire tutti i dati di questo telefono?', `<p style="margin-top:0">Ora ci sono <b>${nAtt(a.att)}</b>${a.dal ? ` (dal ${dItc(a.dal)} al ${dItc(a.al)})` : ''}. Dopo ci saranno solo quelle della copia: <b>${nAtt(b.att)}</b>${b.al ? ` (fino al ${dItc(b.al)})` : ''}.</p>
       <p>I dati di adesso restano da parte e puoi rimetterli da Impostazioni → Copia di sicurezza.</p>
@@ -362,6 +392,7 @@
   let parteAperta = null;
   async function confermaRimetti() {
     const p = await Archivio.parte(); if (!p) { render(); return; }
+    if (conDrive() && primaLaPausa(MSG.primaRimetti)) return;
     let dati; try { dati = pulisci(parseSicuro(p.testo)); } catch (e) { toast(MSG.rovinato, 'err'); return; }
     parteAperta = { dati, il: p.il }; passo = 'rimetti'; const a = conteggi(D()), b = conteggi(dati);
     mostra('Rimettere i dati messi da parte?', `<p style="margin-top:0">Ora ci sono <b>${nAtt(a.att)}</b>${a.al ? ` (fino al ${dItc(a.al)})` : ''}. Dopo tornano i dati messi da parte il ${dItc(p.il)}: <b>${nAtt(b.att)}</b>${b.al ? ` (fino al ${dItc(b.al)})` : ''}.</p>
@@ -372,23 +403,24 @@
   }
   // 23 · domanda sugli altri dispositivi (Drive in pausa finché non si risponde: decisione 1 di 02, consiglio)
   let chiestoPausa = false;
-  function domandaPausa(forza) {
+  function domandaPausa(forza, motivo) {
     const P = DB.meta.drivePausa; if (!P || (!forza && chiestoPausa) || occupato) return; chiestoPausa = true; passo = 'pausa';
-    mostra('I dati sono stati sostituiti su un altro dispositivo', `<p style="margin-top:0">${P.il ? `Il ${dItc(P.il)}, su` : 'Su'} un altro telefono o tablet, i dati di Soldirini sono stati sostituiti con una copia di sicurezza.</p>
+    mostra('I dati sono stati sostituiti su un altro dispositivo', `${motivo ? `<p class="cpinvio cima" id="cpMotivo">${esc(motivo)}</p>` : ''}<p style="margin-top:0">${P.il ? `Il ${dItc(P.il)}, su` : 'Su'} un altro telefono o tablet, i dati di Soldirini sono stati sostituiti con una copia di sicurezza.</p>
       <p>Per avere gli stessi dati anche qui, Soldirini prende quelli di Google Drive. I dati di questo telefono restano da parte: puoi rimetterli da Impostazioni → Copia di sicurezza.</p>
       <p class="err" id="cpErr" role="alert" hidden></p>
       <div class="foot"><button class="btn ghost" data-cp="annulla">Non ora</button><button class="btn" data-cp="prendi">Prendi i dati di Drive</button></div>
       <p class="muted sm">Con "Non ora" questo telefono non si sincronizza con Drive: la domanda torna toccando "Drive in pausa" o al prossimo avvio.</p>`, false);
   }
   async function prendiDrive(btn) {
-    if (!navigator.onLine || !tokenOk()) { errore('Serve la connessione e l’accesso con Google.'); return; }
-    attendi(btn, 'Prendo i dati…');
+    if (!navigator.onLine || !tokenOk()) { errore(MSG.driveCon); return; }
+    attendi(btn, 'Prendo i dati di Drive…');
     try {
       const id = DB.meta.dataId, m = await metaDati(id);
       const remote = leggiDati(await gfetch('GET', `${DRIVE}/files/${id}?alt=media`, { raw: true }).then(r => r.text()));
       try { await Archivio.salvato(); } catch (e) { }
       if (!await Archivio.mettiDaParte({ il: today(), testo: JSON.stringify(D()) })) throw new Error(MSG.parte);
-      Archivio.blocca(); DB.data = remote; DB.meta.gen = genDi(m); DB.meta.drivePausa = null; DB.meta.synced = DB.meta.seq;
+      // 2.A di 03: una sostituzione fatta qui e non ancora inviata non vale più (i dati sono quelli di Drive)
+      Archivio.blocca(); DB.data = remote; DB.meta.gen = genDi(m); DB.meta.drivePausa = null; DB.meta.sostituzione = null; DB.meta.synced = DB.meta.seq;
       if (Archivio.modo === 'idb') await Archivio.nuovaEpoca(); else persist();
     } catch (e) { fine(btn); errore(errMsg(e)); return; }
     occupato = false; chiudi(); render(); scheduleSync(0);
@@ -429,7 +461,8 @@
       if (r.err) { fine(b); errore(r.err); return; } // V1 di 02: la finestra resta aperta, niente è cambiato
       occupato = false; chiudi();
       const testo = rim ? `✓ Rimessi i dati messi da parte il ${dItc(P.il)}` : `✓ Dati sostituiti con la copia ${P.data ? 'del ' + dItc(P.data) : 'scelta'}`;
-      toast(testo + (r.inviata ? '.' : inAttesaDrive), '', r.inviata ? 6000 : 9000); return;
+      // 02, tornata 29 §2 testo 6: senza Drive o con Drive già aggiornato, "Rimetti" dice dove sono finiti i dati di prima
+      toast(testo + (r.inviata ? (rim ? '. Quelli che c’erano prima ora sono messi da parte.' : '.') : inAttesaDrive), '', r.inviata ? 6000 : 9000); return;
     }
     if (a === 'prendi') { prendiDrive(b); return; }
   }

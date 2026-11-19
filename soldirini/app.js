@@ -264,6 +264,8 @@ async function pickFolder(title){
 
 // ================= Sincronizzazione =================
 let syncing=false,syncTimer=null,lastErr='',needLogin=false;
+// 24c.1 (V13): vero mentre "Sostituisci tutto" / "Rimetti" preparano la sostituzione; nessuna sincronizzazione parte in quel tempo
+let syncFermo=false;
 // v20: il file dati su Drive non si legge → non lo tocco e fermo la sincronizzazione finché non torna leggibile
 let datiIllegibili=false;
 class IllegErr extends Error{}
@@ -367,6 +369,7 @@ async function fileDatiValido(id){try{const m=await gfetch('GET',`${DRIVE}/files
 const metteDaParte=f=>gfetch('PATCH',`${DRIVE}/files/${f.id}?fields=id`,{json:{name:'Soldirini - dati (unito, si può eliminare).json',appProperties:{soldirini:'dati-unito'}}});
 async function sync(interactive){
   if(syncing){return;}
+  if(syncFermo){scheduleSync(1500);return;}
   if(!DB.meta.account){renderSync();return;}
   if(!navigator.onLine){renderSync();return;}
   if(!tokenOk()){

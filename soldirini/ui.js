@@ -3,7 +3,7 @@
 // Calendario a schermo pieno: tocco = riepilogo del giorno, doppio tocco = nuova attività,
 // pressione lunga = selezione di più giorni. Documenti e Tasse sono sottopagine di Riepilogo.
 
-const APP_VERSIONE='24c';
+const APP_VERSIONE='24c.1';
 const SUB={tas:'rie'}; // sottopagina -> scheda madre
 // 24b.1 (D-098): pagine di dettaglio del Riepilogo, una per casella del riquadro (Documenti è dentro "Rimborsi spese")
 const PAG_RIE={dfx:'Uscite fisse',dsp:'Spese giornaliere',dlav:'Lavoro dipendente',drim:'Rimborsi spese',drit:'Ritenuta d’acconto',dinc:'Ancora da incassare'};

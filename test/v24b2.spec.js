@@ -27,12 +27,12 @@ test.describe('24b.2 · riquadro (D-101)', () => {
     await page.evaluate(() => { D().entrate = { 'v24|risposta': { risposta: 'no', updatedAt: 1 } }; changed(); });
     await vai(page, 'rie', '2026-11'); await apri(page);
     expect(await caselle(page)).toEqual([]);
-    await expect(page.locator('#heroDet .hnone')).toHaveText('🙁 Mi dispiace che non hai entrate');
+    await expect(page.locator('#heroDet .nient')).toHaveText('🙁Mi dispiace che non hai entrate');
     await page.evaluate(() => { const id = uid(); D().fissi = { [id]: { id, nome: 'Affitto', cat: 'altro', importo: '450', giorno: '3', dal: '2026-10', al: '', rate: '', updatedAt: 1 } }; changed(); render(); });
     expect(await caselle(page)).toEqual(['Uscite fisse']);
     // le caselle-pulsante hanno il fondo del riquadro (nella 24b.1 avevano il fondo chiaro del navigatore: testo bianco su grigio)
     expect(await page.locator('#heroDet > button.hcel').first().evaluate(b => [getComputedStyle(b).backgroundColor, getComputedStyle(b).display, getComputedStyle(b).borderRadius])).toEqual(['rgba(255, 255, 255, 0.1)', 'flex', '11px']);
-    await expect(page.locator('#heroDet .hnone')).toHaveCount(1);
+    await expect(page.locator('#heroDet .nient')).toHaveCount(1);
     expect(await page.evaluate(() => contiMese('2026-11').usciti)).toBe(450);
     expect(errori).toEqual([]);
   });
@@ -45,10 +45,10 @@ test.describe('24b.2 · riquadro (D-101)', () => {
     await vai(page, 'rie', '2026-10'); await apri(page);
     // ottobre: pensione (stima) e compenso da incassare ("Ancora da incassare" è il totale di tutto ciò che manca, come prima)
     expect(await caselle(page)).toEqual(['Pensione', 'Ancora da incassare']);
-    await expect(page.locator('#heroDet .hnone')).toHaveCount(0);
+    await expect(page.locator('#heroDet .nient')).toHaveCount(0);
     // vista Anno: stessa regola sull'anno
     await vai(page, 'rie', '2026-11', 'anno');
-    expect(await caselle(page)).toEqual(['Pensione', 'Incassato dai progetti', 'Ritenuta d’acconto', 'Ancora da incassare']);
+    expect(await caselle(page)).toEqual(['Pensione', 'Incassato dai progetti', 'Ancora da incassare', 'Ritenuta d’acconto']); // 24c.1 (4b)
     expect(await page.evaluate(() => JSON.stringify([contiMese('2026-10'), contiAnno('2026')]))).toBe(conti);
     expect(errori).toEqual([]);
   });
@@ -62,7 +62,7 @@ test.describe('24b.2 · "In arrivo" (D-099 punto 1)', () => {
     const sc = page.locator('#rieIn .insub');
     await expect(sc.locator('.inhead b')).toHaveText('Compensi non ancora entrati');
     await expect(sc.locator('.inhead small')).toContainText('non contati nei soldi rimanenti');
-    expect(await sc.locator('.ir b').allTextContents()).toEqual(['Compensi di novembre']); // settembre è già entrato
+    expect(await sc.locator('.ir .tx b').allTextContents()).toEqual(['Compensi di novembre']); // settembre è già entrato
     await expect(page.locator('#rieIn')).not.toContainText('Pensione di');
     // pensione: in cima alla pagina, con "È entrata"
     await vai(page, 'pen');
@@ -89,8 +89,13 @@ test.describe('24b.2 · correzioni', () => {
     await expect(page.locator('#v-dinc')).toBeVisible(); await expect(page.locator('#v-dinc .pgper')).toHaveText('ottobre 2026');
     expect(await page.evaluate(() => rieMode)).toBe('mese');
     await vai(page, 'dinc', '2026-11', 'anno');
-    await page.locator('#rieAnno details').filter({ hasText: 'Mese per mese (incassi)' }).locator('summary').click();
-    await page.locator('#rieAnno tr[data-ym="2026-11"]').press('Enter');
+    // 24c.1: nei giri lunghi a volte il fuoco non arrivava sulla riga e l'Invio finiva sul titolo della sezione (che si chiudeva).
+    // Apro la sezione, metto il fuoco sulla riga e controllo che ci sia, poi premo Invio una volta sola: si prova lo stesso tasto.
+    const sez = page.locator('#rieAnno details').filter({ hasText: 'Mese per mese (incassi)' });
+    await sez.evaluate(d => { d.open = true; });
+    const nov = page.locator('#rieAnno tr[data-ym="2026-11"]');
+    await expect(async () => { await nov.focus(); await expect(nov).toBeFocused({ timeout: 500 }); }).toPass({ timeout: 10000 });
+    await page.keyboard.press('Enter');
     await expect(page.locator('#v-dinc .pgper')).toHaveText('novembre 2026');
     // "Elenco pagamenti" (vista Anno di Ancora da incassare): un solo pagamento nell'anno → "1 voce"
     await page.evaluate(() => { for (const e of Object.values(D().eventi)) if (e.data === '2026-11-03') e.deleted = true; changed(); });
