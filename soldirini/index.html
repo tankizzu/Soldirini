@@ -812,8 +812,11 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
     <details class="card fold"><summary><span class="st">📈 Maggiorazioni (%)</span></summary><div class="fbody"><p class="muted sm" style="margin-top:0">Lasciale vuote se non le conosci: le trovi nel contratto o in busta paga. Vuote = ore pagate come normali.</p>
       <div class="g2"><label>Straordinario<input id="lvM-stra" type="number" inputmode="decimal"></label><label>Notturno<input id="lvM-nott" type="number" inputmode="decimal"></label>
       <label>Festivo<input id="lvM-fest" type="number" inputmode="decimal"></label><label>Domenica<input id="lvM-dom" type="number" inputmode="decimal"></label>
+      <label class="s2">Straordinario di notte<input id="lvM-straNott" type="number" inputmode="decimal" aria-describedby="lvMStraNota"></label><label class="s2">Straordinario nei giorni di festa e di domenica<input id="lvM-straFest" type="number" inputmode="decimal" aria-describedby="lvMStraNota"></label>
+      <p class="muted sm s2" id="lvMStraNota">Se li lasci vuoti, lo straordinario di notte o di festa somma le due maggiorazioni (es. straordinario + notturno).</p>
       <label>Notte dalle<input type="time" id="lvNottDa"></label><label>alle<input type="time" id="lvNottA"></label>
-      <label class="s2">Feste locali (es. santo patrono 29/06)<input id="lvLocali" placeholder="gg/mm, gg/mm"></label></div></div></details>
+      <label class="s2">Feste locali (es. santo patrono 29/06)<input id="lvLocali" placeholder="gg/mm, gg/mm"></label>
+      <label class="check sm s2" id="lvFestePagBox"><input type="checkbox" id="lvFestePag"> Le feste in settimana non lavorate sono pagate</label></div></div></details>
     <details class="card fold"><summary><span class="st">🏖️ Ferie e permessi</span></summary><div class="fbody"><div class="g2"><label>Ferie in<select id="lvFerieU"><option value="giorni">giorni</option><option value="ore">ore</option></select></label><label>Ferie all’anno<input id="lvFerieA" type="number" inputmode="decimal"></label>
       <label>Ferie residue anno prima<input id="lvFerieR" type="number" inputmode="decimal"></label><label>Permessi in<select id="lvPermU"><option value="ore">ore</option><option value="giorni">giorni</option></select></label>
       <label class="s2">Permessi (ROL) all’anno<input id="lvPermA" type="number" inputmode="decimal"></label></div><p class="muted sm">Quando carichi una busta paga, i saldi si prendono da lì.</p></div></details>

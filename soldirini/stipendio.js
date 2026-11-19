@@ -67,7 +67,7 @@ function apriLavoro(l,isNew){
   document.querySelectorAll('[name=lvModo]').forEach(r=>r.checked=r.value===x.modo);
   $('lvPagaTipo').value=x.paga.tipo;$('lvPaga').value=x.paga.importo;$('lvDiv').value=x.paga.divisore||168;
   $('lvOreMese').value=x.oreMese;$('lvOreGiorno').value=x.oreGiorno||'';$('lvOreGiornoErr').hidden=true;notaOreGiorno();$('lvDal').value=x.dal||'';$('lvAl').value=x.al||'';
-  for(const k of ['stra','nott','fest','dom'])$('lvM-'+k).value=x.magg[k]??'';
+  for(const k of MAGG_K)$('lvM-'+k).value=x.magg[k]??'';$('lvFestePag').checked=!!x.festePagate; // 24c.3: D-120 e D-121
   $('lvNottDa').value=x.nott?.da||'';$('lvNottA').value=x.nott?.a||'';
   $('lvLocali').value=x.locali||'';$('lvFerieU').value=x.ferie.unita;$('lvFerieA').value=x.ferie.anno;$('lvFerieR').value=x.ferie.residuo;
   document.querySelectorAll('[name=lvCalMostra]').forEach(r=>r.checked=r.value===calMostra(x));$('lvPermU').value=x.perm.unita;$('lvPermA').value=x.perm.anno;$('lvTratt').value=x.tratt;$('lvContratto').value=x.contratto||'';
@@ -79,8 +79,10 @@ function apriLavoro(l,isNew){
 const oreGiornoOk=v=>{v=String(v||'').trim();if(!v)return true;if(!/^\d{1,2}([.,]\d{1,2})?$/.test(v))return false;const n=C.num(v);return n>=0.5&&n<=24;};
 function notaOreGiorno(){$('lvOreGiornoVuoto').hidden=!!$('lvOreGiorno').value.trim()||!C.num($('lvOreMese').value);}
 function controllaOreGiorno(){const ok=oreGiornoOk($('lvOreGiorno').value);$('lvOreGiornoErr').hidden=ok;$('lvOreGiorno').setAttribute('aria-invalid',String(!ok));return ok;}
+// 24c.3: maggiorazioni del lavoro, con lo straordinario di notte e di festa (D-120)
+const MAGG_K=['stra','nott','fest','dom','straNott','straFest'];
 function aggiornaModo(){const m=document.querySelector('[name=lvModo]:checked')?.value||lv.l.modo;lv.l.modo=m;
-  $('lvFissoBox').hidden=m!=='fisso';$('lvTurniBox').hidden=m!=='turni';$('lvOreGiornoBox').hidden=m!=='turni';const pt=$('lvPagaTipo').value;$('lvDivBox').hidden=pt==='oraria';$('lvDivBox').firstChild.nodeValue=pt==='giornaliera'?'Ore di una giornata (per calcolare straordinari e maggiorazioni)':'Ore al mese per la paga oraria (divisore del contratto)';$('lvDiv').placeholder=pt==='giornaliera'?'8':'168';
+  $('lvFissoBox').hidden=m!=='fisso';$('lvTurniBox').hidden=m!=='turni';$('lvOreGiornoBox').hidden=m!=='turni';const pt=$('lvPagaTipo').value;$('lvDivBox').hidden=pt==='oraria';$('lvFestePagBox').hidden=pt==='mensile'; /* D-121: con la paga mensile la festa è già nello stipendio */$('lvDivBox').firstChild.nodeValue=pt==='giornaliera'?'Ore di una giornata (per calcolare straordinari e maggiorazioni)':'Ore al mese per la paga oraria (divisore del contratto)';$('lvDiv').placeholder=pt==='giornaliera'?'8':'168';
   $('lvTipiTit').textContent=m==='fisso'?'Eccezioni (straordinari, ferie, permessi…)':'Tipi di turno';}
 function renderSett(){const S=lv.l.settimana||{};
   $('lvSett').innerHTML=[1,2,3,4,5,6,7].map(d=>{const s=S[d]||{};return `<div class="srow" data-d="${d}"><b>${SETT[d].slice(0,3)}</b><input type="time" data-k="da" value="${esc(s.da||'')}" aria-label="${SETT[d]} dalle"><input type="time" data-k="a" value="${esc(s.a||'')}" aria-label="${SETT[d]} alle"><input type="number" inputmode="numeric" min="0" step="5" data-k="pausa" value="${esc(s.pausa??'')}" placeholder="pausa" aria-label="${SETT[d]} pausa in minuti"></div>`;}).join('');}
@@ -100,7 +102,7 @@ function leggiLavoro(){
   x.nome=$('lvNome').value.trim();x.colore=$('lvColore').value;x.modo=document.querySelector('[name=lvModo]:checked').value;
   x.paga={tipo:$('lvPagaTipo').value,importo:$('lvPaga').value.trim(),divisore:$('lvDiv').value.trim()||168};
   x.oreMese=$('lvOreMese').value.trim();x.oreGiorno=$('lvOreGiorno').value.trim();x.dal=$('lvDal').value;x.al=$('lvAl').value;x.settimana=leggiSett();
-  x.magg={};for(const k of ['stra','nott','fest','dom'])x.magg[k]=$('lvM-'+k).value.trim();
+  x.magg=Object.assign({},x.magg);for(const k of MAGG_K)x.magg[k]=$('lvM-'+k).value.trim();x.festePagate=$('lvFestePag').checked;
   x.nott={da:$('lvNottDa').value,a:$('lvNottA').value};x.locali=$('lvLocali').value.trim();
   x.ferie={unita:$('lvFerieU').value,anno:$('lvFerieA').value.trim(),residuo:$('lvFerieR').value.trim()};
   x.perm={unita:$('lvPermU').value,anno:$('lvPermA').value.trim()};if(x.modo==='fisso')x.calMostra=document.querySelector('[name=lvCalMostra]:checked')?.value||'diversi';x.tratt=$('lvTratt').value.trim();x.contratto=$('lvContratto').value.trim();
@@ -197,8 +199,8 @@ function testoAssenza(l,t,ym,attivita){ // attivita: testo di Nuova attività (0
   if(!l||l.modo!=='turni'||!t||!(C.PAGATE.includes(t.cat)||t.cat==='nonretr')||serveOre(t,l))return null;
   const fisso='Se scrivi le ore o «dalle–alle», conta solo quella parte e i turni di lavoro restano.';
   const lv=attivita?'Lascia vuote le ore':'Lascia vuoto';
-  // quarta variante (04, tornata 31 §2; provvisoria, 02 può ritoccarla): il tipo ha già le ore o "dalle–alle" (punti 3-4 di R-TURNI-1)
-  const delTipo=C.oreAssenza(l,{},t,ym+'-01');if(delTipo.punto===3||delTipo.punto===4)return `${lv} per contare le ore del tipo «${esc(t.nome)}»: <b>${oreTesto(delTipo.ore)} ore</b>. I turni di lavoro di questo giorno restano.`;
+  // quarta variante (04, tornata 31 §2; testo di 02, tornata 33 §1): il tipo ha già le ore o "dalle–alle" (punti 3-4 di R-TURNI-1)
+  const delTipo=C.oreAssenza(l,{},t,ym+'-01');if(delTipo.punto===3||delTipo.punto===4)return `${attivita?'Lascia vuote le ore per usare quelle':'Lascia vuoto per usare le ore'} del tipo «${esc(t.nome)}»: <b>${oreTesto(delTipo.ore)} ore</b>. I turni di lavoro di questo giorno restano.`;
   const og=C.num(l.oreGiorno),om=C.num(l.oreMese);
   if(og>0)return `${lv} per contare una giornata intera: <b>${oreTesto(og)} ore</b>. In quel caso i turni di lavoro di questo giorno non contano.<br>${fisso}`;
   if(om>0){const g=C.giorniLavorativi(ym,C.parseLocali(l.locali));if(g)return `${lv} per contare una giornata intera: <b>${oreTesto(om/g)} ore</b> a ${MESI[+ym.slice(5,7)-1]}, calcolate dalle ore al mese del lavoro. In quel caso i turni di lavoro di questo giorno non contano.<br>${fisso}`;}
@@ -230,7 +232,7 @@ function datiMese(l,ym){const M=C.calcolaMese(l,turniDi(l.id),ym);const B=busteD
 window.datiMeseLavoro=datiMese;
 function cardMese(l,ym){
   const {M,tr,netto,busta,saldi}=datiMese(l,ym);const T=M.T;const kv=(a,b)=>`<div class="kv"><span>${a}</span><b>${b}</b></div>`;
-  const ore=[`${nOre(T.lav)} ore lavorate`,T.stra?`${nOre(T.stra)} di straordinario`:'',T.nott?`${nOre(T.nott)} notturne`:'',T.fest?`${nOre(T.fest)} festive`:'',T.dom?`${nOre(T.dom)} di domenica`:''].filter(Boolean);
+  const ore=[`${nOre(T.lav)} ore lavorate`,T.stra?`${nOre(T.stra)} di straordinario`:'',T.nott?`${nOre(T.nott)} notturne`:'',T.fest?`${nOre(T.fest)} festive`:'',T.dom?`${nOre(T.dom)} di domenica`:'',T.festePag?`${nOre(T.festePag)} di feste pagate`:''].filter(Boolean);
   const ass=[T.ferie?`${T.ferie} ${T.ferie===1?'giorno':'giorni'} di ferie`:'',T.perm?`${nOre(T.perm)} ore di permesso`:'',T.mal?`${nOre(T.mal)} ore di malattia`:'',T.nonretr?`${nOre(T.nonretr)} ore non pagate`:''].filter(Boolean);
   const mg=(k,lab)=>M.magg[k]==null&&T[k==='stra'?'stra':k]?`<p class="muted sm">${lab}: maggiorazione non impostata, contata come ora normale.</p>`:'';
   const E=M.E;const voce=(t,v)=>v?kv(t,eur(v)):'';

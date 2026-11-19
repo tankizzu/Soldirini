@@ -166,7 +166,7 @@ test.describe('24c.1 · 2.A di 03: "Drive in pausa" e sostituzioni', () => {
     await page.evaluate(() => openEv(['2026-11-04']));
     await page.evaluate(() => { const s = document.getElementById('secLav'); if (s && !s.open) s.open = true; });
     await page.locator('#evLav [data-lt]').filter({ hasText: 'Ferie' }).first().click();
-    await expect(page.locator('#evLav p.muted.sm').last()).toHaveText('Lascia vuote le ore per contare le ore del tipo «Ferie»: 8 ore. I turni di lavoro di questo giorno restano.');
+    await expect(page.locator('#evLav p.muted.sm').last()).toHaveText('Lascia vuote le ore per usare quelle del tipo «Ferie»: 8 ore. I turni di lavoro di questo giorno restano.');
     await expect(page.locator('#evLav [data-lk="ore"]')).toBeVisible();
     expect(errori).toEqual([]);
   });

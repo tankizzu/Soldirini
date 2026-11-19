@@ -286,3 +286,56 @@ test.describe('D-118: Permesso e Assenza non pagata senza ore, lavoro a turni', 
     expect(vuoto.T).toMatchObject({ perm: 0, nonretr: 0, senzaOre: 2 });
   });
 });
+
+// 24c.3: D-120 (R-MAGG-1) e D-121 (R-FESTE-1) di 04 (report tornata 33 §3 e §4). Lavori LF e LT del libro "Ore e paga"
+test.describe('D-120 e D-121: maggiorazioni dello straordinario (M1-M8) e feste non lavorate pagate (FP1-FP7)', () => {
+  const G9 = { da: '09:00', a: '18:00', pausa: 60 };
+  const MAGG = { stra: '25', nott: '20', fest: '50', dom: '30' };
+  const LF = (x = {}) => Object.assign({ modo: 'fisso', dal: '2026-01-01', locali: '', paga: { tipo: 'oraria', importo: 10 },
+    settimana: { 1: G9, 2: G9, 3: G9, 4: G9, 5: G9 }, magg: MAGG, nott: { da: '22:00', a: '06:00' },
+    tipi: [{ id: 'st', nome: 'Straordinario', cat: 'lavoro', aggiunta: true }, { id: 'fe', nome: 'Ferie', cat: 'ferie' }] }, x);
+  const LT = (x = {}) => Object.assign({ modo: 'turni', locali: '', oreMese: 160, paga: { tipo: 'oraria', importo: 10 }, magg: MAGG, nott: { da: '22:00', a: '06:00' },
+    tipi: [{ id: 'M', cat: 'lavoro', da: '06:00', a: '14:00' }, { id: 'N', cat: 'lavoro', da: '22:00', a: '06:00' }, { id: 'F', cat: 'ferie' }] }, x);
+  const m = x => Object.assign({}, MAGG, x);
+  const t1 = (data, tipo, x = {}) => [Object.assign({ id: 1, data, tipo }, x)];
+  const tre = (a, b, c) => [{ id: 1, data: '2026-11-02', tipo: a }, { id: 2, data: '2026-11-03', tipo: b }, { id: 3, data: '2026-11-04', tipo: c }];
+  const feriali = [2, 3, 4, 5, 6, 9, 10, 11, 12, 13, 16, 17, 18, 19, 20, 23, 24, 25, 26, 27, 30].map((g, i) => ({ id: i + 1, data: '2026-11-' + String(g).padStart(2, '0'), tipo: 'M' }));
+  test('M1-M4: straordinario di notte e di festa con la percentuale del contratto', () => {
+    const M1 = C.calcolaMese(LF({ magg: m({ straNott: '50' }) }), t1('2026-11-03', 'st', { da: '22:00', a: '23:00' }), '2026-11');
+    expect(M1.E).toMatchObject({ stra: 15, nott: 0 }); expect(M1.T).toMatchObject({ stra: 1, nott: 1, straNott: 1 }); expect(M1.lordo).toBe(1695);
+    const M2 = C.calcolaMese(LF({ magg: m({ straFest: '50' }) }), t1('2026-11-08', 'st', { da: '09:00', a: '13:00' }), '2026-11');
+    expect(M2.E).toMatchObject({ stra: 60, dom: 0 }); expect(M2.T.straFest).toBe(4); expect(M2.lordo).toBe(1740);
+    const M3 = C.calcolaMese(LF({ magg: m({ straFest: '50' }) }), t1('2026-12-08', 'st', { da: '09:00', a: '18:00', pausa: 60 }), '2026-12');
+    expect(M3.E).toMatchObject({ stra: 120, fest: 0 }); expect(M3.lordo).toBe(1800);
+    const M4 = C.calcolaMese(LT({ oreMese: 16, magg: m({ straNott: '50' }) }), tre('M', 'M', 'N'), '2026-11');
+    expect(M4.T).toMatchObject({ stra: 8, nott: 8, straNott: 8 }); expect(M4.lordo).toBe(280);
+  });
+  test('M5-M8: campo vuoto come oggi, vince la percentuale più alta, straordinario di giorno, notte ordinaria', () => {
+    expect(C.calcolaMese(LF({ magg: m({ straNott: '50' }) }), t1('2026-11-08', 'st', { da: '09:00', a: '13:00' }), '2026-11').lordo).toBe(1742); // M5
+    const M6 = C.calcolaMese(LF({ magg: m({ straNott: '60', straFest: '50' }) }), t1('2026-12-08', 'st', { da: '22:00', a: '23:00' }), '2026-12');
+    expect(M6.E).toMatchObject({ stra: 16, nott: 0, fest: 0 }); expect(M6.lordo).toBe(1696);
+    expect(C.calcolaMese(LT({ magg: m({ straNott: '50' }) }), feriali, '2026-11').lordo).toBe(1700); // M7
+    const M8 = C.calcolaMese(LT({ oreMese: 16, magg: m({ straNott: '50' }) }), tre('N', 'M', 'M'), '2026-11');
+    expect(M8.T).toMatchObject({ stra: 8, nott: 8, straNott: 0 }); expect(M8.E.nott).toBe(16); expect(M8.lordo).toBe(276);
+  });
+  test('FP1-FP7: feste in settimana non lavorate pagate (dicembre 2026: 8/12 e 25/12)', () => {
+    const FP1 = C.calcolaMese(LF({ festePagate: true }), [], '2026-12'); expect(FP1.T).toMatchObject({ festePag: 16, lav: 168 }); expect(FP1.lordo).toBe(1840);
+    expect(C.calcolaMese(LF(), [], '2026-12').lordo).toBe(1680); // FP2
+    expect(C.calcolaMese(LF({ festePagate: true, paga: { tipo: 'mensile', importo: 1680, divisore: 168 } }), [], '2026-12').lordo).toBe(1680); // FP3
+    const FP3 = C.calcolaMese(LF({ festePagate: true, paga: { tipo: 'mensile', importo: 1680, divisore: 168 } }), [], '2026-12'); expect(FP3.T.festePag).toBe(0);
+    expect(C.calcolaMese(LF({ festePagate: true, paga: { tipo: 'giornaliera', importo: 80, divisore: 8 } }), [], '2026-12').lordo).toBe(1840); // FP4
+    expect(C.calcolaMese(LF({ festePagate: true }), t1('2026-12-08', 'st', { da: '09:00', a: '18:00', pausa: 60 }), '2026-12').lordo).toBe(1900); // FP5
+    const FP6 = C.calcolaMese(LT({ oreGiorno: '8', festePagate: true }), [], '2026-12'); expect(FP6.T).toMatchObject({ festePag: 16, lav: 0 }); expect(FP6.lordo).toBe(160);
+    const FP7 = C.calcolaMese(LT({ oreGiorno: '8', festePagate: true }), t1('2026-12-07', 'N'), '2026-12'); expect(FP7.lordo).toBe(256);
+    // fuori dalla soglia oreMese: con oreMese 8 e un turno di 8 ore il 9/12 niente straordinario
+    expect(C.calcolaMese(LT({ oreGiorno: '8', oreMese: 8, festePagate: true }), t1('2026-12-09', 'M'), '2026-12').T).toMatchObject({ stra: 0, festePag: 16 });
+    // turni senza "Ore di una giornata" né ore al mese: 0 ore e l'avviso
+    expect(C.calcolaMese(LT({ oreMese: '', festePagate: true }), [], '2026-12').T).toMatchObject({ festePag: 0, senzaOre: 2 });
+  });
+  test('domanda 9 (non cambiata): ferie senza ore in una festa a orario fisso, con le feste pagate accese', () => {
+    const spento = C.calcolaMese(LF(), t1('2026-12-08', 'fe'), '2026-12');
+    expect(spento.T).toMatchObject({ ferieOre: 8, festePag: 0 }); expect(spento.lordo).toBe(1760);
+    const acceso = C.calcolaMese(LF({ festePagate: true }), t1('2026-12-08', 'fe'), '2026-12');
+    expect(acceso.T).toMatchObject({ ferieOre: 8, festePag: 16 }); expect(acceso.lordo).toBe(1920); // la festa dell'8/12 pagata due volte (ferie + festa)
+  });
+});

@@ -100,23 +100,36 @@
     return {voci,fest,previsto:pv,annulla};
   }
 
+  // 24c.3 (R-MAGG-1 punto 3): un turno con l'orario diviso in pezzi; a orario fisso le parti fuori dall'orario previsto sono "fuori".
+  // La pausa si toglie prima dalla parte dentro l'orario, poi dalle altre.
+  function pezziTurno(s,e,pausa,pv){
+    if(!pv)return [{s,e,min:Math.max(0,e-s-pausa),fuori:false}];
+    const P=[];const a=Math.max(s,Math.min(e,pv.da)),b=Math.min(e,Math.max(s,pv.a));
+    if(a>s)P.push({s,e:a,fuori:true});if(b>a)P.push({s:a,e:b,fuori:false});if(e>b)P.push({s:b,e,fuori:true});
+    let p=pausa;for(const x of P.slice().sort((x,y)=>x.fuori-y.fuori)){const t=Math.min(p,x.e-x.s);x.min=x.e-x.s-t;p-=t;}
+    return P;
+  }
   // calcolo di un mese. turni = tutti i turni del lavoro (non eliminati)
   function calcolaMese(lv,turni,ym){
     const h=oraria(lv),P=lv.magg||{};const pS=pct(P.stra),pN=pct(P.nott),pF=pct(P.fest),pD=pct(P.dom);
+    const pSN=pct(P.straNott),pSF=pct(P.straFest);const speciali=pSN!=null||pSF!=null; // 24c.3 · D-120, R-MAGG-1 (04, tornata 33 §3)
+    const tipoPaga=(lv.paga||{}).tipo;const festePag=!!lv.festePagate&&(tipoPaga==='oraria'||tipoPaga==='giornaliera'); // 24c.3 · D-121, R-FESTE-1 (§4)
+    let straPay=0,exN=0,exF=0,exD=0,festeGg=0;
     const perData={};for(const t of turni)if(t.data&&t.data.startsWith(ym))(perData[t.data]=perData[t.data]||[]).push(t);
-    const T={giorniPag:0,giorniLav:0,lav:0,ord:0,stra:0,nott:0,fest:0,dom:0,pagate:0,ferie:0,ferieOre:0,perm:0,mal:0,nonretr:0,variab:0,senzaOre:0};
+    const T={giorniPag:0,giorniLav:0,lav:0,ord:0,stra:0,nott:0,fest:0,dom:0,pagate:0,ferie:0,ferieOre:0,perm:0,mal:0,nonretr:0,variab:0,senzaOre:0,straNott:0,straFest:0,festePag:0};
     const giorni=[];let cum=0;const soglia=lv.modo==='turni'?num(lv.oreMese):null;
     for(let d=1;d<=giorniDelMese(ym);d++){
       const iso=`${ym}-${pad(d)}`;const G=vociGiorno(lv,(perData[iso]||[]).filter(t=>!t.deleted),iso);
       let W=0,N=0,PG=0,senzaOre=false;const pvMin=G.previsto?G.previsto.min:0;
       const assParz=G.voci.filter(v=>v.ass&&v.ass.punto<=4).reduce((a,v)=>a+v.ass.ore*60,0);
+      const pezzi=[]; // 24c.3 (R-MAGG-1 punto 3): pezzi di lavoro del giorno, per sapere quali minuti sono straordinario e se sono di notte
       for(const v of G.voci){
-        if(v.implicito){const m=Math.max(0,pvMin-assParz);N+=Math.min(m,minNotte(lv,v.da,v.a));v.min=m;W+=m;continue;}
+        if(v.implicito){const m=Math.max(0,pvMin-assParz);N+=Math.min(m,minNotte(lv,v.da,v.a));v.min=m;W+=m;pezzi.push({s:v.da,e:v.a,min:m,fuori:false});continue;}
         if(LAVORO.includes(v.cat)){
           if(G.annulla){v.min=0;v.annullato=true;continue;} // D-110: c'è un'assenza della giornata intera
           let m=0;
-          if(v.da!=null&&v.a!=null){let e=v.a;if(e<=v.da)e+=1440;m=Math.max(0,e-v.da-(v.pausa||0));N+=Math.min(m,minNotte(lv,v.da,e));}
-          else if(v.ore!=null)m=v.ore*60;
+          if(v.da!=null&&v.a!=null){let e=v.a;if(e<=v.da)e+=1440;m=Math.max(0,e-v.da-(v.pausa||0));N+=Math.min(m,minNotte(lv,v.da,e));pezzi.push(...pezziTurno(v.da,e,v.pausa||0,lv.modo==='fisso'?G.previsto:null));}
+          else if(v.ore!=null){m=v.ore*60;pezzi.push({s:null,e:null,min:m,fuori:lv.modo==='fisso'&&!!v.aggiunta});}
           if(v.cat==='variabile')T.variab+=m/60;
           v.min=m;W+=m;
         } else if(PAGATE.includes(v.cat)||v.cat==='nonretr'){
@@ -130,10 +143,32 @@
       if(lv.modo==='fisso')S=Math.max(0,W-pvMin);
       else if(soglia!=null){const resto=Math.max(0,soglia*60-cum);S=Math.max(0,W-resto);}
       cum+=W;
+      // R-FESTE-1: festa in settimana non lavorata, pagata se il lavoro lo dice (solo paga oraria e a giornata)
+      if(festePag&&G.fest&&W===0){
+        let oreF=null;
+        if(lv.modo==='fisso'){const pf=previsto(lv,iso);if(pf)oreF=pf.min/60;}               // le ore dell'orario di quel giorno della settimana
+        else if(giornoSett(iso)<=5){const o=oreAssenza(lv,{},null,iso);oreF=o.ore;if(o.punto===8)senzaOre=true;} // turni: punti 6-8 di R-TURNI-1
+        if(oreF!=null){T.festePag+=oreF;festeGg++;}
+      }
       if(senzaOre)T.senzaOre++; // giorni con un'assenza contata 0 ore (punto 8): avviso nella pagina del mese
       if(W>0)T.giorniLav++;else if(PG)T.giorniPag++;
       T.lav+=W/60;T.stra+=S/60;T.ord+=(W-S)/60;T.nott+=N/60;
       if(G.fest&&W)T.fest+=W/60;else if(giornoSett(iso)===7&&W)T.dom+=W/60;
+      // R-MAGG-1: minuti di straordinario di notte (SN) e nei giorni di festa o di domenica
+      if(S>0){
+        const fuoriPrima=lv.modo==='fisso';const fine=p=>p.e==null?-Infinity:p.e;
+        const ordine=pezzi.slice().sort((a,b)=>fuoriPrima&&a.fuori!==b.fuori?(a.fuori?-1:1):fine(b)-fine(a));
+        let resto=S,SN=0;for(const p of ordine){const k=Math.min(resto,p.min);if(k<=0)continue;if(p.s!=null)SN+=Math.min(k,minNotte(lv,Math.max(p.s,p.e-k),p.e));resto-=k;}
+        SN=Math.min(SN,N,S);const fsd=G.fest?'f':giornoSett(iso)===7?'d':'';
+        T.straNott+=SN/60;if(fsd)T.straFest+=S/60;
+        const esclF=m=>{if(fsd==='f')exF+=m;else if(fsd==='d')exD+=m;};
+        let rA=pS||0,rB=pS||0; // rA: straordinario di notte, rB: straordinario di giorno
+        if(fsd&&pSN!=null&&pSF!=null){rA=Math.max(pSN,pSF);exN+=SN;esclF(SN);}
+        else if(pSN!=null){rA=pSN;exN+=SN;}
+        else if(fsd&&pSF!=null){rA=pSF;esclF(SN);}
+        if(fsd&&pSF!=null){rB=pSF;esclF(S-SN);}
+        straPay+=SN*(1+rA)+(S-SN)*(1+rB);
+      }
       giorni.push({data:iso,fest:G.fest,voci:G.voci,min:W,stra:S});
     }
     // soldi (solo se c'è la paga)
@@ -142,11 +177,13 @@
       if(lv.paga.tipo==='mensile')E.base=Math.max(0,num(lv.paga.importo)-T.nonretr*h);
       else if(lv.paga.tipo==='giornaliera')E.base=(T.giorniLav+T.giorniPag)*num(lv.paga.importo); // a giornata: ogni giorno lavorato o pagato vale la paga giornaliera
       else E.base=(T.ord+T.pagate)*h;
-      E.stra=T.stra*h*(1+(pS||0));E.nott=T.nott*h*(pN||0);E.fest=T.fest*h*(pF||0);E.dom=T.dom*h*(pD||0);
+      if(festePag){if(tipoPaga==='giornaliera')E.base+=festeGg*num(lv.paga.importo);else E.base+=T.festePag*h;} // R-FESTE-1 punto 5
+      if(!speciali){E.stra=T.stra*h*(1+(pS||0));E.nott=T.nott*h*(pN||0);E.fest=T.fest*h*(pF||0);E.dom=T.dom*h*(pD||0);} // campi vuoti: come prima
+      else{E.stra=straPay/60*h;E.nott=Math.max(0,T.nott-exN/60)*h*(pN||0);E.fest=Math.max(0,T.fest-exF/60)*h*(pF||0);E.dom=Math.max(0,T.dom-exD/60)*h*(pD||0);}
       for(const k in E)E[k]=r2(E[k]);lordo=r2(E.base+E.stra+E.nott+E.fest+E.dom);
     }
     for(const k in T)T[k]=Math.round(T[k]*100)/100;
-    return {ym,T,E,lordo,oraria:h==null?null:r2(h),giorni,magg:{stra:pS,nott:pN,fest:pF,dom:pD}};
+    return {ym,T,E,lordo,oraria:h==null?null:r2(h),giorni,magg:{stra:pS,nott:pN,fest:pF,dom:pD,straNott:pSN,straFest:pSF}};
   }
 
   // trattenute: quelle scritte nel lavoro, altrimenti dalla busta più recente con lordo e netto

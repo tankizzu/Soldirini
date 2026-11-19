@@ -227,7 +227,7 @@ for (const t of ['light', 'dark']) {
       expect(await hint('lt', 'ferie', '2026-11-06')).toBe('Lascia vuoto per contare una giornata intera. Prima scrivi le «Ore di una giornata» nel lavoro: senza, il giorno conta 0 ore.\n' + RIGA);
       expect(await hint('lt', 'lavoro', '2026-11-06')).toContain('Orario del tipo'); // turni di lavoro: come prima
       // tornata 32: quarta variante di 04 (provvisoria) quando il tipo ha già le ore o "dalle–alle"; il nome del tipo è testo dell'utente
-      const QUARTA = 'Lascia vuoto per contare le ore del tipo «Ferie <i>x</i>»: 7,5 ore. I turni di lavoro di questo giorno restano.';
+      const QUARTA = 'Lascia vuoto per usare le ore del tipo «Ferie <i>x</i>»: 7,5 ore. I turni di lavoro di questo giorno restano.';
       await page.evaluate(() => { const f = D().lavori.lt.tipi.find(x => x.cat === 'ferie'); f.nome = 'Ferie <i>x</i>'; f.ore = '7,5'; changed(); });
       expect(await hint('lt', 'ferie', '2026-11-06')).toBe(QUARTA);
       expect(await page.locator('#tuHint i').count()).toBe(0); await expect(page.locator('#tuOrari')).toBeVisible();
