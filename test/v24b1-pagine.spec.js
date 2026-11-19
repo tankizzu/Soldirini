@@ -11,7 +11,7 @@ async function telefono(browser, o = {}) { const d = await nuovoDispositivo(brow
 const vaiRie = async (page, ym = '2026-11', modo = 'mese') => { await page.evaluate(([ym, modo]) => { cur = ym; rieMode = modo; tab = 'rie'; render(); }, [ym, modo]);
   if (await page.locator('#heroDet').isHidden()) await page.locator('#rieTot .rim').click(); await expect(page.locator('#heroDet')).toBeVisible(); };
 
-// un lavoro, un progetto con un'attività di ottobre (375 €, 300 entrati il 05/11), tre uscite fisse, due spese a novembre
+// un lavoro, un progetto con un'attività di ottobre (375 €, 300 entrati il 05/11, 12 € di spese da rimborsare), tre uscite fisse, due spese a novembre
 const DATI = () => {
   const l = Stip15.nuovoLavoro('fisso'); l.nome = 'Reparto'; l.dal = '2026-09-01';
   for (const d of [1, 2, 3, 4, 5]) l.settimana[d] = { da: '09:00', a: '17:00', pausa: '60' };
@@ -21,7 +21,7 @@ const DATI = () => {
   D().spesePers = {}; for (const [d, i] of [['2026-11-04', 50], ['2026-11-12', 30]]) { const id = uid(); D().spesePers[id] = { id, data: d, cat: 'bar', importo: String(i), nota: '', created: 1, updatedAt: 1 }; }
   D().entrate = { 'v24|risposta': { risposta: 'no', updatedAt: 1 }, [`lav|${l.id}|2026-10`]: { entrato: true, data: '2026-11-10', importo: 1500, updatedAt: 1 } };
   const p = nuovoProgetto(); p.nome = 'Squadra'; p.ore.attivo = true; p.rimborso.attivo = true; D().progetti = { [p.id]: p }; const id = uid();
-  D().eventi = { [id]: { id, pid: p.id, data: '2026-10-12', tipo: 'altro', titolo: '', ore: true, fasce: [], fisso: '375', rimborso: false, spese: [], created: 1, updatedAt: 1 } };
+  D().eventi = { [id]: { id, pid: p.id, data: '2026-10-12', tipo: 'altro', titolo: '', ore: true, fasce: [], fisso: '375', rimborso: false, spese: [{ tipo: 'altro', importo: '12' }], created: 1, updatedAt: 1 } };
   changed();
 };
 const cella = (page, n) => page.locator('#heroDet > *').filter({ hasText: n });
@@ -63,7 +63,7 @@ test.describe('24b.1 · Riepilogo a pagine (D-098)', () => {
     await expect(p.locator('.testa small')).toHaveText('Rimborsi spese di ottobre');
     const rim = p.locator('#docList > details:visible');
     await expect(rim).toHaveCount(1); await expect(rim.locator('summary .st')).toHaveText('Squadra · rimborso spese');
-    await expect(rim).toHaveAttribute('open', '');
+    await expect(rim).not.toHaveAttribute('open', ''); // 24b.2 (D-099 punto 4): tutte le sezioni chiuse all'apertura
     // Ritenuta d'acconto: ore e ritenuta del progetto e il prospetto di tutti i progetti (prima in Documenti); niente rimborsi
     p = await vai('Ritenuta d’acconto', 'drit');
     expect(await p.locator('#docList > details:visible summary .st').allTextContents()).toEqual(['Squadra · ore e ritenuta', 'Ritenuta d\'acconto · tutti i progetti']);

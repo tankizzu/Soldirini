@@ -35,18 +35,18 @@ test.describe('A · sezioni chiuse a ogni apertura', () => {
     await accedi(page); await conLavoro(page, 'fisso', 'Ufficio di prova');
     // 24b.1 (D-098): le sezioni del lavoro sono nella pagina "Lavoro dipendente" del Riepilogo
     await page.click('nav [data-tab=rie]'); await page.evaluate(() => vaiA('dlav'));
-    // 24b.1 (02, Decisione 4): all'arrivo è aperta solo la scheda principale della pagina (il lavoro); le altre sezioni partono chiuse
+    // 24b.2 (D-099 punto 4): all'arrivo nella pagina tutte le sezioni sono chiuse, anche la principale
     await expect(page.locator('#v-dlav details.fold').first()).toBeVisible();
-    expect(await aperte(page, '#v-dlav')).toBe(1); await expect(page.locator('#rieLav > details').first()).toHaveAttribute('open', '');
-    await page.locator('#penLav details > summary').first().click();
-    expect(await aperte(page, '#v-dlav')).toBe(2);
+    expect(await aperte(page, '#v-dlav')).toBe(0);
+    await page.locator('#v-dlav details.fold > summary').first().click();
+    expect(await aperte(page, '#v-dlav')).toBe(1);
     await page.evaluate(() => render());
-    expect(await aperte(page, '#v-dlav')).toBe(2);
+    expect(await aperte(page, '#v-dlav')).toBe(1);
     // una vecchia memoria (versioni precedenti) viene tolta all'avvio
     await page.evaluate(() => { DB.meta.fold = { 'rie:x': true }; persist(); localStorage.setItem('soldirini-sez', '{"lav":true}'); });
     await page.reload(); await page.waitForFunction(() => typeof Pensione === 'object');
     await page.click('nav [data-tab=rie]'); await page.evaluate(() => vaiA('dlav'));
-    expect(await aperte(page, '#v-dlav')).toBe(1);
+    expect(await aperte(page, '#v-dlav')).toBe(0);
     expect(await page.evaluate(() => [DB.meta.fold ?? null, localStorage.getItem('soldirini-sez')])).toEqual([null, null]);
   });
 

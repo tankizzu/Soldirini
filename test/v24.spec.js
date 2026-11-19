@@ -11,6 +11,8 @@ const BASE_24CSP = '1e446a0';
 const pronto = page => page.waitForFunction(() => window.Entrate && window.Stip15 && window.FissaEv);
 async function telefono(browser, o = {}) { const d = await nuovoDispositivo(browser, { drive: new DriveFinto(), ora: OGGI, ...o }); await pronto(d.page); return d; }
 const vaiRie = (page, ym = '2026-11', modo = 'mese') => page.evaluate(([ym, modo]) => { cur = ym; rieMode = modo; tab = 'rie'; render(); }, [ym, modo]);
+// 24b.2: pagina di dettaglio del Riepilogo (stipendio in arrivo in Lavoro dipendente, D-099 punto 1)
+const vaiPag = (page, t, ym = '2026-11', modo = 'mese') => page.evaluate(([t, ym, modo]) => { cur = ym; rieMode = modo; tab = 'rie'; render(); vaiA(t); }, [t, ym, modo]);
 
 // dati con un lavoro (busta di ottobre 1.500), uscite fisse di esempio e due spese di novembre
 const DATI = () => {
@@ -53,21 +55,24 @@ test.describe('v24 · finestra "È entrato" e "In arrivo"', () => {
     await page.evaluate(() => { const l = Object.values(D().lavori)[0]; l.dal = '2026-08-01';
       D().buste[`${l.id}|2026-08`] = { lid: l.id, mese: '2026-08', lordo: '', trattenute: '', netto: '300', updatedAt: 1 }; changed(); });
     await vaiRie(page);
-    const box = page.locator('#rieIn .inarr');
+    // 24b.2 (D-099 punto 1): nel Riepilogo solo i compensi; stipendio e pensione in arrivo in cima alla pagina Lavoro dipendente
+    await expect(page.locator('#rieIn')).not.toContainText('Stipendio');
+    await vaiPag(page, 'dlav');
+    const box = page.locator('#lavIn .inarr');
     await expect(box.locator('.ir').filter({ hasText: 'Stipendio di novembre' })).toContainText('1480,00 € (stima)');
     await expect(box.locator('.ir').filter({ hasText: 'Stipendio di agosto' })).toContainText('⚠ Da più di 2 mesi: controlla se è entrato');
     await expect(box.locator('.ir').filter({ hasText: 'Stipendio di settembre' })).not.toContainText('⚠');
     await expect(box.locator('h3')).toContainText('non contati');
-    await vaiRie(page, '2026-12'); await expect(page.locator('#rieIn .inarr')).toHaveCount(0);
-    await expect(page.locator('#rieFix .kv span').filter({ hasText: 'Affitto' })).toContainText('addebito il 3');
-    await vaiRie(page, '2026-11', 'anno'); await expect(page.locator('#rieIn .inarr')).toHaveCount(0);
+    await vaiPag(page, 'dlav', '2026-12'); await expect(page.locator('#lavIn .inarr')).toHaveCount(0);
+    await vaiRie(page, '2026-12'); await expect(page.locator('#rieFix .kv span').filter({ hasText: 'Affitto' })).toContainText('addebito il 3');
+    await vaiPag(page, 'dlav', '2026-11', 'anno'); await expect(page.locator('#lavIn .inarr')).toHaveCount(0);
   });
 
   test('finestra: proposta dalla busta, data nel futuro rifiutata (T-S9), data insolita (T-S10), salva, "Non entrato" (T-S8), avviso busta diversa (T-S7)', async ({ browser }) => {
     const { page, errori } = await telefono(browser);
     const lid = await page.evaluate(DATI);
-    await vaiRie(page);
-    await page.locator('#rieIn .ir').filter({ hasText: 'Stipendio di ottobre' }).locator('button').click();
+    await vaiPag(page, 'dlav');
+    await page.locator('#lavIn .ir').filter({ hasText: 'Stipendio di ottobre' }).locator('button').click();
     const m = page.locator('#enModal');
     await expect(m.locator('#enTit')).toHaveText('Stipendio di ottobre');
     await expect(m.locator('#enImp')).toHaveValue('1500');
@@ -90,7 +95,7 @@ test.describe('v24 · finestra "È entrato" e "In arrivo"', () => {
     await m.locator('#enNo').click();
     await expect(page.locator('#toast')).toHaveText('Tolto: ora è tra quelli in arrivo.');
     expect(await page.evaluate(lid => [D().entrate[`lav|${lid}|2026-10`].entrato, contiMese('2026-11').lav.v], lid)).toEqual([false, 0]);
-    await expect(page.locator('#rieIn .ir').filter({ hasText: 'Stipendio di ottobre' })).toHaveCount(1);
+    await expect(page.locator('#lavIn .ir').filter({ hasText: 'Stipendio di ottobre' })).toHaveCount(1);
     expect(errori).toEqual([]);
   });
 
@@ -382,8 +387,8 @@ test.describe('v24 · primo avvio (E-10, D-051, D-071)', () => {
     await expect(page.locator('#dlgMsg')).toContainText('Segno come entrati', { timeout: 5000 });
     await page.getByRole('button', { name: 'No, li segno io' }).click();
     expect(await page.evaluate(lid => [contiMese('2026-10').lav.v, D().entrate[`lav|${lid}|2026-10`] ?? null, D().entrate['v24|risposta'].risposta], lid)).toEqual([0, null, 'no']);
-    await vaiRie(page);
-    await expect(page.locator('#rieIn .ir').filter({ hasText: 'Stipendio di ottobre' })).toContainText('1500,00 €');
+    await vaiPag(page, 'dlav');
+    await expect(page.locator('#lavIn .ir').filter({ hasText: 'Stipendio di ottobre' })).toContainText('1500,00 €');
   });
 });
 

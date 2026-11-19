@@ -324,7 +324,7 @@ function renderComm(){const box=$('tasComm');if(!box)return;const y=cur.slice(0,
 const _renderRie5=renderRiepilogo;
 renderRiepilogo=function(){
   _renderRie5();if(rieMode!=='anno')return;const y=cur.slice(0,4);const L=elencoPagamenti(y);
-  const card=`<div class="card" data-fid="elenco" data-sum="${L.length} voci"><h3>Elenco pagamenti ${y}</h3><p class="muted sm" style="margin-top:0">Ogni pagamento contato nel ${y}, con compensi e rimborsi separati. Tocca “Data” per correggere quando ti hanno pagato.</p>
+  const card=`<div class="card" data-fid="elenco" data-sum="${L.length===1?'1 voce':L.length+' voci'}"><h3>Elenco pagamenti ${y}</h3><p class="muted sm" style="margin-top:0">Ogni pagamento contato nel ${y}, con compensi e rimborsi separati. Tocca “Data” per correggere quando ti hanno pagato.</p>
     ${L.map(i=>`<div class="due" style="--c:${colOk(i.p.colore)}"><span class="bar"></span><span class="tx"><b>${esc(i.p.nome)} · ${i.tp==='o'?'compensi':'rimborso spese'} ${esc(monthName(i.ym))}</b><small>${quandoPag(i)}${i.tp==='o'?` · lordo ${eur(i.lordo)} · ritenuta ${eur(i.rit)}`:''}</small></span><b class="amt">${eur(i.tp==='o'?i.netto:i.rimb)}</b><button class="btn ghost sm" data-unpag="${esc(i.pid+"|"+i.ym+"|"+i.tp)}">Data</button></div>`).join('')||'<p class="muted">Nessun pagamento.</p>'}</div>`;
   $('rieAnno').insertAdjacentHTML('beforeend',card); // 24b.1 (D-098): nella pagina "Ancora da incassare", vista Anno
   foldify($('rieAnno'),'riea');

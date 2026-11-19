@@ -3,7 +3,7 @@
 // Calendario a schermo pieno: tocco = riepilogo del giorno, doppio tocco = nuova attività,
 // pressione lunga = selezione di più giorni. Documenti e Tasse sono sottopagine di Riepilogo.
 
-const APP_VERSIONE='24b.1';
+const APP_VERSIONE='24b.2';
 const SUB={tas:'rie'}; // sottopagina -> scheda madre
 // 24b.1 (D-098): pagine di dettaglio del Riepilogo, una per casella del riquadro (Documenti è dentro "Rimborsi spese")
 const PAG_RIE={dfx:'Uscite fisse',dsp:'Spese giornaliere',dlav:'Lavoro dipendente',drim:'Rimborsi spese',drit:'Ritenuta d’acconto',dinc:'Ancora da incassare'};
@@ -43,13 +43,7 @@ new MutationObserver(docPerPagina).observe($('docList'),{childList:true});
 // la docList va nella pagina aperta (prima del contenitore dei mesi o del segnaposto)
 function spostaDoc(){const L=$('docList');if(!L)return;if(tab==='drim'&&L.parentElement.id!=='v-drim')$('rieMesi').before(L);
   if(tab==='drit'&&L.parentElement.id!=='v-drit'){$('v-drit').querySelector('.docposto').before(L);}}
-// scheda principale aperta all'arrivo nella pagina (02, Decisione 4: consiglio); le altre sezioni restano chiuse (D-010)
-const PRINC={dfx:'#rieFix>details',dlav:'#rieLav>details',pen:'#riePen>details',dinc:'#rieInc>details:first-child',
-  drim:'#docList>details:not([hidden])',drit:'#docList>details:not([hidden])'};
-let entrata='';
-function apriPrincipale(){if(entrata===tab)return;entrata=tab;const q=PRINC[tab];if(!q)return;
-  document.querySelectorAll('#v-'+tab+' '+q).forEach(d=>{if(tab==='drit'&&!/ore e ritenuta$/.test(d.querySelector('summary .st')?.textContent.trim()||''))return;
-    if(tab==='drim'&&!/rimborso spese$/.test(d.querySelector('summary .st')?.textContent.trim()||''))return;d.open=true;});}
+// 24b.2 (D-099 punto 4): aprendo una pagina tutte le sezioni sono chiuse, anche la principale (D-010); niente più apriPrincipale
 window.apriSezione=(dentro,titolo)=>{requestAnimationFrame(()=>{const d=[...document.querySelectorAll(dentro+' details')].find(x=>x.querySelector('summary .st')?.textContent.startsWith(titolo));if(d){d.open=true;d.scrollIntoView({block:'start'});}});};
 render=function(){
   if(tab==='doc')tab='drim'; // nome vecchio della pagina Documenti
@@ -62,8 +56,7 @@ render=function(){
     const t=TESTA[tab],V=window.VALORI_RIE||{},ora=today().slice(0,7);
     const fino=anno&&+y===+ora.slice(0,4)?MESI[(V.mesi||+ora.slice(5))-1]:'';
     const box=$('v-'+tab).querySelector('.testa');if(box&&t)box.innerHTML=`<span class="ic" aria-hidden="true">${t[0]}</span><div><small>${t[1](m,anno,y,fino)}</small><b>${eur(V[tab]||0)}</b></div>`;
-    apriPrincipale();
-  }else entrata='';
+  }
   // 02 (Decisione 2, consiglio): il pulsante Pensione resta solo per chi non ha né lavoro dipendente né profilo pensione
   const bp=document.querySelector('#v-rie .subnav [data-goto="pen"]');if(bp)bp.hidden=!!((typeof lavori==='function'&&lavori().length)||(window.Pensione&&Pensione.profilo()));
   if(SUB[tab])document.querySelector(`.tabs button[data-tab="${SUB[tab]}"]`)?.classList.add('on');

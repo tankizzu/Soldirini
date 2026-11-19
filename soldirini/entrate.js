@@ -122,16 +122,22 @@ function provenienza(v){const f=v.pr.fonte;const i=v.pr.imp!=null?eur(v.pr.imp):
   if(f==='lordo')return 'Solo il lordo: scrivi il netto';if(f==='calcolo')return i;return '';}
 
 // ---------- scheda "In arrivo" sotto i soldi rimanenti (E-7) ----------
-function renderInArrivo(){let box=$('rieIn');const tot=$('rieTot');if(!tot)return;
-  if(!box){box=document.createElement('div');box.id='rieIn';box.className='cards';}
-  if(tot.nextElementSibling!==box)tot.after(box);
-  const ora=ymOra();if(rieMode==='anno'||cur!==ora){box.innerHTML='';return;}
-  const L=voci(ora).filter(v=>!v.ent&&(v.pr.imp!=null||v.pr.fonte==='lordo')).sort((a,b)=>a.ym.localeCompare(b.ym)||a.titolo.localeCompare(b.titolo));
-  if(!L.length){box.innerHTML='';return;}
-  const tot$=r2(L.reduce((a,v)=>a+(v.pr.imp||0),0));
-  box.innerHTML=`<div class="card inarr"><h3>In arrivo <span class="muted sm">${eur(tot$)} · non contati</span></h3>`+L.map(v=>{const vecchia=mesiTra(v.ym,ora)>2;
+// 24b.2 (D-099 punto 1): nel Riepilogo solo i compensi dei progetti, in una scheda nello stile di Tasse e Risparmi;
+// stipendio e pensione in arrivo in cima alle pagine Lavoro dipendente e Pensione (stesse righe, stesso "È entrato")
+function righeInArrivo(L,ora){return L.map(v=>{const vecchia=mesiTra(v.ym,ora)>2;
     const det=[esc(v.fonteNome),v.pr.imp!=null?eur(v.pr.imp)+(v.pr.fonte==='stima'?' (stima)':''):'importo da scrivere',v.tipo==='prog'&&v.previsto?'previsti a '+esc(MESE(v.previsto)):''].filter(Boolean).join(' · ');
-    return `<div class="ir${vecchia?' old':''}"><span class="tx"><b>${esc(v.titolo)}</b><small>${det}</small>${vecchia?'<small class="w">⚠ Da più di 2 mesi: controlla se è entrato</small>':''}</span><button type="button" class="btn sm" data-en="${esc(v.key)}">${v.tipo==='pen'?'È entrata':v.tipo==='prog'?'Entrati':'È entrato'}</button></div>`;}).join('')+'</div>';}
+    return `<div class="ir${vecchia?' old':''}"><span class="tx"><b>${esc(v.titolo)}</b><small>${det}</small>${vecchia?'<small class="w">⚠ Da più di 2 mesi: controlla se è entrato</small>':''}</span><button type="button" class="btn sm" data-en="${esc(v.key)}">${v.tipo==='pen'?'È entrata':v.tipo==='prog'?'Entrati':'È entrato'}</button></div>`;}).join('');}
+function contenitore(id,dove){let box=$(id);if(!dove)return box;if(!box){box=document.createElement('div');box.id=id;box.className='cards';}if(dove.previousElementSibling!==box)dove.before(box);return box;}
+function renderInArrivo(){
+  const tot=$('rieTot');if(!tot)return;
+  let box=$('rieIn');if(!box){box=document.createElement('div');box.id='rieIn';box.className='cards';}
+  if(tot.nextElementSibling!==box)tot.after(box);
+  const lav=contenitore('lavIn',$('rieLav')),pen=contenitore('penIn',$('riePen'));
+  const ora=ymOra();const tutte=rieMode==='anno'||cur!==ora?[]:voci(ora).filter(v=>!v.ent&&(v.pr.imp!=null||v.pr.fonte==='lordo')).sort((a,b)=>a.ym.localeCompare(b.ym)||a.titolo.localeCompare(b.titolo));
+  const di=t=>tutte.filter(v=>v.tipo===t),somma=L=>eur(r2(L.reduce((a,v)=>a+(v.pr.imp||0),0)));
+  const P=di('prog');
+  box.innerHTML=P.length?`<div class="card inarr insub"><div class="inhead"><span class="ico" aria-hidden="true">⏳</span><span class="tx"><b>Compensi non ancora entrati</b><small>${somma(P)} · non contati nei soldi rimanenti</small></span></div>${righeInArrivo(P,ora)}</div>`:'';
+  for(const [b,L] of [[lav,di('lav')],[pen,di('pen')]])if(b)b.innerHTML=L.length?`<div class="card inarr"><h3>In arrivo <span class="muted sm">${somma(L)} · non contati</span></h3>${righeInArrivo(L,ora)}</div>`:'';}
 
 // ---------- primo avvio della v24 (E-10, D-051, D-071) ----------
 // una sola volta per apertura dell'app, alla prima occasione (avvio o prima sincronizzazione): mai a metà dell'uso

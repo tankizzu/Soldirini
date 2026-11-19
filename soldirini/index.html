@@ -343,10 +343,13 @@ body.nascondi :is(.hero b,.hero .rim b,.kv b,details.fold>summary .sum,#daySum b
 .hero.aperto .hchev{transform:rotate(180deg)}
 @media (prefers-reduced-motion:reduce){.hero .hchev{transition:none}}
 .hero .heroDet{display:contents}.hero .heroDet[hidden]{display:none}
-.hero .heroDet>div{background:rgba(255,255,255,.1);border-radius:11px;padding:9px 10px;min-height:58px;justify-content:center}
-.hero .heroDet>div small{font-size:12.5px;opacity:.88}.hero .heroDet>div b{font-size:16px;font-variant-numeric:tabular-nums}.hero .heroDet>div small.nota{font-size:11.5px;opacity:.8;margin-top:2px}
+/* 24b.2: le stesse regole valgono per le caselle-pulsante (nella 24b.1 i pulsanti avevano il fondo chiaro del navigatore: testo bianco su grigio chiaro) */
+.hero .heroDet>:is(div,button.hcel){display:flex;flex-direction:column;align-items:flex-start;background:rgba(255,255,255,.1);border-radius:11px;padding:9px 10px;min-height:58px;justify-content:center}
+.hero .heroDet>:is(div,button) small{font-size:12.5px;opacity:.88}.hero .heroDet>:is(div,button) b{font-size:16px;font-variant-numeric:tabular-nums}.hero .heroDet>:is(div,button) small.nota{font-size:11.5px;opacity:.8;margin-top:2px}
 .hero .heroDet>.lungo{grid-column:1/-1}
 @media(max-width:699px){.hero .heroDet>.dispari{grid-column:1/-1}}
+/* 24b.2 (D-101): "Mi dispiace che non hai entrate" al posto delle caselle delle entrate (stile provvisorio: aspetta il mockup di 02) */
+.hero .heroDet>.hnone{grid-column:1/-1;margin:0;padding:12px 10px;border-radius:11px;background:rgba(255,255,255,.06);border:1px dashed rgba(255,255,255,.22);text-align:center;font-weight:650;font-size:14.5px}
 .fxr{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px dashed var(--line)}.fxr .tx{flex:1;display:flex;flex-direction:column;min-width:0}.fxr small{color:var(--mut)}
 .obp{margin:10px 0}.obp .bar{height:10px;border-radius:10px;background:var(--line);overflow:hidden;margin:6px 0}.obp .bar span{display:block;height:100%;background:#2f9e44;border-radius:10px;transition:width .5s ease}
 .rbars{display:grid;grid-template-columns:repeat(12,1fr);gap:4px;align-items:end;height:140px;margin:10px 0 4px}.rbar{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:3px}.rbar span{width:100%;border-radius:6px 6px 2px 2px;background:#2f9e44;min-height:2px;transition:height .5s ease}.rbar span.neg{background:#e8590c}.rbar small{font-size:10px;color:var(--mut)}
@@ -363,6 +366,7 @@ body.nascondi .hero small.det{filter:blur(6px)}
 .hero .heroDet:not([hidden])>*:nth-child(n+3){animation-delay:calc(40ms*var(--t))}.hero .heroDet:not([hidden])>*:nth-child(n+5){animation-delay:calc(80ms*var(--t))}.hero .heroDet:not([hidden])>*:nth-child(n+7){animation-delay:calc(120ms*var(--t))}
 /* 02 (tornata 23 §4): parti che passano da nascoste a visibili senza <details> compaiono con la stessa animazione delle sezioni */
 :is(#fxFineBox,#fxFineNota,#tmPrima,#tmAvv,#vcSum,#vcAvv,#vcNota,#vcDrive,#vcRigaBox):not([hidden]){animation:apri calc(280ms*var(--t)) cubic-bezier(.2,.8,.2,1)}
+tr.trvai{cursor:pointer}tr.trvai:hover td,tr.trvai:focus-visible td{background:color-mix(in srgb,var(--mut) 10%,transparent)}tr.trvai:focus-visible{outline:2px solid var(--pri);outline-offset:-2px}
 .mesi .mrow{display:flex;align-items:center;gap:8px;width:100%;padding:8px 0;border:0;border-bottom:1px dashed var(--line);background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;min-height:44px}.mesi .mrow:last-child{border-bottom:0}.mesi .mrow .tx{flex:1;display:flex;flex-direction:column}.mesi .mrow small{color:var(--mut)}.mesi .mrow::after{content:"›";content:"›"/"";color:var(--mut);font-size:20px}
 .pgsez{margin:18px 2px 8px;font-size:15px}
 .pagrie .monthbar h2{text-transform:none} /* 24b.1: i titoli delle pagine si scrivono come nel riquadro ("Ritenuta d’acconto") */
@@ -452,7 +456,10 @@ nav.tabs button.on{color:color-mix(in srgb,var(--sez) var(--tabmix),var(--ink))}
 .csptab{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}.csptab th,.csptab td{text-align:left;padding:4px 6px;border-bottom:1px solid var(--line);vertical-align:top}.csptab td:first-child{white-space:nowrap}.csptab td:last-child{overflow-wrap:anywhere}
 /* v24 (D-009): voci "In arrivo", righe di stato "In attesa / ✓ Entrato", finestra "È entrato" */
 .hero .rim small.dm{display:block;font-size:11.5px;margin-top:-2px}.hero .rim small.hl{display:block;opacity:.85;border-top:1px solid rgba(255,255,255,.18);margin-top:6px;padding-top:6px}.hero .rim small.hl+small.hl{border:0;margin-top:0;padding-top:2px}
-.inarr h3{display:flex;justify-content:space-between;align-items:baseline;gap:8px}.inarr .ir{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px dashed var(--line)}.inarr .ir:last-child{border:0}
+.inarr h3{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+/* 24b.2 (D-099 punto 1): compensi non ancora entrati nello stile dei pulsanti Tasse e Risparmi (provvisorio: aspetta il mockup di 02) */
+.insub .inhead{display:flex;align-items:center;gap:14px;margin-bottom:4px}.insub .inhead .ico{width:46px;height:46px;border-radius:12px;display:grid;place-items:center;flex:none;background:#776a52;font-size:22px}
+.insub .inhead .tx{display:flex;flex-direction:column;min-width:0}.insub .inhead .tx b{font-size:16px}.insub .inhead .tx small{color:var(--mut);font-size:13px}.inarr .ir{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px dashed var(--line)}.inarr .ir:last-child{border:0}
 .ir .tx,.enst .tx{flex:1;display:flex;flex-direction:column;font-size:14px;min-width:0}.ir .tx small,.enst .tx small{color:var(--mut)}.ir small.w{color:var(--warn);font-weight:700}
 .enst{display:flex;align-items:center;gap:8px;width:100%;padding:8px 0;margin-top:6px;border-top:1px dashed var(--line);background:none;border-left:0;border-right:0;border-bottom:0;color:var(--ink);font:inherit;text-align:left;min-height:44px}
 button.enst{cursor:pointer}.enst b{white-space:nowrap}.enst.ok .tx{color:var(--ok)}

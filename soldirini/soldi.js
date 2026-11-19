@@ -53,15 +53,21 @@ renderRiepilogo=function(){_renderRie18();
     return pag?`<button type="button" class="${k}" data-vai="${pag}">${dentro}<span class="vh">, apri la pagina${/lungo/.test(k)?' Uscite fisse':''}</span></button>`:`<div class="${k}">${dentro}</div>`;}});
   // vista Anno: resta "somma dei mesi da gennaio a …"; vista Mese senza "del mese" (D-085)
   const ora=today().slice(0,7);const sotto=!anno?'':+y<+ora.slice(0,4)?'somma dei mesi da gennaio a dicembre':+y===+ora.slice(0,4)?`somma dei mesi da gennaio a ${MESI[C.mesi-1]}`:'l’anno non è ancora iniziato';
-  // 24.2b: ordine e testi di 02 (report 02-ux-riquadro-riducibile §1); le regole su quando compare ogni casella restano quelle di prima
-  const caselle=[fissi().length?cella('Uscite fisse',eur(C.fTot),'','','dfx'):null,
-    C.sp||!anno?cella('Spese giornaliere',eur(C.sp),'','','dsp'):null,
-    lavori().length?cella('Lavoro dipendente',eur(lavV),'','','dlav'):null,
-    penV||(window.Pensione&&Pensione.profilo())?cella('Pensione',eur(penV),'','','pen'):null,
-    anno?cella('Incassato dai progetti',eur(r2(tot.netto+tot.rimb)),'','','dinc'):null, // 02 (Decisione 3, consiglio): "Mese per mese (incassi)"
-    cella('Rimborsi spese',eur(tot.rimb),'','','drim'),cella('Ritenuta d’acconto',eur(tot.rit),'','','drit'),cella('Ancora da incassare',eur(daInc),'','','dinc')].filter(Boolean);
+  // 24b.2 (D-101): una casella compare solo se nel periodo mostrato ha un valore diverso da zero o qualcosa da mostrare
+  // (stessa regola per tutte; per Lavoro dipendente e Pensione conta anche la voce del periodo: busta, cedolino, stima
+  // o stipendio/pensione in arrivo, che stanno nella loro pagina). I calcoli non cambiano.
+  const conVoce=tipo=>{if(!window.Entrate)return false;const fino=anno?(+y<+ora.slice(0,4)?y+'-12':ora):(cur<ora?cur:ora);
+    return Entrate.voci(fino).some(v=>v.tipo===tipo&&(anno?v.ym.startsWith(y+'-'):v.ym===cur||(cur===ora&&!v.ent)));};
+  const uscite=[C.fTot?cella('Uscite fisse',eur(C.fTot),'','','dfx'):null,C.sp?cella('Spese giornaliere',eur(C.sp),'','','dsp'):null].filter(Boolean);
+  const entrate=[lavV||(lavori().length&&conVoce('lav'))?cella('Lavoro dipendente',eur(lavV),'','','dlav'):null,
+    penV||conVoce('pen')?cella('Pensione',eur(penV),'','','pen'):null,
+    anno&&r2(tot.netto+tot.rimb)?cella('Incassato dai progetti',eur(r2(tot.netto+tot.rimb)),'','','dinc'):null, // 02 (Decisione 3): "Mese per mese (incassi)"
+    tot.rimb?cella('Rimborsi spese',eur(tot.rimb),'','','drim'):null,tot.rit?cella('Ritenuta d’acconto',eur(tot.rit),'','','drit'):null,daInc?cella('Ancora da incassare',eur(daInc),'','','dinc'):null].filter(Boolean);
+  const caselle=uscite.concat(entrate);
+  // D-101: nessuna entrata nel periodo e nessuna casella delle entrate → la frase dell'utente (testo e stile provvisori, mockup di 02)
+  const nessuna=!C.entrate&&!entrate.length?'<p class="hnone" role="note"><span aria-hidden="true">🙁</span> Mi dispiace che non hai entrate</p>':'';
   // con due colonne, se l'ultima casella resta sola occupa tutta la larghezza (classe "dispari")
-  const det=caselle.map((c,i)=>c.h(i===caselle.length-1&&caselle.length%2?'dispari':'')).join('')+
+  const det=caselle.map((c,i)=>c.h(i===caselle.length-1&&caselle.length%2?'dispari':'')).join('')+nessuna+
     (anno&&C.fResto?cella('Uscite fisse ancora da addebitare entro dicembre',eur(C.fResto),'lungo','Non contate nei soldi rimanenti: dicembre non è ancora iniziato.','dfx').h():'');
   // D-092: anche nella vista Anno il titolo è "Soldi rimanenti"; sotto zero il segno è "−" (02)
   const imp=eur(C.rimanenti).replace(/^-/,'−');

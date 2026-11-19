@@ -50,17 +50,19 @@ test.describe('24.2 · riquadro del Riepilogo riducibile (D-085)', () => {
     await expect(rim).toHaveAttribute('aria-expanded', 'true');
     await expect(rim.locator('.vh')).toHaveText(', dettagli');
     expect(await rim.evaluate(b => b.getAttribute('aria-label'))).toBeNull(); // il nome letto è il testo visibile
-    expect(await caselle(page)).toEqual(['Uscite fisse', 'Spese giornaliere', 'Lavoro dipendente', 'Rimborsi spese', 'Ritenuta d’acconto', 'Ancora da incassare']);
+    // 24b.2 (D-101): solo le caselle con un valore nel mese (a novembre niente rimborsi, ritenuta e compensi da incassare)
+    expect(await caselle(page)).toEqual(['Uscite fisse', 'Spese giornaliere', 'Lavoro dipendente']);
+    await expect(page.locator('#heroDet .hnone')).toHaveCount(0);
     await expect(det.locator('> *').nth(0).locator('b')).toHaveText('570,00 €');
     await expect(det.locator('> *').nth(1).locator('b')).toHaveText('80,00 €');
     await expect(hero).not.toContainText('Lavorato nei progetti');
     // "Uscite fisse" e "Spese giornaliere" grandi come "Lavoro dipendente"
     const dim = await page.evaluate(() => [...document.querySelectorAll('#heroDet > *')].map(d => [getComputedStyle(d.querySelector('b')).fontSize, Math.round(d.getBoundingClientRect().height)]));
     expect(new Set(dim.map(d => d[0])).size).toBe(1);
-    expect(dim[0]).toEqual(dim[2]); expect(dim[1]).toEqual(dim[2]);
+    expect(dim[0]).toEqual(dim[1]); expect(dim[2][0]).toBe(dim[0][0]); // 24b.2: con 3 caselle la terza è su tutta la riga (dispari)
     // 24b.1 (D-098 punto 3): ogni casella porta alla sua pagina di dettaglio, con "‹ Riepilogo"
     const pagine = await page.evaluate(() => [...document.querySelectorAll('#heroDet > *')].map(c => [c.tagName, c.dataset.vai]));
-    expect(pagine).toEqual([['BUTTON', 'dfx'], ['BUTTON', 'dsp'], ['BUTTON', 'dlav'], ['BUTTON', 'drim'], ['BUTTON', 'drit'], ['BUTTON', 'dinc']]);
+    expect(pagine).toEqual([['BUTTON', 'dfx'], ['BUTTON', 'dsp'], ['BUTTON', 'dlav']]);
     await det.locator('> *').nth(2).click();
     await expect(page.locator('#v-dlav')).toBeVisible(); await expect(page.locator('#v-rie')).toBeHidden();
     await expect(page.locator('#v-dlav h2')).toHaveText('Lavoro dipendente'); await expect(page.locator('#v-dlav .pgper')).toHaveText('novembre 2026');
@@ -91,7 +93,7 @@ test.describe('24.2 · riquadro del Riepilogo riducibile (D-085)', () => {
     await expect(rim.locator('.dm')).toHaveText('somma dei mesi da gennaio a novembre');
     await expect(page.locator('#heroDet')).toBeHidden();
     await rim.click();
-    expect(await caselle(page)).toEqual(['Uscite fisse', 'Spese giornaliere', 'Lavoro dipendente', 'Incassato dai progetti', 'Rimborsi spese', 'Ritenuta d’acconto', 'Ancora da incassare', 'Uscite fisse ancora da addebitare entro dicembre']);
+    expect(await caselle(page)).toEqual(['Uscite fisse', 'Spese giornaliere', 'Lavoro dipendente', 'Incassato dai progetti', 'Ritenuta d’acconto', 'Uscite fisse ancora da addebitare entro dicembre']); // 24b.2 (D-101): niente rimborsi nell'anno
     await expect(page.locator('#heroDet > .lungo small.nota')).toHaveText('Non contate nei soldi rimanenti: dicembre non è ancora iniziato.');
     await expect(page.locator('#heroDet > .lungo b')).toHaveText('570,00 €');
     expect(errori).toEqual([]);
@@ -107,12 +109,18 @@ test.describe('24.2 · riquadro del Riepilogo riducibile (D-085)', () => {
     await expect(rim.locator('b')).toHaveText('−90,00 €'); // segno "−" (02)
     expect(await rim.locator('b').evaluate(b => getComputedStyle(b).color)).toBe('rgb(255, 180, 171)'); // #ffb4ab
     await rim.click();
-    expect(await caselle(page)).toEqual(['Spese giornaliere', 'Rimborsi spese', 'Ritenuta d’acconto', 'Ancora da incassare']);
-    // numero pari di caselle: nessuna su tutta la larghezza; con un lavoro diventano 5 e l'ultima occupa tutta la riga (02)
-    await expect(page.locator('#heroDet > .dispari')).toHaveCount(0);
-    await page.evaluate(() => { const l = Stip15.nuovoLavoro('fisso'); l.nome = 'Reparto'; D().lavori = { [l.id]: l }; changed(); render(); }); // resta aperto
-    const w = await page.evaluate(() => { const c = [...document.querySelectorAll('#heroDet > *')]; return [c.length, c.at(-1).classList.contains('dispari'), Math.round(c.at(-1).getBoundingClientRect().width), Math.round(c[0].getBoundingClientRect().width)]; });
-    expect(w[0]).toBe(5); expect(w[1]).toBe(true); expect(w[2]).toBeGreaterThan(w[3] * 1.8);
+    // 24b.2 (D-101): nessuna entrata → solo le spese e la frase dell'utente al posto delle caselle delle entrate
+    expect(await caselle(page)).toEqual(['Spese giornaliere']);
+    await expect(page.locator('#heroDet .hnone')).toHaveText('🙁 Mi dispiace che non hai entrate');
+    // una casella sola (dispari) occupa tutta la riga, come la frase (02)
+    const w = await page.evaluate(() => { const c = [...document.querySelectorAll('#heroDet > *')]; return [c.length, c[0].classList.contains('dispari'), Math.round(c[0].getBoundingClientRect().width), Math.round(c[1].getBoundingClientRect().width)]; });
+    expect(w).toEqual([2, true, w[3], w[3]]);
+    // con un compenso da incassare la frase sparisce (c'è una casella delle entrate) e il calcolo non cambia
+    await page.evaluate(() => { const p = nuovoProgetto(); p.nome = 'Squadra'; p.ore.attivo = true; D().progetti = { [p.id]: p }; const id = uid();
+      D().eventi = { [id]: { id, pid: p.id, data: '2026-11-02', tipo: 'altro', titolo: '', ore: true, fasce: [], fisso: '100', rimborso: false, spese: [], created: 1, updatedAt: 1 } }; changed(); render(); });
+    expect(await caselle(page)).toEqual(['Spese giornaliere', 'Ritenuta d’acconto', 'Ancora da incassare']);
+    await expect(page.locator('#heroDet .hnone')).toHaveCount(0);
+    await expect(rim.locator('b')).toHaveText('−90,00 €');
     expect(errori).toEqual([]);
   });
 });

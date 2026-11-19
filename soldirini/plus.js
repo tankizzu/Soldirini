@@ -263,7 +263,7 @@ renderRiepilogo=function(){
   if(rieMode==='anno'){
     let rows='';const T={rimb:0,lordo:0,rit:0,netto:0};
     for(let m=1;m<=12;m++){const ym=`${y}-${pad(m)}`;const r=A.mesi[m-1];if(!r.n)continue;for(const k in T)T[k]=r2(T[k]+r[k]);
-      rows+=`<tr><td>${MESI[m-1]}</td><td>${eur(r.rimb)}</td><td>${eur(r.lordo)}</td><td>${eur(r.rit)}</td><td>${eur(r.netto)}</td><td><b>${eur(r2(r.netto+r.rimb))}</b></td></tr>`;}
+      rows+=`<tr data-ym="${ym}" class="trvai" tabindex="0" aria-label="${MESI[m-1]}: apri il mese"><td>${MESI[m-1]}</td><td>${eur(r.rimb)}</td><td>${eur(r.lordo)}</td><td>${eur(r.rit)}</td><td>${eur(r.netto)}</td><td><b>${eur(r2(r.netto+r.rimb))}</b></td></tr>`;}
     // 24b.1 (D-098, 02 §3): grafico e mese per mese vanno in "Ancora da incassare" (vista Anno); soglie e commercialista in Tasse (commHtml)
     extra=graficoAnno(y,A.mesi)+
       (rows?`<div class="card" data-sum="${eur(r2(T.netto+T.rimb))}"><h3>Mese per mese (incassi)</h3><div class="tw"><table class="tab"><thead><tr><th>Mese</th><th>Rimborsi</th><th>Lordo</th><th>Ritenuta</th><th>Netto</th><th>Totale</th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td>Totale</td><td>${eur(T.rimb)}</td><td>${eur(T.lordo)}</td><td>${eur(T.rit)}</td><td>${eur(T.netto)}</td><td>${eur(r2(T.netto+T.rimb))}</td></tr></tfoot></table></div></div>`:'');

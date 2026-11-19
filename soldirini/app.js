@@ -798,7 +798,10 @@ function bind(){
   $('evSave').onclick=e=>saveEv(e);$('evDel').onclick=e=>delEv(e);$('evDup').onclick=e=>dupEv(e);
   // riepilogo
   $('rieSeg').addEventListener('click',e=>{const b=e.target.closest('[data-m]');if(b){rieMode=b.dataset.m;render();}});
-  $('rieAnno').addEventListener('click',e=>{const r=e.target.closest('tr[data-ym]');if(r){cur=r.dataset.ym;rieMode='mese';render();}});
+  // 24b.2: "Mese per mese (incassi)": il tocco (o Invio) su una riga porta a quel mese, nella stessa pagina
+  const vaiMese=r=>{cur=r.dataset.ym;rieMode='mese';render();scrollTo(0,0);};
+  $('rieAnno').addEventListener('click',e=>{const r=e.target.closest('tr[data-ym]');if(r)vaiMese(r);});
+  $('rieAnno').addEventListener('keydown',e=>{const r=e.target.closest('tr[data-ym]');if(r&&(e.key==='Enter'||e.key===' ')){e.preventDefault();vaiMese(r);}});
   // documenti
   $('docList').addEventListener('click',e=>{const b=e.target.closest('[data-pdf]');if(b)pdfRimborso(b.dataset.pdf,cur);if(e.target.closest('[data-pdfore]'))pdfOre(cur);});
   $('docList').addEventListener('change',e=>{const t=e.target;if(t.dataset.x==null)return;saveExtra(t.closest('[data-pid]').dataset.pid,t.dataset.x,t.value);renderDocSoft();});

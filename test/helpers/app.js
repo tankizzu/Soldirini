@@ -60,7 +60,11 @@ async function sincronizza(page) {
 }
 
 // Primo accesso con Google finto: crea la cartella su Drive e sincronizza.
+// 24b.2: prima si aspetta la libreria di Google (finta), che arriva per conto suo. Su GitHub, più lento, il tocco arrivava
+// prima e login() rispondeva "Google non è ancora pronto": la finestra della cartella non compariva (sync.spec.js:12, 18/11).
+const googlePronto = page => page.waitForFunction(() => !!(window.google && google.accounts && google.accounts.oauth2), null, { timeout: 20000 });
 async function accedi(page) {
+  await googlePronto(page);
   await page.click('#loginW');
   await page.waitForSelector('#setup:not([hidden])');
   await page.click('#setupMy');
@@ -69,6 +73,7 @@ async function accedi(page) {
 
 // Accesso su un secondo dispositivo, quando su Drive c'è già il file dati.
 async function accediEsistente(page) {
+  await googlePronto(page);
   await page.click('#loginW');
   await aspettaSync(page);
 }
