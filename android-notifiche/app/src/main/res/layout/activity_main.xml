@@ -9,6 +9,7 @@
     android:padding="@dimen/margine">
 
     <LinearLayout
+        android:id="@+id/colonna"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical">
@@ -22,16 +23,43 @@
             android:textSize="24sp"
             android:textStyle="bold" />
 
-        <TextView
+        <!-- Spiegazione: sopra finché l'accesso non è attivo, poi in fondo (02, tornata 27 §5) -->
+        <LinearLayout
+            android:id="@+id/spiegazione"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="@string/spiegazione"
-            android:textColor="@color/mut"
-            android:textSize="14sp" />
+            android:layout_marginTop="12dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:accessibilityHeading="true"
+                android:text="@string/spiegazione_titolo"
+                android:textColor="@color/ink"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/spiegazione"
+                android:textColor="@color/mut"
+                android:textSize="14sp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/spiegazione2"
+                android:textColor="@color/mut"
+                android:textSize="14sp" />
+        </LinearLayout>
 
         <!-- Stato del permesso -->
         <LinearLayout
+            android:id="@+id/stato"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
@@ -46,22 +74,41 @@
                 android:orientation="horizontal">
 
                 <TextView
-                    android:layout_width="0dp"
+                    android:id="@+id/stato_pallino"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
+                    android:layout_marginEnd="8dp"
+                    android:importantForAccessibility="no"
+                    android:text="●"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
                     android:text="@string/stato_etichetta"
                     android:textColor="@color/ink"
                     android:textSize="16sp" />
 
                 <TextView
                     android:id="@+id/stato_valore"
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_marginStart="6dp"
                     android:layout_height="wrap_content"
                     android:accessibilityLiveRegion="polite"
                     android:textColor="@color/mut"
                     android:textSize="16sp"
                     android:textStyle="bold" />
             </LinearLayout>
+
+            <TextView
+                android:id="@+id/stato_nota"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/stato_nota"
+                android:textColor="@color/mut"
+                android:textSize="14sp" />
 
             <Button
                 android:id="@+id/apri_impostazioni"
@@ -102,6 +149,12 @@
         </LinearLayout>
 
         <!-- Elenco delle spese -->
+        <LinearLayout
+            android:id="@+id/blocco_elenco"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
         <TextView
             android:id="@+id/titolo_elenco"
             android:layout_width="match_parent"
@@ -137,13 +190,14 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:background="@drawable/pulsante_bordo"
+            android:background="@drawable/pulsante_ghost"
             android:minHeight="48dp"
             android:stateListAnimator="@null"
             android:text="@string/cancella"
             android:textAllCaps="false"
-            android:textColor="@color/err"
+            android:textColor="@color/ink"
             android:textSize="16sp"
             android:textStyle="bold" />
+        </LinearLayout>
     </LinearLayout>
 </ScrollView>

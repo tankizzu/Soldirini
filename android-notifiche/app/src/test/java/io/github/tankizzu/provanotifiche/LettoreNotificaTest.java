@@ -94,13 +94,28 @@ public class LettoreNotificaTest {
         assertEquals(-1, LettoreNotifica.centesimi("1000000.00"));
     }
 
+    // A4 di 03: un esercente oltre 80 caratteri o con un "a capo" vuol dire che il formato è cambiato → "non riconosciuta"
     @Test
     public void esercenteLunghissimo() {
         StringBuilder b = new StringBuilder();
         for (int i = 0; i < 30; i++) b.append("ESEMPIO ");
-        LettoreNotifica.Spesa s = LettoreNotifica.leggi(T, testo("1.00", b.toString().trim()));
+        assertNull(LettoreNotifica.leggi(T, testo("1.00", b.toString().trim())));
+        String ottanta = "BAR ESEMPIO " + "X".repeat(LettoreNotifica.MASSIMO_ESERCENTE - 12);
+        assertEquals(80, ottanta.length());
+        LettoreNotifica.Spesa s = LettoreNotifica.leggi(T, testo("1.00", ottanta));
         assertNotNull(s);
-        assertEquals(true, s.esercente.length() <= LettoreNotifica.MASSIMO_ESERCENTE);
+        assertEquals(ottanta, s.esercente);
+        assertNull(LettoreNotifica.leggi(T, testo("1.00", ottanta + "X")));
+    }
+
+    @Test
+    public void esercenteConACapo() {
+        assertNull(LettoreNotifica.leggi(T, testo("5.50", "BAR ESEMPIO\nVia Finta 1")));
+        assertNull(LettoreNotifica.leggi(T, testo("5.50", "BAR ESEMPIO\r\nALTRO TESTO")));
+        // l'"a capo" tra le parti del testo, fuori dall'esercente, va bene
+        LettoreNotifica.Spesa s = LettoreNotifica.leggi(T, "Operazione autorizzata: 5.50 euro,\nBAR ESEMPIO.\nNon sei stato tu? Blocca subito la carta.");
+        assertNotNull(s);
+        assertEquals("BAR ESEMPIO", s.esercente);
     }
 
     @Test

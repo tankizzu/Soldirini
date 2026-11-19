@@ -20,8 +20,9 @@ public final class LettoreNotifica {
 
     public static final String TITOLO = "Pagamento carta di debito";
 
+    // Tra le parti va bene qualsiasi spazio, anche un "a capo"; dentro l'esercente no (A4 di 03).
     private static final Pattern TESTO = Pattern.compile(
-            "^Operazione autorizzata: ([0-9][0-9.,]*) euro, (.+?)\\. Non sei stato tu\\? Blocca subito la carta\\.?$");
+            "^Operazione autorizzata:\\s+([0-9][0-9.,]*)\\s+euro,\\s+([^\\n]+?)\\.\\s+Non sei stato tu\\?\\s+Blocca subito la carta\\.?$");
 
     // Importi accettati. Con due cifre finali dopo il separatore, quel separatore è quello dei decimali;
     // l'altro, se c'è, separa le migliaia a gruppi di tre. Tutto il resto è ambiguo e non viene letto.
@@ -31,7 +32,7 @@ public final class LettoreNotifica {
 
     /** Massimo accettato: 999.999,99 €. Oltre è quasi certamente una lettura sbagliata. */
     static final long MASSIMO_CENTESIMI = 99_999_999L;
-    /** Lunghezza massima dell'esercente salvato. */
+    /** Esercente più lungo di così: il formato non è quello noto e la riga è "non riconosciuta" (A4 di 03). */
     static final int MASSIMO_ESERCENTE = 80;
 
     /** Spesa riconosciuta. */
@@ -51,7 +52,7 @@ public final class LettoreNotifica {
      * @return la spesa, oppure null se il formato non è quello noto
      */
     public static Spesa leggi(CharSequence titolo, CharSequence... testi) {
-        if (!TITOLO.equals(pulisci(titolo))) return null;
+        if (!TITOLO.equals(pulisci(titolo).replace('\n', ' '))) return null;
         if (testi == null) return null;
         for (CharSequence t : testi) {
             Spesa s = leggiTesto(pulisci(t));
@@ -67,8 +68,7 @@ public final class LettoreNotifica {
         long cent = centesimi(m.group(1));
         if (cent <= 0) return null;
         String esercente = m.group(2).trim();
-        if (esercente.isEmpty()) return null;
-        if (esercente.length() > MASSIMO_ESERCENTE) esercente = esercente.substring(0, MASSIMO_ESERCENTE).trim();
+        if (esercente.isEmpty() || esercente.length() > MASSIMO_ESERCENTE) return null; // niente tagli: se è troppo lungo non si salva
         return new Spesa(cent, esercente);
     }
 
@@ -94,10 +94,11 @@ public final class LettoreNotifica {
         return cent > MASSIMO_CENTESIMI ? -1 : cent;
     }
 
-    /** Spazi di ogni tipo (anche a capo e spazi non separabili) diventano uno spazio solo; null diventa "". */
+    /** Gli spazi (anche quelli non separabili) diventano uno spazio solo; un gruppo di spazi con un "a capo" diventa un "a capo". null diventa "". */
     static String pulisci(CharSequence s) {
         if (s == null) return "";
-        return s.toString().replaceAll("[\\s\\u00A0\\u2007\\u202F]+", " ").trim();
+        String t = s.toString().replace("\r", "\n").replaceAll("[\\s\\u00A0\\u2007\\u202F&&[^\\n]]+", " ");
+        return t.replaceAll(" ?\\n[\\s\\u00A0\\u2007\\u202F]*", "\n").trim();
     }
 
     /** "1.234,50 €" */

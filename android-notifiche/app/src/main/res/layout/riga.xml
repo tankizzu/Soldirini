@@ -37,6 +37,17 @@
                 android:importantForAccessibility="no"
                 android:textColor="@color/mut"
                 android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/riga_nota"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:importantForAccessibility="no"
+                android:text="@string/non_riconosciuta_nota"
+                android:textColor="@color/mut"
+                android:textSize="13sp"
+                android:visibility="gone" />
         </LinearLayout>
 
         <TextView

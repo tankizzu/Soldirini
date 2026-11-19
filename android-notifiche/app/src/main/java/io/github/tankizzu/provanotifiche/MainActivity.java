@@ -36,6 +36,13 @@ public class MainActivity extends Activity {
     private LinearLayout elenco;
     private TextView vuoto;
     private Button cancella;
+    private Button apri;
+    private TextView pallino;
+    private TextView statoNota;
+    private LinearLayout colonna;
+    private View spiegazione;
+    private View stato;
+    private View bloccoElenco;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,7 +54,14 @@ public class MainActivity extends Activity {
         elenco = findViewById(R.id.elenco);
         vuoto = findViewById(R.id.vuoto);
         cancella = findViewById(R.id.cancella);
-        findViewById(R.id.apri_impostazioni).setOnClickListener(v -> apriImpostazioni());
+        apri = findViewById(R.id.apri_impostazioni);
+        pallino = findViewById(R.id.stato_pallino);
+        statoNota = findViewById(R.id.stato_nota);
+        colonna = findViewById(R.id.colonna);
+        spiegazione = findViewById(R.id.spiegazione);
+        stato = findViewById(R.id.stato);
+        bloccoElenco = findViewById(R.id.blocco_elenco);
+        apri.setOnClickListener(v -> apriImpostazioni());
         cancella.setOnClickListener(v -> chiediCancella());
         bordiDelloSchermo();
     }
@@ -64,6 +78,12 @@ public class MainActivity extends Activity {
         boolean attivo = accessoAttivo();
         statoValore.setText(attivo ? R.string.stato_attivo : R.string.stato_non_attivo);
         statoValore.setTextColor(getColor(attivo ? R.color.ok : R.color.err));
+        pallino.setTextColor(getColor(attivo ? R.color.ok : R.color.err));
+        statoNota.setVisibility(attivo ? View.GONE : View.VISIBLE);
+        // 02 (tornata 27 §5): pulsante pieno finché l'accesso non è attivo, poi a bordo
+        apri.setBackgroundResource(attivo ? R.drawable.pulsante_contorno : R.drawable.pulsante);
+        apri.setTextColor(getColor(attivo ? R.color.pri : R.color.pri_ink));
+        ordina(attivo);
         // accesso dato ma servizio scollegato (per esempio fermato dal risparmio energetico): chiede ad Android di ricollegarlo
         if (attivo && !Ascoltatore.collegato) NotificationListenerService.requestRebind(componente());
         mostraIng();
@@ -74,6 +94,15 @@ public class MainActivity extends Activity {
     protected void onStop() {
         Archivio.smettiDiAscoltare(aggiorna);
         super.onStop();
+    }
+
+    /** Ordine dei blocchi (02): senza accesso spiegazione, stato, elenco; con l'accesso stato, elenco e la spiegazione in fondo. */
+    private void ordina(boolean attivo) {
+        View[] ordine = attivo ? new View[] {stato, bloccoElenco, spiegazione} : new View[] {spiegazione, stato, bloccoElenco};
+        for (View v : ordine) {
+            colonna.removeView(v);
+            colonna.addView(v);
+        }
     }
 
     private ComponentName componente() {
@@ -150,9 +179,10 @@ public class MainActivity extends Activity {
                 v.setContentDescription(getString(R.string.riga_letta, LettoreNotifica.formattaImporto(r.centesimi), r.esercente, data));
             } else {
                 nome.setText(R.string.non_riconosciuta);
-                nome.setTextColor(getColor(R.color.mut));
+                nome.setTextColor(getColor(R.color.err));
                 importo.setText("");
-                v.setContentDescription(getString(R.string.non_riconosciuta) + ", " + data);
+                v.findViewById(R.id.riga_nota).setVisibility(View.VISIBLE);
+                v.setContentDescription(getString(R.string.non_riconosciuta) + ", " + data + ". " + getString(R.string.non_riconosciuta_nota));
             }
             if (i == righe.size() - 1) v.findViewById(R.id.riga_linea).setVisibility(View.GONE);
             elenco.addView(v);
@@ -160,12 +190,14 @@ public class MainActivity extends Activity {
     }
 
     private void chiediCancella() {
-        new AlertDialog.Builder(this)
+        AlertDialog d = new AlertDialog.Builder(this)
                 .setTitle(R.string.cancella_titolo)
                 .setMessage(R.string.cancella_testo)
                 .setNegativeButton(R.string.annulla, null)
-                .setPositiveButton(R.string.cancella_conferma, (d, w) -> Archivio.cancellaTutto(this))
+                .setPositiveButton(R.string.cancella_conferma, (x, w) -> Archivio.cancellaTutto(this))
                 .show();
+        Button rosso = d.getButton(AlertDialog.BUTTON_POSITIVE); // [Cancella] rosso (02)
+        if (rosso != null) rosso.setTextColor(getColor(R.color.err));
     }
 
     /** Da Android 15 l'app disegna sotto le barre di sistema: si lascia lo spazio delle barre. */

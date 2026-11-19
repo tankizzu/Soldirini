@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pulsante "ghost" come nel mockup di 02 (tornata 27, telefono 9): bordo sottile, testo normale -->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android" android:color="@color/tocco">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/card" />
+            <stroke android:width="1dp" android:color="@color/line" />
+            <corners android:radius="@dimen/raggio_pulsante" />
+        </shape>
+    </item>
+</ripple>
