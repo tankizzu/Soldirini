@@ -266,3 +266,23 @@ test.describe('libro dei casi di 04 · ore e paga (F1-F12, T1-T10)', () => {
     const T10 = C.calcolaMese(LT(), t1('2026-11-03', 'V', { ore: 5 }), '2026-11'); expect(T10.T).toMatchObject({ lav: 5, variab: 5 }); expect(T10.lordo).toBe(50);
   });
 });
+
+// 24c.2 (D-118): a turni Permesso e Assenza non pagata senza ore valgono le "Ore di una giornata", come ferie e malattia
+test.describe('D-118: Permesso e Assenza non pagata senza ore, lavoro a turni', () => {
+  const tipi = TIPI.concat([{ id: 'NR', nome: 'Assenza non pagata', cat: 'nonretr', pausa: '', ore: '' }]);
+  const lv = (x = {}) => lavoro(Object.assign({ oreGiorno: '8', tipi }, x));
+  test('permesso senza ore = 8 ore, annulla il turno del giorno, saldo permessi −8', () => {
+    const M = C.calcolaMese(lv(), [turno('2026-11-04', 'M'), turno('2026-11-04', 'Pe')], '2026-11');
+    expect(M.T).toMatchObject({ lav: 0, perm: 8, pagate: 8, senzaOre: 0 }); expect(M.lordo).toBe(80);
+    expect(C.saldi(lv({ perm: { unita: 'ore', anno: '72' } }), [turno('2026-11-04', 'Pe')], {}, '2026-11').rol.saldo).toBe(64);
+    expect(C.saldi(lv({ perm: { unita: 'giorni', anno: '9' } }), [turno('2026-11-04', 'Pe')], {}, '2026-11').rol.saldo).toBe(8);
+  });
+  test('assenza non pagata senza ore: paga oraria 0 €, paga mensile −1 giornata; senza "Ore di una giornata" 0 ore e avviso', () => {
+    const O = C.calcolaMese(lv(), [turno('2026-11-04', 'M'), turno('2026-11-04', 'NR')], '2026-11');
+    expect(O.T).toMatchObject({ lav: 0, nonretr: 8 }); expect(O.lordo).toBe(0);
+    const Me = C.calcolaMese(lv({ paga: { tipo: 'mensile', importo: 1680, divisore: 168 } }), [turno('2026-11-04', 'NR')], '2026-11');
+    expect(Me.T.nonretr).toBe(8); expect(Me.E.base).toBe(1600);
+    const vuoto = C.calcolaMese(lv({ oreGiorno: '', oreMese: '' }), [turno('2026-11-04', 'Pe'), turno('2026-11-05', 'NR')], '2026-11');
+    expect(vuoto.T).toMatchObject({ perm: 0, nonretr: 0, senzaOre: 2 });
+  });
+});

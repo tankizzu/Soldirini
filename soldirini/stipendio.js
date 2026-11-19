@@ -167,7 +167,9 @@ function renderTurniGiorno(d){
       <div class="tuchips">${l.tipi.map(t=>`<button class="chip" style="--c:${colOk(t.colore||l.colore)}" data-tuq="${esc(l.id)}|${esc(t.id)}">${esc((t.icona?t.icona+' ':'')+t.nome)}</button>`).join('')}<button class="chip" data-tuq="${esc(l.id)}|">Altro…</button>${l.modo==='turni'?`<button class="chip" data-ftopen="${esc(l.id)}">📷 Da foto</button>`:''}</div></div>`;}).join('');
 }
 // un tocco su un tipo: lo metto nel giorno (se servono le ore, apro la finestra)
-function serveOre(t){return !t||((t.cat==='variabile'||t.cat==='permesso'||t.aggiunta||t.cat==='nonretr')&&!(t.da&&t.a)&&t.ore==='');}
+// D-118: a turni Permesso e Assenza non pagata si salvano anche senza ore (valgono le "Ore di una giornata", come ferie e malattia)
+function serveOre(t,l){if(t&&l&&l.modo==='turni'&&(t.cat==='permesso'||t.cat==='nonretr'))return false;
+  return !t||((t.cat==='variabile'||t.cat==='permesso'||t.aggiunta||t.cat==='nonretr')&&!(t.da&&t.a)&&t.ore==='');}
 function metti(lid,date,tipoId,extra={}){
   const l=lav(lid);const t=C.tipoDi(l,tipoId);const now=Date.now();
   for(const d of date){
@@ -192,7 +194,7 @@ function apriTurno(dates,lid,turno){
 // 24c.1 (02, tornata 30 §3): sotto le ore di un'assenza, a turni. HTML con soli numeri e mese (nessun testo dell'utente)
 const oreTesto=n=>String(r2(n)).replace('.',',');
 function testoAssenza(l,t,ym,attivita){ // attivita: testo di Nuova attività (02, tornata 31 §3: "Lascia vuote le ore…")
-  if(!l||l.modo!=='turni'||!t||!(C.PAGATE.includes(t.cat)||t.cat==='nonretr')||serveOre(t))return null; // permesso e assenza non pagata senza ore: le ore restano obbligatorie (decisione in attesa)
+  if(!l||l.modo!=='turni'||!t||!(C.PAGATE.includes(t.cat)||t.cat==='nonretr')||serveOre(t,l))return null;
   const fisso='Se scrivi le ore o «dalle–alle», conta solo quella parte e i turni di lavoro restano.';
   const lv=attivita?'Lascia vuote le ore':'Lascia vuoto';
   // quarta variante (04, tornata 31 §2; provvisoria, 02 può ritoccarla): il tipo ha già le ore o "dalle–alle" (punti 3-4 di R-TURNI-1)
@@ -202,19 +204,19 @@ function testoAssenza(l,t,ym,attivita){ // attivita: testo di Nuova attività (0
   if(om>0){const g=C.giorniLavorativi(ym,C.parseLocali(l.locali));if(g)return `${lv} per contare una giornata intera: <b>${oreTesto(om/g)} ore</b> a ${MESI[+ym.slice(5,7)-1]}, calcolate dalle ore al mese del lavoro. In quel caso i turni di lavoro di questo giorno non contano.<br>${fisso}`;}
   return `${lv} per contare una giornata intera. Prima scrivi le «Ore di una giornata» nel lavoro: senza, il giorno conta 0 ore.<br>${fisso}`;
 }
-window.testoAssenza=testoAssenza;
+window.testoAssenza=testoAssenza;window.serveOre=serveOre; // usati anche da Nuova attività (attivita.js)
 function renderTuTipi(){const l=lav(tu.lid);
   $('tuTipi').innerHTML=l.tipi.map(t=>`<button type="button" class="chip ${tu.tipo===t.id?'on':''}" style="--c:${colOk(t.colore||l.colore)}" data-tut="${esc(t.id)}">${esc((t.icona?t.icona+' ':'')+t.nome)}</button>`).join('')+`<button type="button" class="chip ${tu.tipo===null?'on':''}" data-tut="">Orario diverso</button>`;
-  const t=C.tipoDi(l,tu.tipo);const ass=!serveOre(t)?testoAssenza(l,t,tu.dates[0].slice(0,7)):null;
+  const t=C.tipoDi(l,tu.tipo);const ass=!serveOre(t,l)?testoAssenza(l,t,tu.dates[0].slice(0,7)):null;
   $('tuOrari').hidden=!ass&&!!t&&!!(t.da&&t.a)&&t.cat!=='lavoro'&&!t.aggiunta; // a turni l'assenza con "dalle–alle" nel tipo mostra i campi: "Lascia vuoto" deve avere un campo
   if(ass){$('tuHint').innerHTML=ass;return;}
-  $('tuHint').textContent=!t?'Scrivi l’orario di questo giorno: sostituisce quello abituale.':t.da&&t.a?`Orario del tipo: ${t.da}–${t.a}. Cambialo qui solo se quel giorno è diverso.`:serveOre(t)?'Scrivi le ore (oppure dalle–alle).':C.PAGATE.includes(t.cat)||t.cat==='nonretr'?'Lascia vuoto per contare l’orario abituale del giorno.':'';
+  $('tuHint').textContent=!t?'Scrivi l’orario di questo giorno: sostituisce quello abituale.':t.da&&t.a?`Orario del tipo: ${t.da}–${t.a}. Cambialo qui solo se quel giorno è diverso.`:serveOre(t,l)?'Scrivi le ore (oppure dalle–alle).':C.PAGATE.includes(t.cat)||t.cat==='nonretr'?'Lascia vuoto per contare l’orario abituale del giorno.':'';
 }
 function salvaTurno(){
   const extra={da:$('tuDa').value,a:$('tuA').value,pausa:$('tuPausa').value.trim(),ore:$('tuOre').value.trim(),nota:$('tuNota').value.trim()};
   const l=lav(tu.lid),t=C.tipoDi(l,tu.tipo);
   if(!t&&!(extra.da&&extra.a)&&!extra.ore){toast('Scrivi l’orario (dalle–alle) o le ore.','err');return;}
-  if(t&&serveOre(t)&&!(extra.da&&extra.a)&&!extra.ore){toast('Scrivi quante ore (oppure dalle–alle).','err');return;}
+  if(t&&serveOre(t,l)&&!(extra.da&&extra.a)&&!extra.ore){toast('Scrivi quante ore (oppure dalle–alle).','err');return;}
   if(tu.id){const x=TUR()[tu.id];Object.assign(x,extra,{tipo:tu.tipo||null,lid:tu.lid,updatedAt:Date.now()});changed();}
   else metti(tu.lid,tu.dates,tu.tipo,extra);
   chiudi('tuModal');if(multi)esciMulti();render();if(!$('dayModal').hidden)renderTurniGiorno(selDay);toast(tu.dates.length>1?`Turno messo in ${tu.dates.length} giorni.`:'Turno salvato.');
@@ -234,7 +236,7 @@ function cardMese(l,ym){
   const E=M.E;const voce=(t,v)=>v?kv(t,eur(v)):'';
   const sal=[saldi.ferie?`Ferie: ${nOre(saldi.ferie.saldo)} ${saldi.ferie.unita}`:'',saldi.rol?`Permessi: ${nOre(saldi.rol.saldo)} ${saldi.rol.unita}`:'',saldi.exfest?`Ex festività: ${nOre(saldi.exfest.saldo)} ${saldi.exfest.unita}`:''].filter(Boolean);
   const diff=busta&&M.lordo!=null&&busta.lordo!==''?r2(+busta.lordo-M.lordo):null;
-  return `<div class="card lavcard" data-lavcard="${esc(l.id)}" style="--c:${colOk(l.colore)}"><h3><i></i>${esc(l.nome)} <small class="muted">· lavoro dipendente</small></h3>
+  return `<div class="card lavcard" data-lavcard="${esc(l.id)}" style="--c:${colOk(l.colore)}"><h3><i></i><span>${esc(l.nome)} <small class="muted">· lavoro dipendente</small></span></h3>
     ${kv('Giorni lavorati',T.giorniLav)}${kv('Ore',ore.join(' · ')||'0')}${ass.length?kv('Assenze',ass.join(' · ')):''}
     ${M.lordo!=null?`${voce('Paga base',E.base)}${voce('Straordinari',E.stra)}${voce('Notturno',E.nott)}${voce('Festivi',E.fest)}${voce('Domeniche',E.dom)}
       <div class="kv big"><span>Lordo stimato</span><b>${eur(M.lordo)}</b></div>${netto!=null?`<div class="kv"><span>Netto stimato</span><b>${eur(netto)}</b></div><p class="muted sm">Trattenute ${nf(tr.p*100,1)}% ${tr.fonte==='busta'?'ricavate dalla busta di '+esc(monthName(tr.mese)):'impostate nel lavoro'}.</p>`:'<p class="muted sm">Carica una busta paga per stimare anche il netto.</p>'}
@@ -497,7 +499,7 @@ function bind15(){
     for(const d of [2,3,4,5]){const x=document.querySelector(`#lvSett .srow[data-d="${d}"]`);for(const k of ['da','a','pausa'])x.querySelector(`[data-k=${k}]`).value=v(k);}};
   // giorno
   $('dayBox').addEventListener('click',e=>{const q=e.target.closest('[data-tuq]');if(q){const [lid,tid]=q.dataset.tuq.split('|');const l=lav(lid);const t=C.tipoDi(l,tid);
-      if(!tid||serveOre(t)){apriTurno([selDay],lid);tu.tipo=tid||null;renderTuTipi();return;}
+      if(!tid||serveOre(t,l)){apriTurno([selDay],lid);tu.tipo=tid||null;renderTuTipi();return;}
       metti(lid,[selDay],tid);render();renderTurniGiorno(selDay);toast((t.icona?t.icona+' ':'')+t.nome+' segnato.');return;}
     const ed=e.target.closest('[data-tued]');if(ed){const [lid,id]=ed.dataset.tued.split('|');apriTurno([TUR()[id].data],lid,TUR()[id]);}});
   // più giorni

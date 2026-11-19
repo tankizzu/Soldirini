@@ -27,7 +27,8 @@ const $=id=>document.getElementById(id);
 const pad=n=>String(n).padStart(2,'0');
 const ymd=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 const parseYmd=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d);};
-const eur=n=>Number(n||0).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+// 24c.2 (D-106): punto delle migliaia anche sotto 10.000 ("1.500,00 €"): in italiano il navigatore lo mette solo da 10.000
+const eur=n=>Number(n||0).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2,useGrouping:'always'})+' €';
 const nf=(n,d=2)=>Number(n||0).toLocaleString('it-IT',{maximumFractionDigits:d});
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 // v24c (V7 di 03): valori dei dati negli attributi. Numeri: solo se sono numeri; date: solo AAAA-MM-GG; immagini: solo JPEG, PNG o WebP in base64

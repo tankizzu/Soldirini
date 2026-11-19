@@ -35,8 +35,8 @@ test.describe('24.2 · riquadro del Riepilogo riducibile (D-085)', () => {
     await expect(rim.locator('.tit')).toHaveText('Soldi rimanenti');
     await expect(rim).not.toContainText('del mese');
     await expect(rim).not.toContainText(':');
-    await expect(rim.locator('b')).toHaveText('1150,00 €');
-    await expect(rim.locator('.det')).toHaveText('Entrate 1800,00 € · Uscite 650,00 €');
+    await expect(rim.locator('b')).toHaveText('1.150,00 €');
+    await expect(rim.locator('.det')).toHaveText('Entrate 1.800,00 € · Uscite 650,00 €');
     await expect(det).toBeHidden();
     await expect(rim).toHaveAttribute('aria-expanded', 'false');
     await expect(rim).toHaveAttribute('aria-controls', 'heroDet');

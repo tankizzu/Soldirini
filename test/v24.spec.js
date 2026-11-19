@@ -37,8 +37,8 @@ test.describe('v24 · finestra "È entrato" e "In arrivo"', () => {
     const rim = page.locator('#rieTot .hero .rim');
     await expect(rim.locator('.tit')).toHaveText('Soldi rimanenti');
     await expect(rim.locator('.dm')).toHaveCount(0);
-    await expect(rim.locator('b')).toHaveText('1150,00 €');
-    await expect(rim.locator('.det')).toHaveText('Entrate 1800,00 € · Uscite 650,00 €');
+    await expect(rim.locator('b')).toHaveText('1.150,00 €');
+    await expect(rim.locator('.det')).toHaveText('Entrate 1.800,00 € · Uscite 650,00 €');
     await rim.click();
     // 24c.1 (4b): prima le entrate, poi Spese giornaliere e Uscite fisse in fondo
     await expect(page.locator('#heroDet > *').nth(-2)).toHaveText('Spese giornaliere80,00 €, apri la pagina');
@@ -61,7 +61,7 @@ test.describe('v24 · finestra "È entrato" e "In arrivo"', () => {
     await vaiPag(page, 'dlav');
     const box = page.locator('#lavIn .inarr');
     const nov = box.locator('.ir').filter({ hasText: 'Stipendio di novembre' });
-    await expect(nov.locator('.imp')).toHaveText('1480,00 €'); await expect(nov.locator('small').first()).toHaveText(/ · stima$/); // 24c.1: importo a destra, "· stima" sotto
+    await expect(nov.locator('.imp')).toHaveText('1.480,00 €'); await expect(nov.locator('small').first()).toHaveText(/ · stima$/); // 24c.1: importo a destra, "· stima" sotto
     await expect(box.locator('.ir').filter({ hasText: 'Stipendio di agosto' })).toContainText('⚠ Da più di 2 mesi: controlla se è entrato');
     await expect(box.locator('.ir').filter({ hasText: 'Stipendio di settembre' })).not.toContainText('⚠');
     await expect(box.locator('h3')).toHaveText('In arrivo · non contato nei soldi rimanenti');
@@ -92,7 +92,7 @@ test.describe('v24 · finestra "È entrato" e "In arrivo"', () => {
     expect(await page.evaluate(lid => [D().entrate[`lav|${lid}|2026-10`], contiMese('2026-11').lav.v], lid)).toEqual([expect.objectContaining({ entrato: true, data: '2026-11-10', importo: 1452 }), 1452]);
     // T-S7: la busta dice 1.500, segnato 1.452
     await page.evaluate(lid => Entrate.apri(`lav|${lid}|2026-10`), lid);
-    await expect(m.locator('#enImpAvv')).toHaveText('⚠ La busta dice 1500,00 €. Conta quello che hai scritto: correggilo se serve.');
+    await expect(m.locator('#enImpAvv')).toHaveText('⚠ La busta dice 1.500,00 €. Conta quello che hai scritto: correggilo se serve.');
     await expect(m.locator('#enNo')).toBeVisible();
     await m.locator('#enNo').click();
     await expect(page.locator('#toast')).toHaveText('Tolto: ora è tra quelli in arrivo.');
@@ -390,7 +390,7 @@ test.describe('v24 · primo avvio (E-10, D-051, D-071)', () => {
     await page.getByRole('button', { name: 'No, li segno io' }).click();
     expect(await page.evaluate(lid => [contiMese('2026-10').lav.v, D().entrate[`lav|${lid}|2026-10`] ?? null, D().entrate['v24|risposta'].risposta], lid)).toEqual([0, null, 'no']);
     await vaiPag(page, 'dlav');
-    await expect(page.locator('#lavIn .ir').filter({ hasText: 'Stipendio di ottobre' })).toContainText('1500,00 €');
+    await expect(page.locator('#lavIn .ir').filter({ hasText: 'Stipendio di ottobre' })).toContainText('1.500,00 €');
   });
 });
 

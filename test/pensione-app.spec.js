@@ -279,7 +279,7 @@ test('fondo pensione: limite 5.300 €, oltre il limite, risparmio "stima", redd
   await expect(page.locator('#fpReddito')).toHaveValue('30000');
   await expect(page.locator('#fpRedDc')).toBeVisible();
   await page.fill('#fpPropri', '1200'); await page.fill('#fpDatore', '600'); await page.fill('#fpTfr', '1800');
-  await expect(page.locator('#fpLive')).toContainText('Deducibile 1800,00 € su 5300,00 €');
+  await expect(page.locator('#fpLive')).toContainText('Deducibile 1.800,00 € su 5.300,00 €');
   await expect(page.locator('#fpLive')).toContainText('Risparmio stimato 594,00 €');
   await page.fill('#fpPropri', '5000'); await page.fill('#fpDatore', '800');
   await expect(page.locator('#fpLive .warn')).toHaveText('500,00 € oltre il limite: non si deducono. Comunicalo al tuo fondo.');

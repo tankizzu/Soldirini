@@ -131,7 +131,7 @@ saveEv=async function(){
   if(!progOn&&!st&&!sp.length&&!fx){toast('Non c’è niente da salvare: apri una sezione e compilala.','err');return;}
   if(st){const l=lav0(st.lid),t=st.tipo?C.tipoDi(l,st.tipo):null;
     if(!t&&!(st.da&&st.a)&&!st.ore){toast('Lavoro: scrivi l’orario (dalle–alle) o le ore.','err');$('secLav').open=true;return;}
-    if(t&&(t.cat==='variabile'||t.cat==='permesso'||t.aggiunta||t.cat==='nonretr')&&!(t.da&&t.a)&&t.ore===''&&!(st.da&&st.a)&&!st.ore){toast('Lavoro: scrivi quante ore.','err');$('secLav').open=true;return;}}
+    if(t&&serveOre(t,l)&&!(st.da&&st.a)&&!st.ore){toast('Lavoro: scrivi quante ore.','err');$('secLav').open=true;return;}}
   let parti=[];
   if(progOn){
     // rimborsi spesa: solo scontrini, senza km

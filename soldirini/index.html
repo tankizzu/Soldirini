@@ -189,6 +189,7 @@ details.fold{padding:0}details.fold>summary{list-style:none;display:flex;align-i
 details.fold>summary::-webkit-details-marker{display:none}
 details.fold>summary .st{display:flex;align-items:center;gap:8px;flex:1;min-width:0;flex-wrap:wrap}
 details.fold>summary .sum{font-variant-numeric:tabular-nums;font-weight:750;white-space:nowrap}
+details.lavcard>summary .st{flex-wrap:nowrap}details.lavcard>summary .st>span{min-width:0} /* 24c.2: pallino, nome ed etichetta sulla stessa riga; il nome va a capo dentro il suo spazio */
 details.fold>summary::after{content:'›';font-size:22px;line-height:1;color:var(--mut);transition:transform .2s;transform:rotate(90deg)}
 details.fold:not([open])>summary::after{transform:rotate(0)}
 details.fold>.fbody{padding:0 14px 14px}

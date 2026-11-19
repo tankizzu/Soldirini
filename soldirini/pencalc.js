@@ -148,7 +148,7 @@ const MESI=['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','ag
 const TOL=0.02;
 function lordoPagamento(c){return r2(z(c.pensioneLorda)+(c.crediti||[]).reduce((a,x)=>a+z(x.importo),0));}
 function trattenuteTot(c){return r2(z(c.irpef)+z(c.addReg)+z(c.addComSaldo)+z(c.addComAcconto)+z(c.conguagliDebito)+z(c.altreTrattenute));}
-const eur2=x=>(Math.round(x*100)/100).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+const eur2=x=>(Math.round(x*100)/100).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2,useGrouping:'always'})+' €'; // 24c.2: come eur() dell'app
 // precedente = cedolino del mese prima (se c'è); giaPresente = c'è già un cedolino per lo stesso mese
 function controlliCedolino(c,{precedente,giaPresente}={}){const out=[];const m=+String(c.mese||'').slice(5,7);const nomeM=MESI[m-1]||'';
   const crediti=c.crediti||[];const somma=lordoPagamento(c);
