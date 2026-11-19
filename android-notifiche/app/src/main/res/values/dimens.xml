@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Raggi di Soldirini: schede 14 (variabile r di index.html), pulsanti 11 (classe btn). -->
+<resources>
+    <dimen name="raggio_scheda">14dp</dimen>
+    <dimen name="raggio_pulsante">11dp</dimen>
+    <dimen name="margine">16dp</dimen>
+</resources>

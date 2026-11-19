@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Testi provvisori (lo schizzo di 02 non c'è ancora). -->
+<resources>
+    <string name="nome_app">Prova notifiche</string>
+    <string name="nome_servizio">Prova notifiche · spese ING</string>
+    <string name="titolo">Prova notifiche</string>
+    <string name="spiegazione">Legge solo le notifiche di pagamento dell\'app ING. Non usa internet: le spese restano su questo telefono.</string>
+    <string name="stato_etichetta">Accesso alle notifiche</string>
+    <string name="stato_attivo">Attivo ✓</string>
+    <string name="stato_non_attivo">Non attivo</string>
+    <string name="apri_impostazioni">Apri Accesso alle notifiche</string>
+    <string name="impostazioni_non_trovate">Impostazione non trovata: cercala nelle Impostazioni del telefono</string>
+    <string name="ing_etichetta">App ING su questo telefono</string>
+    <string name="ing_nessuna">Nessuna trovata (cerco it.ing.banking e it.ingdirect.app)</string>
+    <string name="titolo_elenco">Spese trovate (%1$d)</string>
+    <string name="vuoto">Ancora niente. Paga con la carta: la notifica di ING comparirà qui.</string>
+    <string name="non_riconosciuta">Notifica non riconosciuta</string>
+    <string name="riga_dettagli">%1$s · %2$s</string>
+    <string name="riga_letta">%1$s, %2$s, %3$s</string>
+    <string name="cancella">Cancella tutto</string>
+    <string name="cancella_titolo">Cancellare tutte le righe?</string>
+    <string name="cancella_testo">Le spese trovate vengono tolte da questo telefono.</string>
+    <string name="cancella_conferma">Cancella</string>
+    <string name="annulla">Annulla</string>
+</resources>

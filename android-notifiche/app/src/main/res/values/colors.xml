@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Colori di Soldirini (soldirini/index.html, :root). Tema scuro in values-night. -->
+<resources>
+    <color name="bg">#F1F0EE</color>
+    <color name="card">#FFFFFF</color>
+    <color name="ink">#1B1C1E</color>
+    <color name="mut">#6B6A68</color>
+    <color name="line">#E2E0DC</color>
+    <color name="pri">#2A2C30</color>
+    <color name="pri_ink">#FFFFFF</color>
+    <color name="err">#A33A28</color>
+    <color name="ok">#356D47</color>
+    <color name="tocco">#33808080</color>
+    <color name="icona_fondo">#2A2C30</color>
+    <color name="icona_oro">#E0A93A</color>
+</resources>
