@@ -636,6 +636,7 @@ function zoom(src){$('zoomImg').src=src;$('zoom').hidden=false;}
   bind();bindPlus();applyTema();
   const q=new URLSearchParams(location.search);
   if(q.get('tab'))tab=q.get('tab');
+  else if(!q.get('nuovo')){const p=leggiPosto();window.postoIniziale=p;if(p){if(p.tab)tab=p.tab;if(p.cur)cur=p.cur;rieMode=p.rieMode;}} // 24c.4 (D-130)
   render();
   if(q.get('nuovo'))openEv([today()]);
   prepGis();promemoria();

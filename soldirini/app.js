@@ -609,7 +609,7 @@ function renderSync(){
 function render(){
   renderSync();
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
-  document.querySelectorAll('main > section').forEach(s=>s.hidden=s.id!=='v-'+tab);
+  document.querySelectorAll('main > section').forEach(s=>s.hidden=s.id!=='v-'+tab);salvaPosto();
   $('acc').innerHTML=DB.meta.account?`<span title="${esc(DB.meta.account.email)}">${esc((DB.meta.account.name||DB.meta.account.email).split(' ')[0])}</span>`:'';
   $('welcome').hidden=!!DB.meta.account||!!progetti().length||!!DB.meta.skipWelcome;
   $('setup').hidden=!(showSetup&&DB.meta.account);
@@ -728,6 +728,14 @@ function closeEv(){$('evModal').hidden=true;document.body.classList.remove('nosc
 
 // ---- riepilogo ----
 let rieMode='mese';
+// 24c.4 (D-130): ripartire da dove si era rimasti. Scheda, pagina dei blocchi, mese e vista restano solo su questo telefono
+// (localStorage, mai su Drive). Le finestre non si riaprono. Se non si legge, si parte come sempre.
+const POSTO='soldirini-posto';let postoPronto=false,postoScritto='';
+function leggiPosto(){try{const p=JSON.parse(localStorage.getItem(POSTO)||'null');if(!p||typeof p!=='object')return null;
+  return {tab:['cal','rie','pro'].includes(p.tab)?p.tab:null,sub:typeof p.sub==='string'&&/^[a-z]{2,6}$/.test(p.sub)?p.sub:null,
+    cur:/^\d{4}-(0[1-9]|1[0-2])$/.test(p.cur)?p.cur:null,rieMode:p.rieMode==='anno'?'anno':'mese'};}catch(e){return null;}}
+function salvaPosto(){if(!postoPronto)return;const sub=typeof SUB!=='undefined'&&SUB[tab]?tab:null;const base=sub?SUB[tab]:tab;
+  const t=JSON.stringify({tab:base,sub,cur,rieMode});if(t===postoScritto)return;postoScritto=t;try{localStorage.setItem(POSTO,t);}catch(e){}}
 let renderRiepilogo; // v21: versione originale tolta (non usata); definita in plus.js
 
 // ---- documenti ----
@@ -974,6 +982,10 @@ function riprendiVecchiaCopia(){const v=vecchiaInVista;if(!v)return;const q=v.qu
 function fasciaLsFermo(){const f=$('lsFascia');if(!f)return;let q=null;try{const d=new Date(localStorage.getItem('soldirini-spostato')||'');if(!isNaN(d))q=gma(d);}catch(e){}
   f.innerHTML=`<b>⚠ Dati del telefono non raggiungibili</b><span>Soldirini mostra una copia ${q?'del '+q:'più vecchia'} e le modifiche che fai ora non restano su questo telefono. Chiudi del tutto Soldirini (anche dalle app recenti) e riaprila.</span>${DB.meta.account?'<span>Con Google Drive collegato, le modifiche vanno comunque su Drive.</span>':''}`;f.hidden=false;}
 window.dopoAvvioArchivio=()=>{
+  // D-130: la pagina dei blocchi si riapre qui, quando tutti i file sono caricati; scheda, mese e vista sono già a posto (avvio in plus.js)
+  try{const p=window.postoIniziale;if(p&&p.sub&&typeof SUB!=='undefined'&&SUB[p.sub]===tab&&document.getElementById('v-'+p.sub)){
+    if(history.state&&history.state.sub===p.sub){tab=p.sub;render();}else vaiA(p.sub);}}catch(e){}
+  postoPronto=true;salvaPosto();
   $('vcNo').onclick=chiudiVecchiaCopia;$('vcSi').onclick=riprendiVecchiaCopia;
   // D si chiude anche toccando fuori (= Annulla); B no (02)
   $('vcModal').addEventListener('click',e=>{if(e.target.id==='vcModal'&&vecchiaInVista&&vecchiaInVista.unione)chiudiVecchiaCopia();});

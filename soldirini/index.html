@@ -7,6 +7,8 @@
 <title>Soldirini</title>
 <meta name="description" content="Rimborsi km, ore e ritenuta d'acconto per tutti i tuoi progetti, sul tuo Google Drive.">
 <meta name="theme-color" content="#17191c">
+<!-- 24c.4 (D-128): la pagina dichiara i due temi, così il browser (es. il "Force Dark" di Samsung Internet) usa i colori dell'app invece del suo filtro -->
+<meta name="color-scheme" content="light dark">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" sizes="192x192" href="soldirini-tonda-192.png">
 <link rel="apple-touch-icon" href="soldirini-quadrata-192.png">
@@ -15,7 +17,8 @@
 <style>@font-face{font-family:"Nunito";src:url(nunito.woff2) format("woff2");font-weight:400 800;font-style:normal;font-display:swap}</style>
 <link rel="stylesheet" href="fonts.css">
 <style>
-:root{--gold-chiaro:#f3c969;--gold-scuro:#d49a12;--bg:#f1f0ee;--card:#fff;--ink:#1b1c1e;--mut:#6b6a68;--line:#e2e0dc;--pri:#2a2c30;--pri2:#3d4046;--pri-ink:#fff;--top:#17191c;--gold:#e0a93a;--err:#a33a28;--ok:#356d47;--warn:#a8460d;--field:#8d8983;--tabmix:85%;--sezink:80%;--sez:#5b6475;--shadow:0 1px 2px rgba(20,20,20,.05),0 4px 14px rgba(20,20,20,.05);--r:14px;--font:"Nunito",ui-rounded,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+:root{color-scheme:light;--gold-chiaro:#f3c969;--gold-scuro:#d49a12;--bg:#f1f0ee;--card:#fff;--ink:#1b1c1e;--mut:#6b6a68;--line:#e2e0dc;--pri:#2a2c30;--pri2:#3d4046;--pri-ink:#fff;--top:#17191c;--gold:#e0a93a;--err:#a33a28;--ok:#356d47;--warn:#a8460d;--field:#8d8983;--tabmix:85%;--sezink:80%;--sez:#5b6475;--shadow:0 1px 2px rgba(20,20,20,.05),0 4px 14px rgba(20,20,20,.05);--r:14px;--font:"Nunito",ui-rounded,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+:root[data-theme="light"]{color-scheme:only light} /* 24c.4 (D-128): tema Chiaro scelto in Impostazioni: il browser non scurisce la pagina da solo */
 :root[data-theme="dark"]{--bg:#0f1011;--card:#1a1b1e;--ink:#ebeae7;--mut:#a09e9a;--line:#2c2d31;--pri:#e6e4df;--pri2:#c9c7c2;--pri-ink:#16171a;--top:#0b0c0d;--err:#f2857a;--ok:#74c08c;--warn:#f5a066;--field:#76757a;--tabmix:60%;--sezink:55%;--shadow:none;color-scheme:dark}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1011;--card:#1a1b1e;--ink:#ebeae7;--mut:#a09e9a;--line:#2c2d31;--pri:#e6e4df;--pri2:#c9c7c2;--pri-ink:#16171a;--top:#0b0c0d;--err:#f2857a;--ok:#74c08c;--warn:#f5a066;--field:#76757a;--tabmix:60%;--sezink:55%;--shadow:none;color-scheme:dark}}
 *{box-sizing:border-box}

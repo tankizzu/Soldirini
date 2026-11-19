@@ -25,12 +25,15 @@ const DATI = () => {
 const caselle = page => page.locator('#heroDet > * > small:first-child').allTextContents();
 
 test.describe('24.2 · riquadro del Riepilogo riducibile (D-085)', () => {
-  test('chiuso all\'avvio: "Soldi rimanenti", importo, "Entrate · Uscite"; un tocco apre le caselle (Uscite fisse e Spese giornaliere prima), un altro le chiude', async ({ browser }) => {
+  test('aperto all\'avvio (24c.4, D-127); un tocco lo chiude: "Soldi rimanenti", importo, "Entrate · Uscite"; un tocco riapre le caselle, un altro le chiude', async ({ browser }) => {
     const { page, errori } = await telefono(browser);
     await page.evaluate(DATI); await vaiRie(page);
     const hero = page.locator('#rieTot .hero'), rim = hero.locator('button.rim'), det = page.locator('#heroDet');
     const conti = await page.evaluate(() => contiMese('2026-11'));
     expect([conti.entrate, conti.usciti, conti.rimanenti]).toEqual([1800, 650, 1150]); // il calcolo non cambia (stessi numeri della v24, T-R1)
+    // 24c.4 (D-127): aperto all'avvio; un tocco lo chiude
+    await expect(det).toBeVisible(); await expect(rim).toHaveAttribute('aria-expanded', 'true');
+    await rim.click();
     // chiuso
     await expect(rim.locator('.tit')).toHaveText('Soldi rimanenti');
     await expect(rim).not.toContainText('del mese');
@@ -76,12 +79,15 @@ test.describe('24.2 · riquadro del Riepilogo riducibile (D-085)', () => {
     await expect(det).toBeVisible();
     await page.keyboard.press('Space');
     await expect(det).toBeHidden();
-    // resta come l'ha lasciato l'utente cambiando mese; si richiude riaprendo l'app (D-010)
-    await rim.click(); await page.evaluate(() => $('rNext').click());
-    await expect(page.locator('#heroDet')).toBeVisible();
-    await page.reload(); await pronto(page); await vaiRie(page);
+    // resta come l'ha lasciato l'utente cambiando mese (chiuso e aperto); riaprendo l'app è di nuovo aperto (24c.4, D-127)
+    await page.evaluate(() => $('rNext').click());
     await expect(page.locator('#heroDet')).toBeHidden();
-    await expect(page.locator('#rieTot .hero button.rim')).toHaveAttribute('aria-expanded', 'false');
+    await page.locator('#rieTot .hero button.rim').click(); await page.evaluate(() => $('rPrev').click());
+    await expect(page.locator('#heroDet')).toBeVisible();
+    await page.locator('#rieTot .hero button.rim').click(); await expect(page.locator('#heroDet')).toBeHidden();
+    await page.reload(); await pronto(page); await vaiRie(page);
+    await expect(page.locator('#heroDet')).toBeVisible();
+    await expect(page.locator('#rieTot .hero button.rim')).toHaveAttribute('aria-expanded', 'true');
     expect(errori).toEqual([]);
   });
 
@@ -91,7 +97,8 @@ test.describe('24.2 · riquadro del Riepilogo riducibile (D-085)', () => {
     const rim = page.locator('#rieTot .hero button.rim');
     await expect(rim.locator('.tit')).toHaveText('Soldi rimanenti');
     await expect(rim.locator('.dm')).toHaveText('somma dei mesi da gennaio a novembre');
-    await expect(page.locator('#heroDet')).toBeHidden();
+    await expect(page.locator('#heroDet')).toBeVisible(); // 24c.4 (D-127): aperto anche nella vista Anno; un tocco lo chiude e uno lo riapre
+    await rim.click(); await expect(page.locator('#heroDet')).toBeHidden();
     await rim.click();
     expect(await caselle(page)).toEqual(['Lavoro dipendente', 'Incassato dai progetti', 'Ritenuta d’acconto', 'Spese giornaliere', 'Uscite fisse', 'Uscite fisse ancora da addebitare entro dicembre']); // 24b.2 (D-101): niente rimborsi nell'anno
     await expect(page.locator('#heroDet > .lungo small.nota')).toHaveText('Non contate nei soldi rimanenti: dicembre non è ancora iniziato.');

@@ -38,8 +38,9 @@ window.contiMese=contiMese;window.contiAnno=contiAnno;
 
 // ---------- riepilogo: in alto i soldi rimanenti, poi lavoro dipendente, rimborsi, ritenuta, pagamenti fissi ----------
 // 24.2 (D-085): riquadro riducibile. Chiuso: soldi rimanenti, "Entrate · Uscite". Aperto: le caselle.
-// Chiuso a ogni apertura dell'app (D-010): lo stato resta solo in memoria, non si salva.
-let heroAperto=false;
+// 24c.4 (D-127, sostituisce "chiuso a ogni apertura" di D-085): aperto a ogni apertura dell'app e ogni volta che si torna
+// al Riepilogo da un'altra scheda; toccandolo si chiude. Lo stato resta solo in memoria, non si salva.
+let heroAperto=true;
 function heroStato(h){const b=h.querySelector('.rim'),d=h.querySelector('#heroDet');if(!b||!d)return;
   // 24.2b (testi di 02): lo stato si comunica solo con aria-expanded; il testo nascosto ", dettagli" resta fisso
   h.classList.toggle('aperto',heroAperto);b.setAttribute('aria-expanded',String(heroAperto));d.hidden=!heroAperto;}
@@ -193,6 +194,9 @@ function bind18(){
   swipe($('rieTot'),()=>$('rNext').click(),()=>$('rPrev').click());
   $('rieTot').addEventListener('click',e=>{const pg=e.target.closest('[data-vai]');if(pg){const inc=pg.textContent.startsWith('Incassato dai progetti');window.testaInc=inc;vaiA(pg.dataset.vai);if(inc)apriSezione('#rieAnno','Mese per mese');return;} // 24b.1 (D-098)
     const h=e.target.closest('.hero');if(!h||!h.querySelector('#heroDet')||e.target.closest('[data-b]'))return;heroAperto=!heroAperto;heroStato(h);});
+  // D-127: tornando al Riepilogo da un'altra scheda (Calendario, Impostazioni) il riquadro è di nuovo aperto; dalle sue pagine resta com'era.
+  // In cattura, così vale la scheda di prima: app.js cambia `tab` nel suo ascolto.
+  document.querySelector('.tabs')?.addEventListener('click',e=>{if(e.target.closest('button[data-tab="rie"]')&&tab!=='rie'&&SUB[tab]!=='rie')heroAperto=true;},true);
   $('filtri').addEventListener('click',e=>{if(e.target.closest('#calBtn')){popAperto=!popAperto;filtriPop();e.stopImmediatePropagation();}},true);
   $('filtri').addEventListener('change',e=>{const t=e.target;if(t.name==='cf'){filtro=t.value;render();return;}
     if(t.dataset.cv){t.checked?nascosti.delete(t.dataset.cv):nascosti.add(t.dataset.cv);salvaNascosti();render();}});
