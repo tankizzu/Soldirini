@@ -562,6 +562,8 @@ function telefonoBreve(){const u=navigator.userAgent||'';
     ||(/Windows/.test(u)&&'Windows')||(/Mac OS X/.test(u)&&'macOS')||(/Linux/.test(u)&&'Linux')||'sistema sconosciuto';
   return nav+' · '+so;}
 const cspOra=t=>new Date(t).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+// 24c.5 (D-132): browser Samsung (Samsung Internet), riconosciuto dallo user agent (il suo filtro scuro non si può riconoscere dalla pagina)
+const SAMSUNG_INTERNET=/SamsungBrowser\//.test(navigator.userAgent||'');
 function cspTesto(){return [`Soldirini ${typeof APP_VERSIONE!=='undefined'?APP_VERSIONE:''} – blocchi di sicurezza`,
   ...CSP_BLOCCHI.map(b=>`${cspOra(b.ora)} · ${b.dir} · ${b.da}`),...(window.Archivio&&Archivio.modo!=='idb'?[`Archivio: ridotto (${Archivio.motivo||'sconosciuto'})`]:[]),'Telefono: '+telefonoBreve()].join('\n');}
 function renderCsp(){

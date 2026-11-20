@@ -542,7 +542,10 @@ function initFirma(){
 function renderFirma(){const f=D().profilo.firma;$('firmaPrev').innerHTML=f?`<img src="${imgOk(f)}" alt="La tua firma"><span class="muted sm">Firma salvata: comparirà sulle ricevute PDF.</span>`:'<span class="muted sm">Nessuna firma salvata.</span>';$('firmaRm').hidden=!f;}
 
 // ---------- impostazioni ----------
-function applyTema(){const t=impost().tema;if(t==='auto')delete document.documentElement.dataset.theme;else document.documentElement.dataset.theme=t;}
+// 24c.5 (D-132): nel browser Samsung (Samsung Internet) con "Come il telefono" l'app usa il suo tema scuro: il browser non dice
+// in modo affidabile se il telefono è scuro e il suo filtro rovina le pagine chiare; una pagina già scura resta leggibile.
+function applyTema(){const t=impost().tema,r=document.documentElement;
+  if(t==='auto'&&SAMSUNG_INTERNET)r.dataset.theme='dark';else if(t==='auto')delete r.dataset.theme;else r.dataset.theme=t;}
 function renderImpost(){
   const I=impost();$('tema').value=I.tema||'auto';$('promem').checked=!!I.promemoria;
   $('soglieEd').innerHTML=I.soglie.map((s,i)=>`<label>${esc(s.nome)}<input inputmode="decimal" data-sg="${i}" value="${numAttr(s.limite)}"></label>`).join('');

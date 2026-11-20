@@ -5,10 +5,11 @@ const { BASE, DriveFinto, CalendarFinto, collega } = require('./google-finto');
 
 // Apre un nuovo dispositivo (contesto del browser separato: memoria del telefono propria).
 // ora: data e ora fisse del telefono (orologio finto di Playwright), es. '2026-11-17T10:00:00+01:00'
-async function nuovoDispositivo(browser, { drive, calendar, stato, telefono = true, sito, ora } = {}) {
+async function nuovoDispositivo(browser, { drive, calendar, stato, telefono = true, sito, ora, contesto } = {}) {
   const ctx = await browser.newContext({
     reducedMotion: 'reduce', serviceWorkers: 'block', locale: 'it-IT', timezoneId: 'Europe/Rome',
-    ...(telefono ? { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true } : {})
+    ...(telefono ? { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true } : {}),
+    ...(contesto || {}) // 24c.5: opzioni in più del contesto (es. userAgent, colorScheme)
   });
   await collega(ctx, { drive, calendar, sito });
   if (ora) await ctx.clock.setFixedTime(new Date(ora));
