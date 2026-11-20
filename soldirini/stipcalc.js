@@ -5,7 +5,14 @@
 (function(g){
   const pad=n=>String(n).padStart(2,'0');
   const r2=v=>Math.round((+v||0)*100)/100;
-  const num=v=>{if(v===''||v==null)return null;const n=typeof v==='number'?v:parseFloat(String(v).replace(',','.'));return isNaN(n)?null:n;};
+  // 24c.6 (numeri.js): le impostazioni del lavoro e dei turni vengono da campi type="number" (o le scrive l'app): punto decimale,
+  // come prima ("8.125" = 8,125). I numeri della busta sono scritti a mano all'italiana (P2): "1.260,00" = 1260, "1.680" ambiguo.
+  const num=v=>g.leggiNumeroPunto(v);
+  const numB=v=>g.leggiNumero(v);
+  // 24c.6 (R-D9): data di un turno valida solo se testo AAAA-MM-GG (un file su Drive rovinato non deve fermare i conti)
+  const dataOk=d=>typeof d==='string'&&/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(d);
+  // 24c.6 (R-D7): unità dei saldi solo "ore" o "giorni"
+  const unitaOk=u=>u==='ore'||u==='giorni'?u:null;
   const toMin=v=>{if(v==null||v==='')return null;const m=String(v).match(/^(\d{1,2})[:.](\d{2})$/);if(!m)return null;const h=+m[1],mi=+m[2];if(h>24||mi>59)return null;return (h%24)*60+mi;};
   const giornoSett=iso=>{const d=new Date(Date.UTC(+iso.slice(0,4),+iso.slice(5,7)-1,+iso.slice(8,10))).getUTCDay();return d===0?7:d;}; // 1 = lunedì … 7 = domenica
   const giorniDelMese=ym=>new Date(+ym.slice(0,4),+ym.slice(5,7),0).getDate();
@@ -97,6 +104,11 @@
       const ORDINE={malattia:0,ferie:1,permesso:2,retribuita:3,nonretr:4};
       for(const v of senza.slice().sort((a,b)=>ORDINE[a.cat]-ORDINE[b.cat])){const o=resto;resto=0;v.ass=Object.assign({},v.ass,{ore:o,zero:o===0&&v.ass.punto!==8});}
     }
+    // 24c.6 (T3 di 04, D-114 anche a orario fisso): due o più assenze senza ore nello stesso giorno (es. dall'unione di due telefoni)
+    // valgono una giornata sola: la tiene la prima nell'ordine di D-114, le altre valgono 0. Una sola assenza resta com'era.
+    if(lv.modo!=='turni'){const gior=voci.filter(v=>v.ass&&v.ass.punto===5);
+      if(gior.length>1){const ORDINE={malattia:0,ferie:1,permesso:2,retribuita:3,nonretr:4};
+        gior.sort((a,b)=>ORDINE[a.cat]-ORDINE[b.cat]).slice(1).forEach(v=>{v.ass=Object.assign({},v.ass,{ore:0,zero:true});});}}
     return {voci,fest,previsto:pv,annulla};
   }
 
@@ -115,7 +127,7 @@
     const pSN=pct(P.straNott),pSF=pct(P.straFest);const speciali=pSN!=null||pSF!=null; // 24c.3 · D-120, R-MAGG-1 (04, tornata 33 §3)
     const tipoPaga=(lv.paga||{}).tipo;const festePag=!!lv.festePagate&&(tipoPaga==='oraria'||tipoPaga==='giornaliera'); // 24c.3 · D-121, R-FESTE-1 (§4)
     let straPay=0,exN=0,exF=0,exD=0,festeGg=0;
-    const perData={};for(const t of turni)if(t.data&&t.data.startsWith(ym))(perData[t.data]=perData[t.data]||[]).push(t);
+    const perData={};for(const t of turni)if(t&&dataOk(t.data)&&t.data.startsWith(ym))(perData[t.data]=perData[t.data]||[]).push(t);
     const T={giorniPag:0,giorniLav:0,lav:0,ord:0,stra:0,nott:0,fest:0,dom:0,pagate:0,ferie:0,ferieOre:0,perm:0,mal:0,nonretr:0,variab:0,senzaOre:0,straNott:0,straFest:0,festePag:0};
     const giorni=[];let cum=0;const soglia=lv.modo==='turni'?num(lv.oreMese):null;
     for(let d=1;d<=giorniDelMese(ym);d++){
@@ -189,30 +201,40 @@
   // trattenute: quelle scritte nel lavoro, altrimenti dalla busta più recente con lordo e netto
   function trattenute(lv,buste){
     const m=num(lv.tratt);if(m!=null)return {p:m/100,fonte:'impostazione'};
-    const b=Object.values(buste||{}).filter(x=>!x.deleted&&num(x.lordo)>0&&num(x.netto)>0&&num(x.netto)<num(x.lordo)).sort((a,c)=>c.mese.localeCompare(a.mese))[0];
-    return b?{p:1-num(b.netto)/num(b.lordo),fonte:'busta',mese:b.mese}:null;
+    const b=Object.values(buste||{}).filter(x=>!x.deleted&&numB(x.lordo)>0&&numB(x.netto)>0&&numB(x.netto)<numB(x.lordo)).sort((a,c)=>c.mese.localeCompare(a.mese))[0];
+    return b?{p:1-numB(b.netto)/numB(b.lordo),fonte:'busta',mese:b.mese}:null;
   }
 
   // saldi di ferie e permessi: dall'ultima busta che li riporta, meno quanto usato dopo; altrimenti dalle impostazioni
   function saldi(lv,turni,buste,fino){
     // 24c.1: stessa regola di calcolaMese (R-TURNI-1, D-110, D-114): le ore di ogni assenza si calcolano giorno per giorno
-    const usate=(cat,daYm,aYm,ore)=>{const perData={};for(const t of turni){if(t.deleted||!t.data)continue;const ym=t.data.slice(0,7);if(ym<=daYm||ym>aYm)continue;(perData[t.data]=perData[t.data]||[]).push(t);}
+    const usate=(cat,daYm,aYm,ore)=>{const perData={};for(const t of turni){if(!t||t.deleted||!dataOk(t.data))continue;const ym=t.data.slice(0,7);if(ym<=daYm||ym>aYm)continue;(perData[t.data]=perData[t.data]||[]).push(t);}
       let n=0;for(const [iso,L] of Object.entries(perData))for(const v of vociGiorno(lv,L,iso).voci){if(!v.ass||!v.tipo||v.cat!==cat)continue;if(ore)n+=v.ass.ore;else if(!v.ass.zero)n+=1;}
       return Math.round(n*100)/100;};
     const B=Object.values(buste||{}).filter(b=>!b.deleted&&b.mese<=fino).sort((a,c)=>c.mese.localeCompare(a.mese));
     const out={};const y=fino.slice(0,4);
+    // 24c.6 (T4 di 04, R-D7): ferie e permessi presi dalla busta restano nell'unità della busta (es. busta in ore, lavoro in giorni)
+    // e le assenze dopo si tolgono nella stessa unità; un'unità non valida vale quella del lavoro
     const F=lv.ferie||{};const fOre=F.unita==='ore';
-    const bf=B.find(b=>num(b.ferie)!=null);
-    if(bf)out.ferie={saldo:r2(num(bf.ferie)-usate('ferie',bf.mese,fino,fOre)),unita:fOre?'ore':'giorni',fonte:'busta',mese:bf.mese};
+    const bf=B.find(b=>numB(b.ferie)!=null);
+    if(bf){const u=unitaOk(bf.unitaFerie)||(fOre?'ore':'giorni');out.ferie={saldo:r2(numB(bf.ferie)-usate('ferie',bf.mese,fino,u==='ore')),unita:u,fonte:'busta',mese:bf.mese};}
     else if(num(F.anno)!=null)out.ferie={saldo:r2((num(F.anno)||0)+(num(F.residuo)||0)-usate('ferie',`${y-1}-12`,fino,fOre)),unita:fOre?'ore':'giorni',fonte:'impostazioni'};
     const R=lv.perm||{};const rOre=R.unita!=='giorni';
-    const br=B.find(b=>num(b.rol)!=null);
-    if(br)out.rol={saldo:r2(num(br.rol)-usate('permesso',br.mese,fino,rOre)),unita:rOre?'ore':'giorni',fonte:'busta',mese:br.mese};
+    const br=B.find(b=>numB(b.rol)!=null);
+    if(br){const u=unitaOk(br.unitaPerm)||(rOre?'ore':'giorni');out.rol={saldo:r2(numB(br.rol)-usate('permesso',br.mese,fino,u==='ore')),unita:u,fonte:'busta',mese:br.mese};}
     else if(num(R.anno)!=null)out.rol={saldo:r2((num(R.anno)||0)-usate('permesso',`${y-1}-12`,fino,rOre)),unita:rOre?'ore':'giorni',fonte:'impostazioni'};
-    const bx=B.find(b=>num(b.exfest)!=null);
-    if(bx)out.exfest={saldo:num(bx.exfest),unita:bx.unitaPerm||'ore',fonte:'busta',mese:bx.mese};
+    const bx=B.find(b=>numB(b.exfest)!=null);
+    if(bx)out.exfest={saldo:numB(bx.exfest),unita:unitaOk(bx.unitaPerm)||(rOre?'ore':'giorni'),fonte:'busta',mese:bx.mese};
     return out;
   }
 
-  g.StipCalc={pad,r2,num,toMin,giornoSett,pasqua,festivo,parseLocali,CAT,PAGATE,LAVORO,oraria,previsto,oreAssenza,giorniLavorativi,minNotte,vociGiorno,calcolaMese,trattenute,saldi,tipoDi};
+  // 24c.6 (P1 di 04, come K-1/K-3 della pensione): controlli della busta, solo avvisi e mai correzioni.
+  // Netto più alto del lordo (KB15) prima; poi lordo − trattenute diverso dal netto di più di 1 € (KB13; KB14 entro 1 € senza avviso).
+  // Testi provvisori (02). eur = come scrivere gli importi.
+  function controlloBusta(lordo,trattenute,netto,eur){const l=numB(lordo),t=numB(trattenute),n=numB(netto);const e=eur||(v=>String(v));
+    if(l!=null&&n!=null&&n>l)return {tipo:'netto',testo:'Il netto non può essere più alto del lordo: controlla i valori.'};
+    if(l!=null&&t!=null&&n!=null&&Math.abs(r2(l-t)-n)>1)return {tipo:'conti',testo:`Lordo − trattenute = ${e(r2(l-t))}, ma il netto è ${e(n)}. Controlla i valori.`};
+    return null;}
+
+  g.StipCalc={pad,r2,num,dataOk,controlloBusta,toMin,giornoSett,pasqua,festivo,parseLocali,CAT,PAGATE,LAVORO,oraria,previsto,oreAssenza,giorniLavorativi,minNotte,vociGiorno,calcolaMese,trattenute,saldi,tipoDi};
 })(typeof window!=='undefined'?window:globalThis);

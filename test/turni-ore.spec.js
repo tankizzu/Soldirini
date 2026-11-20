@@ -3,6 +3,7 @@
 // 24c.1: i 3 difetti trovati sono corretti con la regola R-TURNI-1 di 04 e le scelte D-110; sotto anche i casi P1-P16 di 04.
 const path = require('path');
 const { test, expect } = require('./helpers/prova');
+require(path.join(__dirname, '..', 'soldirini', 'numeri.js')); // 24c.6: lettura comune dei numeri, prima di stipcalc.js
 require(path.join(__dirname, '..', 'soldirini', 'stipcalc.js'));
 const C = globalThis.StipCalc;
 
@@ -167,9 +168,10 @@ test.describe('D-110 e D-114: assenza e turni nello stesso giorno (P17-P28 di 04
     expect(C.saldi(lv({ ferie: { unita: 'giorni', anno: '26' } }), [turno('2026-11-04', 'F'), turno('2026-11-04', 'Ma')], {}, '2026-11').ferie.saldo).toBe(26);
     const P28 = C.calcolaMese(lv(), [turno('2026-11-04', 'M'), turno('2026-11-04', 'Pe', { ore: '2' }), turno('2026-11-04', 'F')], '2026-11');
     expect(P28.T).toMatchObject({ lav: 0, perm: 2, ferieOre: 6, pagate: 8 }); expect(P28.E.base).toBe(80);
-    // orario fisso: niente di tutto questo (D-110 e D-114 solo a turni)
+    // orario fisso: D-110 (il turno di lavoro annullato) solo a turni; dalla 24c.6 (T3 di 04, D-139) anche qui una giornata sola
+    // al giorno (D-114): Ferie + Malattia senza ore → 8 ore di malattia, 0 di ferie (prima: 8 + 8)
     const fisso = lavoro({ modo: 'fisso', dal: '2026-01-01', settimana: { 3: { da: '08:00', a: '16:00', pausa: '' } } });
-    expect(mese(fisso, [turno('2026-11-04', 'F'), turno('2026-11-04', 'Ma')], '2026-11')).toMatchObject({ ferieOre: 8, mal: 8 });
+    expect(mese(fisso, [turno('2026-11-04', 'F'), turno('2026-11-04', 'Ma')], '2026-11')).toMatchObject({ ferieOre: 0, ferie: 0, mal: 8 });
   });
 });
 

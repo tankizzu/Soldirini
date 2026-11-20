@@ -8,6 +8,7 @@ const vm = require('vm');
 const { SITO } = require('./helpers/google-finto');
 
 const ctx = { window: {} };
+vm.runInNewContext(fs.readFileSync(path.join(SITO, 'numeri.js'), 'utf8'), ctx); // 24c.6: lettura comune dei numeri, prima di pencalc.js
 vm.runInNewContext(fs.readFileSync(path.join(SITO, 'pencalc.js'), 'utf8'), ctx);
 const P = ctx.window.PenCalc;
 const N = (R, giorni) => { const x = P.irpefNetta(R, 'pensione', giorni, 2026); return [x.lorda, x.detr, x.netta]; };
@@ -100,7 +101,7 @@ test.describe('contributi dalle buste paga (C-1…C-4)', () => {
   });
   test('T-C3 imponibile 2.500, contributi letti 400 → avviso (16%)', () => {
     const c = P.controlloContributi('2500', '400', 2026);
-    expect(c.percentuale).toBe(16); expect(c.testo).toContain('Sembra alto (16%');
+    expect(c.percentuale).toBe(16); expect(c.testo).toContain('Sembra alto (16,0%'); // 24c.6 (P4): un decimale
     expect(P.controlloContributi('2500', '229.75', 2026)).toBeNull();
     expect(P.controlloContributi('2500', '146', 2026)).toBeNull(); // apprendista, 5,84%
   });

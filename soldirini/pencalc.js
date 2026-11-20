@@ -5,7 +5,8 @@
 // Solo calcoli, nessuna schermata: le schermate sono in pensione.js. Ogni risultato è una STIMA.
 (function(){
 const r2=x=>Math.round((x+Number.EPSILON)*100)/100;
-const n=v=>{if(v==null||v==='')return null;const x=+String(v).replace(/\s/g,'').replace(',','.');return isFinite(x)?x:null;};
+// 24c.6 (P2): lettura comune dei numeri (numeri.js), rigida come prima: "2.000,00" vale 2000, un testo non numerico vale vuoto
+const n=v=>leggiNumero(v,true);
 const z=v=>n(v)||0;
 
 // ---------- valori per anno (una sola tabella; fonti nel report 04) ----------
@@ -139,9 +140,13 @@ function contributiAnno(buste,anno){const v=valori(anno);const B=buste.filter(b=
     settimane,sopraMassimale:imp>v.massimale};}
 function contributiAttesi(impAnno,anno){const v=valori(anno);return r2(impAnno*v.aliqDip/100+Math.max(0,impAnno-v.primaFascia)*v.aliqExtra/100);}
 // C-2: avviso se contributi/imponibile è fuori dall'8–11% (e non nel 5–7% degli apprendisti). Mai una correzione.
+// 24c.6 (P4 di 04, regola di 02 tornata 42 §1.5): percentuale con un decimale ("7,5%"); due decimali solo se con uno cadrebbe
+// proprio su un bordo delle fasce (11,01% e non "11,0%"), così il numero mostrato è quello confrontato
 function controlloContributi(imponibile,contributi,anno){const i=n(imponibile),c=n(contributi);if(!(i>0)||c==null)return null;
   const v=valori(anno),p=r2(c/i*100);const dentro=([a,b])=>p>=a&&p<=b;
-  return dentro(v.controllo)||dentro(v.controlloApprendisti)?null:{percentuale:p,testo:`Sembra ${p>v.controllo[1]?'alto':'basso'} (${String(Math.round(p)).replace('.',',')}% dell’imponibile, di solito 9–10%). Controlla il valore sulla busta.`};}
+  const cent=Math.round(p*100),uno=Math.round(cent/10)/10,bordi=[...v.controllo,...v.controlloApprendisti];
+  const pt=(bordi.includes(uno)&&Math.round(uno*100)!==cent?(cent/100).toFixed(2):uno.toFixed(1)).replace('.',',');
+  return dentro(v.controllo)||dentro(v.controlloApprendisti)?null:{percentuale:p,testo:`Sembra ${p>v.controllo[1]?'alto':'basso'} (${pt}% dell’imponibile, di solito 9–10%). Controlla il valore sulla busta.`};}
 
 // ---------- cedolino della pensione: controlli K-1…K-8 (avvisi, mai correzioni) ----------
 const MESI=['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];

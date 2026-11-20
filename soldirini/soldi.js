@@ -1,7 +1,8 @@
 'use strict';
 // ================= Soldirini v18 · soldi rimanenti, pagamenti fissi, occhio, calendari, scorrimento, backup =================
 (function(){
-const num=v=>{const n=parseFloat(String(v??'').replace(',','.'));return isNaN(n)?0:n;};
+const num=v=>leggiNumero(v)??0; // 24c.6 (P2): importi scritti a mano all'italiana (numeri.js)
+const numP=v=>leggiNumeroPunto(v)??0; // 24c.6: campi type="number" (giorni, rate, mesi, percentuale): punto decimale, come prima
 const FX=()=>D().fissi||(D().fissi={});
 const fissi=()=>Object.values(FX()).filter(f=>!f.deleted).sort((a,b)=>(+a.giorno||0)-(+b.giorno||0)||a.nome.localeCompare(b.nome));
 const FCAT=[['netflix','🎬','Netflix'],['disney','✨','Disney+'],['mutuo','🏠','Mutuo'],['rata','💳','Rata'],['abbonamento','📱','Abbonamento'],['utenze','💡','Utenze'],['altro','•','Altro']];
@@ -102,9 +103,9 @@ function apriFisso(f){fx=f?clone(f):{id:uid(),cat:'netflix',nome:'',importo:'',g
 function catChips(){$('fxCats').innerHTML=FCAT.map(c=>`<button type="button" class="chip ${fx.cat===c[0]?'on':''}" data-fxc="${c[0]}">${c[1]} ${c[2]}</button>`).join('');}
 function durata(){const d=$('fxDur').value;$('fxRateL').hidden=d!=='rate';$('fxAlL').hidden=d!=='al';}
 function chiudiFisso(){$('fxModal').hidden=true;document.body.classList.remove('noscroll');}
-function salvaFisso(){const nome=$('fxNome').value.trim()||fcat(fx.cat)[2];const imp=num($('fxImp').value);const g=Math.round(num($('fxGiorno').value));
+function salvaFisso(){const nome=$('fxNome').value.trim()||fcat(fx.cat)[2];const imp=num($('fxImp').value);const g=Math.round(numP($('fxGiorno').value));
   if(!(imp>0)){toast('Scrivi l’importo.','err');return;}if(!(g>=1&&g<=31)){toast('Scrivi il giorno di addebito (1–31).','err');return;}
-  const d=$('fxDur').value;Object.assign(fx,{nome,importo:String(r2(imp)),giorno:String(g),dal:$('fxDal').value||today().slice(0,7),rate:d==='rate'?String(Math.round(num($('fxRate').value))||''):'',al:d==='al'?$('fxAl').value:'',nota:$('fxNota').value.trim(),deleted:false,updatedAt:Date.now()});
+  const d=$('fxDur').value;Object.assign(fx,{nome,importo:String(r2(imp)),giorno:String(g),dal:$('fxDal').value||today().slice(0,7),rate:d==='rate'?String(Math.round(numP($('fxRate').value))||''):'',al:d==='al'?$('fxAl').value:'',nota:$('fxNota').value.trim(),deleted:false,updatedAt:Date.now()});
   FX()[fx.id]=fx;changed();chiudiFisso();render();toast('Uscita fissa salvata.');}
 // 24.1 (D-073, D-076; regola D-072; testi di 02): "Termina" con l'ultimo giorno scelto (passato, oggi o futuro; di base oggi).
 // Se l'addebito del mese di quel giorno cade entro quel giorno (29-31: giorno vero del mese, giornoNel), quel mese conta ancora (al = quel mese);
@@ -217,15 +218,15 @@ function efPrepara(dates,modifica){const s=$('secFix');if(!s)return;const una=da
   $('evFixDur').value='';$('evFixRate').value='';$('evFixAl').value='';$('evFixErr').hidden=true;efDurata();efChips();efSum();}
 function efChips(){$('evFixCats').innerHTML=FCAT.map(c=>`<button type="button" class="chip ${efCat===c[0]?'on':''}" data-efc="${c[0]}">${c[1]} ${c[2]}</button>`).join('');}
 function efDurata(){const d=$('evFixDur').value;$('evFixRateL').hidden=d!=='rate';$('evFixAlL').hidden=d!=='al';}
-function efSum(){const imp=num($('evFixImp').value),g=Math.round(num($('evFixGiorno').value));$('secFixSum').textContent=imp>0?`${eur(imp)}${g>=1&&g<=31?' · il '+g:''}`:'';
+function efSum(){const imp=num($('evFixImp').value),g=Math.round(numP($('evFixGiorno').value));$('secFixSum').textContent=imp>0?`${eur(imp)}${g>=1&&g<=31?' · il '+g:''}`:'';
   $('evFixCorto').hidden=!(g>=29&&g<=31);}
 // compilata = c'è un importo o un nome (la categoria da sola non basta)
 const efCompilata=()=>!$('secFix').hidden&&(num($('evFixImp').value)>0||!!$('evFixNome').value.trim());
 function efErrore(t){$('evFixErr').textContent=t;$('evFixErr').hidden=false;$('secFix').open=true;return false;}
-function efValida(){$('evFixErr').hidden=true;const imp=num($('evFixImp').value),g=Math.round(num($('evFixGiorno').value));
+function efValida(){$('evFixErr').hidden=true;const imp=num($('evFixImp').value),g=Math.round(numP($('evFixGiorno').value));
   if(!(imp>0))return efErrore('Scrivi l’importo.');if(!(g>=1&&g<=31))return efErrore('Scrivi il giorno di addebito (1–31).');return true;}
-function efSalva(){const d=$('evFixDur').value;const f={id:uid(),cat:efCat,nome:$('evFixNome').value.trim()||fcat(efCat)[2],importo:String(r2(num($('evFixImp').value))),giorno:String(Math.round(num($('evFixGiorno').value))),
-  dal:$('evFixDal').value||today().slice(0,7),rate:d==='rate'?String(Math.round(num($('evFixRate').value))||''):'',al:d==='al'?$('evFixAl').value:'',nota:'',deleted:false,updatedAt:Date.now()};
+function efSalva(){const d=$('evFixDur').value;const f={id:uid(),cat:efCat,nome:$('evFixNome').value.trim()||fcat(efCat)[2],importo:String(r2(num($('evFixImp').value))),giorno:String(Math.round(numP($('evFixGiorno').value))),
+  dal:$('evFixDal').value||today().slice(0,7),rate:d==='rate'?String(Math.round(numP($('evFixRate').value))||''):'',al:d==='al'?$('evFixAl').value:'',nota:'',deleted:false,updatedAt:Date.now()};
   FX()[f.id]=f;return f;}
 window.FissaEv={prepara:efPrepara,compilata:efCompilata,valida:efValida,salva:efSalva};
 document.addEventListener('click',e=>{const b=e.target.closest('[data-efc]');if(b){efCat=b.dataset.efc;efChips();}});

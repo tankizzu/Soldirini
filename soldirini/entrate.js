@@ -9,7 +9,7 @@
 // "entrate" è una chiave nuova: dalla v15 mergeData la unisce voce per voce (vince updatedAt), i telefoni non aggiornati la conservano.
 (function(){
 const EN=()=>D().entrate||(D().entrate={});
-const num=v=>{const n=parseFloat(String(v??'').replace(',','.'));return isNaN(n)?null:n;};
+const num=v=>leggiNumero(v); // 24c.6 (P2): "1.260,00" e "1 260" valgono 1260 (numeri.js)
 const ymOra=()=>today().slice(0,7);
 const addMese=(ym,n)=>{const d=new Date(+ym.slice(0,4),+ym.slice(5)-1+n,1);return `${d.getFullYear()}-${pad(d.getMonth()+1)}`;};
 const mesiTra=(a,b)=>(+b.slice(0,4)-+a.slice(0,4))*12+(+b.slice(5)-+a.slice(5));
@@ -22,8 +22,9 @@ function dataValida(d){if(typeof d!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(d))re
   return x.getFullYear()===y&&x.getMonth()===m-1&&x.getDate()===g;}
 const importoValido=v=>typeof v==='number'&&isFinite(v);
 // voce entrata: {data, importo|null} se valida; altrimenti null (= in attesa)
-function leggi(r){if(!r||typeof r!=='object'||r.entrato!==true||!dataValida(r.data))return null;return {data:r.data,importo:importoValido(r.importo)?r.importo:null};}
-function leggiPag(g){if(!g||typeof g!=='object'||g.pagato!==true||!dataValida(g.data))return null;return {data:g.data,importo:importoValido(g.importo)?g.importo:null};}
+// 24c.6 (R-D3, D-052): una data dopo oggi vale "non ancora entrata" fino a quel giorno (Riepilogo, In arrivo e conti uguali)
+function leggi(r){if(!r||typeof r!=='object'||r.entrato!==true||!dataValida(r.data)||r.data>today())return null;return {data:r.data,importo:importoValido(r.importo)?r.importo:null};}
+function leggiPag(g){if(!g||typeof g!=='object'||g.pagato!==true||!dataValida(g.data)||g.data>today())return null;return {data:g.data,importo:importoValido(g.importo)?g.importo:null};}
 
 // ---------- le voci del mese (E-1) ----------
 const lavoroDi=id=>lavori().find(l=>l.id===id);

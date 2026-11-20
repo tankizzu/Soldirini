@@ -1,7 +1,8 @@
 'use strict';
 // ================= Soldirini v18 · risparmi: obiettivi, salvadanaio mensile, andamento =================
 (function(){
-const num=v=>{const n=parseFloat(String(v??'').replace(',','.'));return isNaN(n)?0:n;};
+const num=v=>leggiNumero(v)??0; // 24c.6 (P2): importi scritti a mano all'italiana (numeri.js)
+const numP=v=>leggiNumeroPunto(v)??0; // 24c.6: campi type="number" (giorni, rate, mesi, percentuale): punto decimale, come prima
 const RS=()=>D().risparmi||(D().risparmi={});
 const cfg=()=>RS().cfg&&!RS().cfg.deleted?RS().cfg:{perc:'20'};
 const obiettivi=()=>Object.entries(RS()).filter(([k,r])=>k.startsWith('ob:')&&!r.deleted).map(([k,r])=>Object.assign({id:k.slice(3)},r)).sort((a,b)=>(a.entro||'9').localeCompare(b.entro||'9'));
@@ -15,7 +16,7 @@ SUB.ris='rie';
 function renderRisparmi(){
   const tot=totale(),ym=today().slice(0,7),y=cur.slice(0,4);const meseTot=totale(m=>m.data.startsWith(ym));
   const prec=mesePrima(ym);const giaPrec=movimenti().some(m=>m.salvadanaio===prec);const Cp=contiMese(prec),Cc=contiMese(ym);
-  const perc=num(cfg().perc);const sugg=r2(Math.max(0,Cp.rimanenti)*perc/100);
+  const perc=numP(cfg().perc);const sugg=r2(Math.max(0,Cp.rimanenti)*perc/100);
   // andamento dell'anno
   const mesi=Array.from({length:12},(_,i)=>totale(m=>m.data.startsWith(`${y}-${pad(i+1)}`)));const mx=Math.max(1,...mesi.map(Math.abs));
   const O=obiettivi();
@@ -63,7 +64,7 @@ function bind(){
     if(t.id==='rsSalvAltro'){apriMv(null,{data:ultimoGiorno(prec),nota:'Salvadanaio di '+monthName(prec),salvadanaio:prec});return;}
     if(t.id==='rsMv'){apriMv(null);return;}if(t.id==='rsOb'){apriOb(null);return;}
     if(t.dataset.obed){apriOb(t.dataset.obed);return;}if(t.dataset.mved){apriMv(t.dataset.mved);return;}});
-  $('risBody').addEventListener('change',e=>{if(e.target.id==='rsPerc'){RS().cfg={perc:String(Math.min(100,Math.max(0,num(e.target.value)))),updatedAt:Date.now()};changed();render();}});
+  $('risBody').addEventListener('change',e=>{if(e.target.id==='rsPerc'){RS().cfg={perc:String(Math.min(100,Math.max(0,numP(e.target.value)))),updatedAt:Date.now()};changed();render();}});
   $('obClose').onclick=()=>chiudi('obModal');$('obSave').onclick=salvaOb;$('obDel').onclick=eliminaOb;
   $('mvClose').onclick=()=>chiudi('mvModal');$('mvSave').onclick=salvaMv;$('mvDel').onclick=eliminaMv;
   $('mvTipo').addEventListener('click',e=>{const b=e.target.closest('[data-t]');if(b){mv.tipo=b.dataset.t;tipoMv();}});

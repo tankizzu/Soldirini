@@ -5,10 +5,13 @@
 (function(){
 const C=window.StipCalc;
 const SP=()=>D().spesePers||(D().spesePers={});
-const speseDel=fn=>Object.values(SP()).filter(s=>!s.deleted&&fn(s)).sort((a,b)=>(a.data+a.created).localeCompare(b.data+b.created));
+// 24c.6 (R-D5): una spesa senza data o con la data non di testo (file su Drive rovinato) si salta in silenzio, senza errori
+const dataSpesa=d=>typeof d==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(d);
+const speseDel=fn=>Object.values(SP()).filter(s=>s&&typeof s==='object'&&!s.deleted&&dataSpesa(s.data)&&fn(s)).sort((a,b)=>(a.data+a.created).localeCompare(b.data+b.created));
 const CATS=[['online','📦','Online / Amazon'],['negozio','🛍️','Negozio'],['spesa','🛒','Supermercato'],['bar','☕','Bar e ristoranti'],['amici','🍻','Amici e uscite'],['trasporti','🚗','Trasporti e benzina'],['casa','🏠','Casa e bollette'],['altro','•','Altro']];
 const catDi=k=>CATS.find(c=>c[0]===k)||CATS[CATS.length-1];
-const num=v=>{const n=parseFloat(String(v??'').replace(',','.'));return isNaN(n)?0:n;};
+const num=v=>leggiNumero(v)??0; // 24c.6 (P2): importi scritti a mano all'italiana (numeri.js)
+const numP=v=>leggiNumeroPunto(v)??0; // 24c.6: campi type="number" (giorni, rate, mesi, percentuale): punto decimale, come prima
 // v23 (D-010): le sezioni non ricordano più se erano aperte; tolgo le vecchie memorie dal telefono
 try{localStorage.removeItem('soldirini-sez');localStorage.removeItem('soldirini-foldpro');}catch(e){}
 let S={lav:null,sp:[],cat:'online'};let pick=false,modTurno=null; // stato delle sezioni mentre la finestra è aperta
@@ -139,7 +142,7 @@ saveEv=async function(){
     if($('evRimb').checked&&!kmOk&&(md.e.spese||[]).length)$('evRimb').checked=false;
     // ripetizione con inizio e durata
     if($('evRip').checked&&md.dates.length===1){const dal=$('evRipDal').value;if(!dal){toast('Scegli da quando inizia.','err');return;}
-      if($('evRipDur').value==='mesi'){const n=Math.round(num($('evRipMesi').value));if(!(n>0)){toast('Scrivi per quanti mesi.','err');return;}$('evRipFino').value=fineDaMesi(dal,n);}
+      if($('evRipDur').value==='mesi'){const n=Math.round(numP($('evRipMesi').value));if(!(n>0)){toast('Scrivi per quanti mesi.','err');return;}$('evRipFino').value=fineDaMesi(dal,n);}
       md.dates=[dal];}
     await _saveEv16();
     if(!$('evModal').hidden){md.dates=dates;return;} // salvataggio non riuscito: resto nella finestra

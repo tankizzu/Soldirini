@@ -60,7 +60,7 @@ test('busta paga: gruppo "Per la pensione", controllo C-2 sotto il campo, contri
   await page.click('#bpManuale');
   await expect(page.locator('#bpModal h3.bpgr')).toHaveText('Per la pensione');
   await page.fill('#bp-netto', '1800'); await page.fill('#bp-imponibilePrev', '2500'); await page.fill('#bp-contribLav', '400');
-  await expect(page.locator('#bpC2')).toHaveText('⚠ Sembra alto (16% dell’imponibile, di solito 9–10%). Controlla il valore sulla busta.');
+  await expect(page.locator('#bpC2')).toHaveText('⚠ Sembra alto (16,0% dell’imponibile, di solito 9–10%). Controlla il valore sulla busta.');
   await page.fill('#bp-contribLav', '229,75');
   await expect(page.locator('#bpC2')).toBeHidden();
   await page.click('#bpSave');

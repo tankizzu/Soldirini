@@ -9,7 +9,8 @@ const TUR=()=>D().turni||(D().turni={});
 const BUS=()=>D().buste||(D().buste={});
 const lavori=()=>Object.values(LAV()).filter(l=>!l.deleted).sort((a,b)=>(a.ordine??0)-(b.ordine??0)||a.nome.localeCompare(b.nome));
 const lav=id=>LAV()[id];
-const turniDi=lid=>Object.values(TUR()).filter(t=>t.lid===lid&&!t.deleted);
+// 24c.6 (R-D9): un turno senza data valida (file su Drive rovinato) si salta in silenzio in calendario, ore, paga e saldi
+const turniDi=lid=>Object.values(TUR()).filter(t=>t&&t.lid===lid&&!t.deleted&&C.dataOk(t.data));
 const busteDi=lid=>{const o={};for(const [k,b] of Object.entries(BUS()))if(b.lid===lid&&!b.deleted)o[k]=b;return o;};
 const nOre=h=>nf(h,h%1?2:0);
 const SETT=['','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato','Domenica'];
@@ -227,6 +228,8 @@ function togliTurno(){if(tu.id){const x=TUR()[tu.id];x.deleted=true;x.updatedAt=
   changed();chiudi('tuModal');if(multi)esciMulti();render();if(!$('dayModal').hidden)renderTurniGiorno(selDay);toast('Tolto.');}
 
 // ================= riepilogo =================
+// 24c.6 (P2): numeri della busta letti con numeri.js; "1.680" (ambiguo, salvato da una versione vecchia) vale vuoto
+const bn=v=>leggiNumero(v,true);
 function datiMese(l,ym){const M=C.calcolaMese(l,turniDi(l.id),ym);const B=busteDi(l.id);const tr=C.trattenute(l,B);const b=B[`${l.id}|${ym}`];
   return {M,tr,netto:M.lordo!=null&&tr?r2(M.lordo*(1-tr.p)):null,busta:b,saldi:C.saldi(l,turniDi(l.id),B,ym)};}
 window.datiMeseLavoro=datiMese;
@@ -236,15 +239,17 @@ function cardMese(l,ym){
   const ass=[T.ferie?`${T.ferie} ${T.ferie===1?'giorno':'giorni'} di ferie`:'',T.perm?`${nOre(T.perm)} ore di permesso`:'',T.mal?`${nOre(T.mal)} ore di malattia`:'',T.nonretr?`${nOre(T.nonretr)} ore non pagate`:''].filter(Boolean);
   const mg=(k,lab)=>M.magg[k]==null&&T[k==='stra'?'stra':k]?`<p class="muted sm">${lab}: maggiorazione non impostata, contata come ora normale.</p>`:'';
   const E=M.E;const voce=(t,v)=>v?kv(t,eur(v)):'';
-  const sal=[saldi.ferie?`Ferie: ${nOre(saldi.ferie.saldo)} ${saldi.ferie.unita}`:'',saldi.rol?`Permessi: ${nOre(saldi.rol.saldo)} ${saldi.rol.unita}`:'',saldi.exfest?`Ex festività: ${nOre(saldi.exfest.saldo)} ${saldi.exfest.unita}`:''].filter(Boolean);
-  const diff=busta&&M.lordo!=null&&busta.lordo!==''?r2(+busta.lordo-M.lordo):null;
+  // 24c.6 (R-D7, FS33): la riga dei saldi passa sempre da esc()
+  const sal=[saldi.ferie?`Ferie: ${nOre(saldi.ferie.saldo)} ${saldi.ferie.unita}`:'',saldi.rol?`Permessi: ${nOre(saldi.rol.saldo)} ${saldi.rol.unita}`:'',saldi.exfest?`Ex festività: ${nOre(saldi.exfest.saldo)} ${saldi.exfest.unita}`:''].filter(Boolean).map(esc);
+  const bL=busta?bn(busta.lordo):null,bN=busta?bn(busta.netto):null;
+  const diff=busta&&M.lordo!=null&&bL!=null?r2(bL-M.lordo):null;
   return `<div class="card lavcard" data-lavcard="${esc(l.id)}" style="--c:${colOk(l.colore)}"><h3><i></i><span>${esc(l.nome)} <small class="muted">· lavoro dipendente</small></span></h3>
     ${kv('Giorni lavorati',T.giorniLav)}${kv('Ore',ore.join(' · ')||'0')}${ass.length?kv('Assenze',ass.join(' · ')):''}
     ${M.lordo!=null?`${voce('Paga base',E.base)}${voce('Straordinari',E.stra)}${voce('Notturno',E.nott)}${voce('Festivi',E.fest)}${voce('Domeniche',E.dom)}
       <div class="kv big"><span>Lordo stimato</span><b>${eur(M.lordo)}</b></div>${netto!=null?`<div class="kv"><span>Netto stimato</span><b>${eur(netto)}</b></div><p class="muted sm">Trattenute ${nf(tr.p*100,1)}% ${tr.fonte==='busta'?'ricavate dalla busta di '+esc(monthName(tr.mese)):'impostate nel lavoro'}.</p>`:'<p class="muted sm">Carica una busta paga per stimare anche il netto.</p>'}
       ${mg('stra','Straordinario')}${mg('nott','Notturno')}${mg('fest','Festivi')}${mg('dom','Domeniche')}`
     :'<p class="muted sm">Imposta la paga nel lavoro (Impostazioni) per vedere la stima dello stipendio.</p>'}
-    ${busta?`<div class="kv"><span>Busta paga</span><b>${busta.netto!==''?'netto '+eur(+busta.netto):''}${busta.lordo!==''?' · lordo '+eur(+busta.lordo):''}</b></div>${diff!=null&&Math.abs(diff)>=1?`<p class="sm ${diff<0?'warn':'muted'}">${diff<0?'In busta ci sono '+eur(-diff)+' in meno della stima: controlla straordinari e ore.':'In busta ci sono '+eur(diff)+' in più della stima.'}</p>`:''}`:''}
+    ${busta?`<div class="kv"><span>Busta paga</span><b>${bN!=null?'netto '+eur(bN):''}${bL!=null?' · lordo '+eur(bL):''}</b></div>${diff!=null&&Math.abs(diff)>=1?`<p class="sm ${diff<0?'warn':'muted'}">${diff<0?'In busta ci sono '+eur(-diff)+' in meno della stima: controlla straordinari e ore.':'In busta ci sono '+eur(diff)+' in più della stima.'}</p>`:''}`:''}
     ${sal.length?`<p class="muted sm">Saldi: ${sal.join(' · ')}</p>`:''}
     <p class="muted sm">Stima: per i valori esatti fa fede la busta paga.</p>
     ${(window.Entrate?Entrate.rigaStato(`lav|${l.id}|${ym}`):'')}
@@ -253,14 +258,14 @@ function cardMese(l,ym){
 function cardAnno(l,y){
   const righe=[];let tl=0,to=0,tb=0;const B=busteDi(l.id);
   for(let m=1;m<=12;m++){const ym=`${y}-${pad(m)}`;const M=C.calcolaMese(l,turniDi(l.id),ym);const b=B[`${l.id}|${ym}`];if(!M.T.lav&&!M.T.pagate&&!b)continue;
-    tl+=M.lordo||0;to+=M.T.lav;tb+=b&&b.netto!==''?+b.netto:0;
-    righe.push(`<div class="kv"><span>${MESI[m-1][0].toUpperCase()+MESI[m-1].slice(1)}</span><b>${nOre(M.T.lav)} ore${M.lordo!=null?' · '+eur(M.lordo):''}${b&&b.netto!==''?' · busta '+eur(+b.netto):''}</b></div>`+(ym<=today().slice(0,7)?(window.Entrate?Entrate.rigaStato(`lav|${l.id}|${ym}`):''):''));}
+    const bN=b?bn(b.netto):null;tl+=M.lordo||0;to+=M.T.lav;tb+=bN!=null?bN:0;
+    righe.push(`<div class="kv"><span>${MESI[m-1][0].toUpperCase()+MESI[m-1].slice(1)}</span><b>${nOre(M.T.lav)} ore${M.lordo!=null?' · '+eur(M.lordo):''}${bN!=null?' · busta '+eur(bN):''}</b></div>`+(ym<=today().slice(0,7)?(window.Entrate?Entrate.rigaStato(`lav|${l.id}|${ym}`):''):''));}
   return `<div class="card lavcard" style="--c:${colOk(l.colore)}"><h3><i></i>${esc(l.nome)} · ${y}</h3>${righe.join('')||'<p class="muted">Niente in questo anno.</p>'}
     <div class="kv big"><span>Totale</span><b>${nOre(r2(to))} ore${tl?' · lordo stimato '+eur(r2(tl)):''}</b></div>${tb?`<div class="kv"><span>Netto dalle buste</span><b>${eur(r2(tb))}</b></div>`:''}
     <div class="acts"><button class="btn ghost sm" data-bparch="${esc(l.id)}">Archivio buste</button></div></div>`;
 }
 // netto del mese di un lavoro: dalla busta se c'è, altrimenti la stima (netto, o lordo se manca il netto)
-function nettoMese(l,ym){const {M,netto,busta}=datiMese(l,ym);if(busta&&busta.netto!=='')return {v:+busta.netto,fonte:'busta'};if(netto!=null)return {v:netto,fonte:'stima'};if(M.lordo)return {v:M.lordo,fonte:'lordo'};return {v:0,fonte:null};}
+function nettoMese(l,ym){const {M,netto,busta}=datiMese(l,ym);const bN=busta?bn(busta.netto):null;if(bN!=null)return {v:bN,fonte:'busta'};if(netto!=null)return {v:netto,fonte:'stima'};if(M.lordo)return {v:M.lordo,fonte:'lordo'};return {v:0,fonte:null};}
 function totaleLavoro(periodo){const L=lavori();let v=0,stima=false;
   for(const l of L){const mesi=periodo.length===4?Array.from({length:12},(_,i)=>`${periodo}-${pad(i+1)}`):[periodo];
     for(const ym of mesi){const n=nettoMese(l,ym);v+=n.v;if(n.fonte&&n.fonte!=='busta')stima=true;}}return {v:r2(v),stima};}
@@ -329,9 +334,13 @@ function apriBusta(lid,mese,esistente){
   $('bpTit').textContent='Busta paga · '+lav(lid).nome;$('bpStep1').hidden=!!esistente;$('bpStep2').hidden=!esistente;$('bpProg').hidden=true;$('bpErr').hidden=true;
   const b=esistente?BUS()[bp.key]:{};
   $('bpMese').value=mese||cur;document.querySelectorAll('#bpModal .manca').forEach(e=>e.classList.remove('manca'));for(const k of ['lordo','trattenute','netto','ferie','rol','exfest'])$('bp-'+k).value=b?.[k]??'';
+  bp.toccati=new Set();bp.ambigui={};
   $('bpUF').value=b?.unitaFerie||lav(lid).ferie.unita;$('bpUP').value=b?.unitaPerm||lav(lid).perm.unita;
   for(const k of PEN_B)$('bp-'+k).value=b?.[k]??'';bp.dc=[...(b?.daControllare||[])];
-  $('bpPenNota').hidden=!(esistente&&PEN_B.every(k=>(b?.[k]??'')===''));penBusta();
+  // 24c.6 (P2): un numero salvato che non si capisce ("1.680": 1.680 € o 1,68 €?) non si indovina: campo vuoto con il bordo rosso.
+  // Se resta vuoto, salvando il valore di prima non si tocca (R-D6: Drive cambia solo con quello che l'utente scrive).
+  for(const k of NUM_B){const v=$('bp-'+k).value;if(v!==''&&capisciNumero(v,true).stato!=='ok'){bp.ambigui[k]=v;$('bp-'+k).value='';}}
+  $('bpPenNota').hidden=!(esistente&&PEN_B.every(k=>(b?.[k]??'')===''));penBusta();numeriBusta();
   $('bpNote').textContent=esistente?'':'';apri('bpModal');
 }
 async function leggiBusta(file){
@@ -347,14 +356,19 @@ async function leggiBusta(file){
   if(r.unita)$('bpUF').value=r.unita;if(r.unitaPermessi)$('bpUP').value=r.unitaPermessi;
   for(const k of PEN_B){$('bp-'+k).value=r[k]==null?'':r[k];$('bp-'+k).classList.toggle('manca',!!(r.dubbi&&r.dubbi.includes(k)));} // 24b.1 (D-095): valore scartato → vuoto con il bordo rosso
   bp.dc=PEN_B.filter(k=>r[k]!=null);$('bpPenNota').hidden=true;penBusta();
+  bp.toccati=new Set();bp.ambigui={};numeriBusta();
   bp.letti=letteVoci(r);
   $('bpNote').innerHTML=`<b>${bp.letti.ok.length?'Busta letta':'Non ho trovato le voci'}</b><br>${bp.letti.html}<br>${bp.letti.manca.length?'Quelle mancanti (bordo rosso) scrivile tu o lasciale vuote.':'Controlla e salva.'}`;
 }
 async function salvaBusta(){
   const mese=$('bpMese').value;if(!/^\d{4}-\d{2}$/.test(mese)){toast('Indica il mese della busta.','err');return;}
+  // 24c.6 (P2): si salvano solo numeri capiti, nel formato di sempre (punto per i decimali, niente punti delle migliaia)
+  const errati=NUM_B.filter(k=>['no','ambiguo'].includes(capisciNumero($('bp-'+k).value,true).stato));
+  if(errati.length){NUM_B.forEach(k=>bp.toccati.add(k));numeriBusta();toast('Controlla i numeri con il bordo rosso.','err');$('bp-'+errati[0]).focus();return;}
   const key=`${bp.lid}|${mese}`;const vecchia=BUS()[key];
   if(bp.key&&bp.key!==key){const o=BUS()[bp.key];if(o){o.deleted=true;o.updatedAt=Date.now();}}
-  const val=k=>$('bp-'+k).value.trim().replace(',','.');
+  const prima=bp.key?BUS()[bp.key]||{}:{};
+  const val=k=>{const c=capisciNumero($('bp-'+k).value,true);if(c.stato==='ok')return String(c.n);return bp.ambigui?.[k]!=null&&bp.key===key?String(prima[k]??''):'';};
   const b=Object.assign({},vecchia&&!vecchia.deleted?vecchia:{},bp.key?BUS()[bp.key]:{},{lid:bp.lid,mese,deleted:false,updatedAt:Date.now()});
   for(const k of ['lordo','trattenute','netto','ferie','rol','exfest'])b[k]=val(k);b.unitaFerie=$('bpUF').value;b.unitaPerm=$('bpUP').value;
   // v22: campi per la pensione; salvando dalla finestra l'utente li ha visti, quindi tolgo "da controllare"
@@ -373,7 +387,7 @@ function renderArchivio(){
   $('baTit').textContent='Buste paga · '+l.nome;
   const anni=[...new Set(B.map(b=>b.mese.slice(0,4)))];const pend=B.filter(b=>b.daCaricare).length;
   $('baBody').innerHTML=`<div class="acts"><button class="btn sm" data-bpnew="${esc(l.id)}">+ Carica busta paga</button><button class="btn ghost sm" id="baTutte">Salva tutto su Drive${pend?` (${pend})`:''}</button>${l.drive?.buste?.link?`<a class="btn ghost sm" href="${esc(l.drive.buste.link)}" target="_blank" rel="noopener">Cartella su Drive ↗</a>`:''}</div>`+
-    (anni.map(y=>`<h3 class="bay">${y}</h3>`+rigaContributi(B,y)+B.filter(b=>b.mese.startsWith(y)).map(b=>`<div class="bai"><span class="tx"><b>${(m=>m[0].toUpperCase()+m.slice(1))(MESI[+b.mese.slice(5)-1])}</b><small>${b.netto!==''?'netto '+eur(+b.netto):''}${b.lordo!==''?' · lordo '+eur(+b.lordo):''}${b.daCaricare?' · ⏳ da caricare su Drive':b.file?' · su Drive':' · senza file'}</small>${statoLettura(b)}${b.daControllare?.length?' <small class="dc">da controllare</small>':''}</span>
+    (anni.map(y=>`<h3 class="bay">${y}</h3>`+rigaContributi(B,y)+B.filter(b=>b.mese.startsWith(y)).map(b=>`<div class="bai"><span class="tx"><b>${(m=>m[0].toUpperCase()+m.slice(1))(MESI[+b.mese.slice(5)-1])}</b><small>${bn(b.netto)!=null?'netto '+eur(bn(b.netto)):''}${bn(b.lordo)!=null?' · lordo '+eur(bn(b.lordo)):''}${b.daCaricare?' · ⏳ da caricare su Drive':b.file?' · su Drive':' · senza file'}</small>${statoLettura(b)}${b.daControllare?.length?' <small class="dc">da controllare</small>':''}</span>
       ${b.file?.link?`<a class="btn ghost sm" href="${esc(b.file.link)}" target="_blank" rel="noopener">Apri</a>`:''}<button class="btn ghost sm" data-bped="${esc(b.lid+'|'+b.mese)}">Modifica</button></div>`).join('')).join('')||'<p class="muted" style="margin-top:12px">Ancora nessuna busta paga.</p>');
 }
 async function eliminaBusta(){const b=BUS()[bp.key];if(!b)return;if(!await conferma(`Togliere la busta di ${monthName(b.mese)} dall’app? Il file su Drive resta.`,'Togli','danger'))return;
@@ -387,6 +401,19 @@ function statoLettura(b){const L=b.lettura;if(!L)return '';if(L.manuale)return '
   return L.manca&&L.manca.length?`<small class="bdg warn">⚠ letta in parte: manca ${L.manca.join(', ')}</small>`:'<small class="bdg ok">✓ letta</small>';}
 // ---------- v22: campi "Per la pensione" nella busta ----------
 const PEN_B=['imponibilePrev','contribLav','giorniInps'];
+// ---------- 24c.6: numeri della finestra della busta (P2) e controlli lordo / trattenute / netto (P1) ----------
+const NUM_B=['lordo','trattenute','netto','ferie','rol','exfest',...PEN_B];
+const NOMI_NUM={lordo:'Lordo',trattenute:'Trattenute',netto:'Netto',ferie:'Saldo ferie',rol:'Saldo permessi',exfest:'Ex festività',imponibilePrev:'Imponibile previdenziale',contribLav:'Contributi',giorniInps:'Giorni INPS'};
+const dueLetture=s=>`${s},00 oppure ${(+s).toFixed(2).replace('.',',')}`; // "1.680" → "1.680,00 oppure 1,68"
+function numeriBusta(){if(!bp||!$('bpNum'))return;const righe=[];
+  for(const k of NUM_B){const el=$('bp-'+k),v=el.value.trim(),c=capisciNumero(v,true),visto=bp.toccati&&bp.toccati.has(k);let m='';
+    if(v===''&&bp.ambigui&&bp.ambigui[k]!=null)m=`${NOMI_NUM[k]}: qui c'era «${bp.ambigui[k]}», che può essere ${dueLetture(bp.ambigui[k])}. Controlla sulla busta e scrivilo con la virgola.`;
+    else if(visto&&c.stato==='ambiguo')m=`${NOMI_NUM[k]}: «${v}» può essere ${dueLetture(v)}. Scrivilo con la virgola, come sulla busta.`;
+    else if(visto&&c.stato==='no')m=`${NOMI_NUM[k]}: non capisco questo numero. Scrivilo così: 1.260,00 oppure 1260,00.`;
+    el.classList.toggle('nonvale',!!m);if(m)el.setAttribute('aria-invalid','true');else el.removeAttribute('aria-invalid');if(m)righe.push(m);}
+  $('bpNum').innerHTML=righe.map(esc).join('<br>');$('bpNum').hidden=!righe.length;
+  const p1=C.controlloBusta(bn($('bp-lordo').value),bn($('bp-trattenute').value),bn($('bp-netto').value),eur);
+  $('bpP1').textContent=p1?'⚠ '+p1.testo:'';$('bpP1').hidden=!p1;}
 function penBusta(){
   for(const k of PEN_B){const f=document.querySelector(`#bpModal [data-dc="${k}"]`);if(f)f.hidden=!bp.dc.includes(k);}
   const anno=($('bpMese').value||cur).slice(0,4);const c=PenCalc.controlloContributi($('bp-imponibilePrev').value,$('bp-contribLav').value,anno);
@@ -522,6 +549,7 @@ function bind15(){
   $('bpRis').addEventListener('click',e=>{const b=e.target.closest('[data-bpfix]');if(b)salvaSenzaMese(+b.dataset.bpfix);});
   $('bpManuale').onclick=()=>{$('bpStep1').hidden=true;$('bpStep2').hidden=false;$('bpNote').textContent='Scrivi i valori della busta. Senza file la busta resta solo nell’app.';};
   for(const k of PEN_B)$('bp-'+k).addEventListener('input',()=>{bp.dc=bp.dc.filter(x=>x!==k);penBusta();});
+  for(const k of NUM_B){$('bp-'+k).addEventListener('input',()=>numeriBusta());$('bp-'+k).addEventListener('change',()=>{if(bp&&bp.toccati)bp.toccati.add(k);numeriBusta();});}
   $('bpMese').addEventListener('change',()=>{$('bpMese').classList.toggle('manca',!$('bpMese').value);if(bp)penBusta();});
   $('bpClose').onclick=()=>chiudi('bpModal');$('bpSave').onclick=salvaBusta;$('bpDel').onclick=eliminaBusta;$('baClose').onclick=()=>chiudi('bpArch');
   for(const id of MODALI)$(id).addEventListener('click',e=>{if(e.target.id===id)chiudi(id);});
