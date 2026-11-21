@@ -148,17 +148,24 @@ window.etichettaTurno=function(l,v){
 // niente su Google Calendar.
 const SEGNO_FESTA='🎉';
 const festeAccese=()=>{try{return impost().festeCal!==false;}catch(e){return true;}};
-function festaDel(iso){if(!festeAccese())return null;
-  const naz=C.festivo(iso,[]);if(naz)return naz;
+// 24c.9 (D-146, ritocchi di 02 tornata 47): nel calendario "Pasquetta (Lunedì dell'Angelo)"; i nomi della paga non cambiano.
+// Feste locali solo dai lavori attivi quel giorno e non nascosti dal filtro del calendario; se coincidono con una nazionale vale quella.
+const NOME_CAL={'Lunedì dell’Angelo':'Pasquetta (Lunedì dell’Angelo)'};
+function festaInfo(iso){if(!festeAccese())return null;
+  const naz=C.festivo(iso,[]);if(naz)return {nome:NOME_CAL[naz]||naz,tipo:'nazionale'};
   const md=iso.slice(5);
-  return lavori().some(l=>(!l.dal||l.dal<=iso)&&(!l.al||l.al>=iso)&&C.parseLocali(l.locali).includes(md))?'Festa locale':null;}
-window.festaDel=festaDel;
+  const L=lavori().filter(l=>!window.lavoroNascosto?.(l.id)&&(!l.dal||l.dal<=iso)&&(!l.al||l.al>=iso)&&C.parseLocali(l.locali).includes(md));
+  return L.length?{nome:'Festa locale',tipo:'locale',lavori:L.map(l=>l.nome||'senza nome')}:null;}
+function festaDel(iso){const f=festaInfo(iso);return f?f.nome:null;}
+window.festaDel=festaDel;window.festaInfo=festaInfo;
 const _renderCal15=renderCal;
 renderCal=function(){
   _renderCal15();
   // etichetta per il lettore di schermo: "Lunedì 9 novembre" prima del contenuto della casella (24c.8: con il nome della festa)
   document.querySelectorAll('#grid [data-day]').forEach(b=>{const n=b.querySelector('.n');const f=festaDel(b.dataset.day);
     if(n&&!n.hasAttribute('aria-hidden')){n.setAttribute('aria-hidden','true');n.insertAdjacentHTML('afterend',`<span class="vh">${dataLunga(b.dataset.day)}${f?', '+esc(f):''}</span>`);}
+    // 24c.9 (D-146): casella della festa in rosso (bordo, numero, fondo tenue) e segno più grande
+    b.classList.toggle('festa',!!f);
     if(f&&!b.querySelector('.fst'))b.insertAdjacentHTML('beforeend',`<span class="fst" aria-hidden="true" title="${esc(f)}">${SEGNO_FESTA}</span>`);});
   const L=lavori();if(!L.length)return;
   const per={};
@@ -174,10 +181,11 @@ renderCal=function(){
 // riepilogo del giorno: turni e scelta veloce
 const _apriGiorno15=apriGiorno;
 apriGiorno=function(d){_apriGiorno15(d);renderTurniGiorno(d);festaGiorno(d);};
-// 24c.8 (D-144): nel giorno aperto una riga con il nome della festa
-function festaGiorno(d){let p=$('dayFesta');const f=festaDel(d);
+// 24c.8 (D-144): nel giorno aperto una riga con il nome della festa; 24c.9 (02 tornata 47): sotto, da dove viene
+function festaGiorno(d){let p=$('dayFesta');const f=festaInfo(d);
   if(!p){p=document.createElement('p');p.id='dayFesta';p.className='muted sm';$('daySum').insertAdjacentElement('beforebegin',p);}
-  p.textContent=f?`${SEGNO_FESTA} ${f}`:'';p.hidden=!f;}
+  const da=!f?'':f.tipo==='nazionale'?'Festa nazionale':`Dalle “Feste locali” ${f.lavori.length>1?'dei lavori':'del lavoro'} ${f.lavori.join(' e ')}`;
+  p.innerHTML=f?`<span class="fnome">${SEGNO_FESTA} ${esc(f.nome)}</span><span class="fda">${esc(da)}</span>`:'';p.hidden=!f;}
 function renderTurniGiorno(d){
   let box=$('dayTurni');if(!box){box=document.createElement('div');box.id='dayTurni';$('dayBox').insertBefore(box,$('dayList'));}
   const L=lavori();if(!L.length){box.innerHTML='';return;}

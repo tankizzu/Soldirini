@@ -23,10 +23,10 @@ test.describe('24c.8 · D-144: feste nel calendario', () => {
     await mese(page, '2026-04');
     expect(await conSegno(page)).toEqual(['2026-04-05', '2026-04-06', '2026-04-25']);
     await page.evaluate(() => apriGiorno('2026-04-06'));
-    await expect(page.locator('#dayFesta')).toHaveText('🎉 Lunedì dell’Angelo');
+    await expect(page.locator('#dayFesta .fnome')).toHaveText('🎉 Pasquetta (Lunedì dell’Angelo)'); // 24c.9: nome del calendario
     await page.evaluate(() => apriGiorno('2026-04-07'));
     await expect(page.locator('#dayFesta')).toBeHidden();
-    await page.evaluate(() => apriGiorno('2026-04-05')); await expect(page.locator('#dayFesta')).toHaveText('🎉 Pasqua');
+    await page.evaluate(() => apriGiorno('2026-04-05')); await expect(page.locator('#dayFesta .fnome')).toHaveText('🎉 Pasqua');
     // la scelta in Impostazioni → Aspetto: accesa di partenza; spenta → nessun segno e nessuna riga
     await page.evaluate(() => { document.querySelectorAll('.sheet, .modal').forEach(m => { if (m.id === 'dayModal') m.hidden = true; }); tab = 'pro'; render(); });
     const scelta = page.locator('#festeCal');
@@ -45,7 +45,7 @@ test.describe('24c.8 · D-144: feste nel calendario', () => {
     await page.evaluate(() => { const l = Stip15.nuovoLavoro('fisso'); l.nome = 'Ditta'; l.dal = '2026-01-01'; l.al = '2026-12-31'; l.locali = '29/06'; D().lavori[l.id] = l; changed(); });
     await mese(page, '2026-06');
     expect(await conSegno(page)).toEqual(['2026-06-02', '2026-06-29']);
-    await page.evaluate(() => apriGiorno('2026-06-29')); await expect(page.locator('#dayFesta')).toHaveText('🎉 Festa locale');
+    await page.evaluate(() => apriGiorno('2026-06-29')); await expect(page.locator('#dayFesta .fnome')).toHaveText('🎉 Festa locale');
     await mese(page, '2027-06');
     expect(await conSegno(page)).toEqual(['2027-06-02']); // il lavoro è finito
     expect(errori).toEqual([]);

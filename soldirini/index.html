@@ -19,10 +19,10 @@
 <style>@font-face{font-family:"Nunito";src:url(nunito.woff2) format("woff2");font-weight:400 800;font-style:normal;font-display:swap}</style>
 <link rel="stylesheet" href="fonts.css">
 <style>
-:root{color-scheme:light;--gold-chiaro:#f3c969;--gold-scuro:#d49a12;--bg:#f1f0ee;--card:#fff;--ink:#1b1c1e;--mut:#6b6a68;--line:#e2e0dc;--pri:#2a2c30;--pri2:#3d4046;--pri-ink:#fff;--top:#17191c;--gold:#e0a93a;--err:#a33a28;--ok:#356d47;--warn:#a8460d;--field:#8d8983;--tabmix:85%;--sezink:80%;--sez:#5b6475;--shadow:0 1px 2px rgba(20,20,20,.05),0 4px 14px rgba(20,20,20,.05);--r:14px;--font:"Nunito",ui-rounded,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+:root{color-scheme:light;--gold-chiaro:#f3c969;--gold-scuro:#d49a12;--bg:#f1f0ee;--card:#fff;--ink:#1b1c1e;--mut:#6b6a68;--line:#e2e0dc;--pri:#2a2c30;--pri2:#3d4046;--pri-ink:#fff;--top:#17191c;--gold:#e0a93a;--err:#a33a28;--festa:#b3261e;--ok:#356d47;--warn:#a8460d;--field:#8d8983;--tabmix:85%;--sezink:80%;--sez:#5b6475;--shadow:0 1px 2px rgba(20,20,20,.05),0 4px 14px rgba(20,20,20,.05);--r:14px;--font:"Nunito",ui-rounded,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 :root[data-theme="light"]{color-scheme:only light} /* 24c.4 (D-128): tema Chiaro scelto in Impostazioni: il browser non scurisce la pagina da solo */
-:root[data-theme="dark"]{--bg:#0f1011;--card:#1a1b1e;--ink:#ebeae7;--mut:#a09e9a;--line:#2c2d31;--pri:#e6e4df;--pri2:#c9c7c2;--pri-ink:#16171a;--top:#0b0c0d;--err:#f2857a;--ok:#74c08c;--warn:#f5a066;--field:#76757a;--tabmix:60%;--sezink:55%;--shadow:none;color-scheme:dark}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1011;--card:#1a1b1e;--ink:#ebeae7;--mut:#a09e9a;--line:#2c2d31;--pri:#e6e4df;--pri2:#c9c7c2;--pri-ink:#16171a;--top:#0b0c0d;--err:#f2857a;--ok:#74c08c;--warn:#f5a066;--field:#76757a;--tabmix:60%;--sezink:55%;--shadow:none;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0f1011;--card:#1a1b1e;--ink:#ebeae7;--mut:#a09e9a;--line:#2c2d31;--pri:#e6e4df;--pri2:#c9c7c2;--pri-ink:#16171a;--top:#0b0c0d;--err:#f2857a;--festa:#ff8a80;--ok:#74c08c;--warn:#f5a066;--field:#76757a;--tabmix:60%;--sezink:55%;--shadow:none;color-scheme:dark}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1011;--card:#1a1b1e;--ink:#ebeae7;--mut:#a09e9a;--line:#2c2d31;--pri:#e6e4df;--pri2:#c9c7c2;--pri-ink:#16171a;--top:#0b0c0d;--err:#f2857a;--festa:#ff8a80;--ok:#74c08c;--warn:#f5a066;--field:#76757a;--tabmix:60%;--sezink:55%;--shadow:none;color-scheme:dark}}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 var(--font);-webkit-tap-highlight-color:transparent}
 body.noscroll{overflow:hidden}
@@ -69,7 +69,12 @@ h2{font-size:17px;margin:0}h3{font-size:15.5px;margin:0 0 8px;display:flex;align
 .day.we .n{color:var(--mut)}
 .day .n{font-weight:700;font-size:13px}
 /* 24c.8 (D-144): festa nel calendario, segno discreto in alto a destra della casella (fondo tenue come i riquadri dei turni) */
-.day{position:relative}.day .fst{position:absolute;top:3px;right:3px;font-size:11px;line-height:17px;min-width:18px;text-align:center;padding:0 2px;border-radius:6px;background:color-mix(in srgb,var(--gold) 22%,var(--card));pointer-events:none}
+.day{position:relative}.day .fst{position:absolute;top:2px;right:1px;font-size:16px;line-height:19px;pointer-events:none}
+/* 24c.9 (D-146): la casella della festa in rosso come nei calendari da muro: bordo, numero, fondo tenue (contrasti nella prova v24c9) */
+.day.festa{border-color:var(--festa);background:color-mix(in srgb,var(--festa) 9%,var(--card))}
+.day.festa .n{color:var(--festa)}
+.day.today.festa .n{background:var(--festa);color:var(--card);width:20px;height:20px}
+#dayFesta .fnome{display:block;font-weight:700;color:var(--ink)}#dayFesta .fda{display:block}
 #dayFesta{margin:-4px 0 8px}
 .day.today .n{background:var(--pri);color:#fff;border-radius:999px;width:22px;height:22px;display:grid;place-items:center}
 .day.sel{outline:2.5px solid var(--pri);outline-offset:-1px}
@@ -659,7 +664,8 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
           <div class="acts"><button class="btn ghost sm" id="firmaClr">Cancella</button><button class="btn sm" id="firmaSave">Salva firma</button><button class="btn ghost sm" id="firmaRm">Togli firma salvata</button></div><div id="firmaPrev" class="firmaprev"></div></details>
         </div>
         <div class="card"><h3>Aspetto</h3><label>Tema<select id="tema"><option value="auto">Come il telefono</option><option value="light">Chiaro</option><option value="dark">Scuro</option></select></label>
-          <label class="check"><input type="checkbox" id="festeCal"> Mostra le feste nel calendario</label></div>
+          <label class="check"><input type="checkbox" id="festeCal" aria-describedby="festeCalNota"> Mostra le feste nel calendario</label>
+          <p class="muted sm" id="festeCalNota">Le feste nazionali italiane, con 🎉. Il santo patrono si aggiunge nel lavoro, in “Feste locali”.</p></div>
         <div class="card"><h3>Google Calendar</h3><div id="gcalBody"></div></div>
         <div class="card"><h3>Promemoria</h3><div class="stack">
           <label class="check"><input type="checkbox" id="promem"> Avvisami delle attività da confermare</label>
