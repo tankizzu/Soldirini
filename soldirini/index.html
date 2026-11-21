@@ -307,6 +307,12 @@ input.manca,input.nonvale{border-color:var(--err)}
 .pchip.add{font-weight:800;min-width:40px;justify-content:center}
 .tsel{display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--line);border-radius:10px}.tsel b{flex:1}
 .tpick{border:1px solid var(--line);border-radius:12px;padding:8px;margin-top:8px}.tpr{display:flex;gap:6px;align-items:center;padding:4px 0}.tpr .nm{flex:1;min-width:0}.tpr input{padding:6px 8px}
+/* 24c.10 (D-147): righe dei movimenti della banca */
+#bcList .bcrow{padding:8px 0 10px;border-bottom:1px dashed var(--line)}#bcList .bcrow.off .bchk{opacity:.6}#bcList .bcrow.gia{opacity:.6}
+#bcList .bchk{display:flex;align-items:center;gap:8px;padding:2px 0;min-height:44px}#bcList .bcd{color:var(--mut);font-weight:650;font-variant-numeric:tabular-nums}
+#bcList .bcn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#bcList .bci{font-variant-numeric:tabular-nums;white-space:nowrap}#bcList .bci.ent{color:var(--ok)}
+#bcList .bcinfo{display:block;margin:0 0 6px 30px}#bcList select,#bcList input:not([type=checkbox]){margin:4px 0 0 30px;width:calc(100% - 30px)}
+.bcimp .btn{width:100%}.bcimp p{margin:8px 0 0}#bcOk{color:var(--ok);margin:0 0 4px}
 .sprow{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px dashed var(--line)}.sprow .tx{flex:1;min-width:0;display:flex;flex-direction:column}.sprow small{color:var(--mut)}
 .spcats{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
 #v-pro .stack>details.fold{margin-bottom:0}
@@ -572,6 +578,7 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
     <div class="monthbar"><h2>Spese giornaliere</h2></div>
     <div class="per"><button class="ib pgPrev" aria-label="Periodo prima">‹</button><span class="pgper"></span><button class="ib pgNext" aria-label="Periodo dopo">›</button></div>
     <div class="testa"></div>
+    <div class="card bcimp"><button type="button" class="btn ghost" data-bcimp>🏦 Importa movimenti della banca</button><p class="muted sm">La lista movimenti della banca in CSV (per ora solo ING). Il file si legge solo sul telefono e non viene conservato.</p></div>
     <div class="cards" id="rieSpese"></div>
   </section>
 
@@ -988,6 +995,17 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
   <p class="muted sm" id="enImpNota" style="margin:4px 0 0"></p><p class="sm warn" id="enImpAvv" style="margin:4px 0 0"></p>
   <label id="enDataL">Quando è entrato<input id="enData" type="date"></label><p class="sm" id="enDataMsg" style="margin:4px 0 0" aria-live="polite"></p>
   <div class="foot"><button class="btn ghost danger" id="enNo" hidden>Non entrato</button><button class="btn ghost" id="enAnn">Annulla</button><button class="btn" id="enSave">Salva</button></div></div></div>
+<!-- 24c.10 (D-147): movimenti della banca da CSV (banca.js) -->
+<input type="file" id="bcFile" accept=".csv,text/csv,text/comma-separated-values" hidden>
+<div class="modal" id="bcModal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="bcTit">
+  <div class="sheethead"><h2 id="bcTit">Movimenti da importare</h2><button class="x" id="bcClose" aria-label="Chiudi">×</button></div>
+  <p class="muted sm" id="bcSub" style="margin-top:0"></p>
+  <div class="note" id="bcAvviso" role="alert" hidden>Il file sembra incompleto: controlla prima di importare.</div>
+  <p class="sm ok" id="bcOk" hidden>Lettura completa ✓</p>
+  <p class="muted sm" style="margin:4px 0 8px">Controlla le proposte: niente si salva finché non tocchi “Importa”.</p>
+  <div id="bcList"></div>
+  <p class="sm" id="bcTot" style="margin:10px 0 0"></p>
+  <div class="foot"><button class="btn ghost" id="bcAnn">Annulla</button><button class="btn" id="bcImporta">Importa</button></div></div></div>
 <div class="modal" id="dlg" hidden><div class="sheet dlg" role="alertdialog" aria-modal="true"><p id="dlgMsg"></p><div class="acts" id="dlgBtns"></div></div></div>
 <div class="modal" id="cuModal" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="cuTitle">

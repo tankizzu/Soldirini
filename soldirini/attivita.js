@@ -74,7 +74,8 @@ function renderSp(){
     S.sp.map((x,i)=>{const c=catDi(x.cat);return `<div class="sprow"><span>${c[1]}</span><span class="tx"><b>${esc(c[2])}</b>${x.nota?`<small>${esc(x.nota)}</small>`:''}</span><b>${eur(x.importo)}</b><button type="button" class="x" data-sprm="${i}" aria-label="Togli">×</button></div>`;}).join('')+
     `<div class="spcats">${CATS.map(c=>`<button type="button" class="chip ${S.cat===c[0]?'on':''}" data-spc="${c[0]}">${c[1]} ${esc(c[2])}</button>`).join('')}</div>
     <div class="g2"><label>Importo €<input id="spPImp" inputmode="decimal" placeholder="0,00"></label><label>Nota<input id="spPNota" placeholder="es. regalo, pranzo"></label></div>
-    <div class="acts"><button type="button" class="btn ghost sm" id="spPAdd">+ Aggiungi spesa</button>${tot?`<span class="muted sm" style="align-self:center">Totale ${eur(tot)}</span>`:''}</div>`;
+    <div class="acts"><button type="button" class="btn ghost sm" id="spPAdd">+ Aggiungi spesa</button>${tot?`<span class="muted sm" style="align-self:center">Totale ${eur(tot)}</span>`:''}</div>
+    <div class="acts"><button type="button" class="btn ghost sm" data-bcimp>🏦 Importa movimenti della banca</button></div>`; // 24c.10 (D-147): banca.js
 }
 function aggiungiSp(){const v=num($('spPImp').value);if(!(v>0))return false;S.sp.push({cat:S.cat,importo:Math.round(v*100)/100,nota:$('spPNota').value.trim()});renderSp();aggiornaSum();return true;}
 
