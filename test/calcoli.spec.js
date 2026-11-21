@@ -75,9 +75,11 @@ test.describe('IRPEF e stima tasse', () => {
   });
   test('T22 conteggio per cassa: dicembre pagato a gennaio conta nell\'anno dopo', async () => {
     const r = await conDati(H => {
-      const p = H.progetto('Occasionale'); H.compenso(p, '2026-12-10', { fisso: '400' });
-      pagamenti()[`${p.id}|2026-12|o`] = { pagato: true, data: '2027-01-15', updatedAt: Date.now() }; DB.meta.seq++;
-      return [aggrega('2026').tot.lordo, aggrega('2027').tot.lordo];
+      // 24c.7 (D-142): un pagamento con la data dopo oggi non è ancora entrato; questa prova usa l'orologio vero, quindi le date
+      // sono nel passato (dicembre 2024 pagato a gennaio 2025). Il caso della data futura è in v24c7.spec.js
+      const p = H.progetto('Occasionale'); H.compenso(p, '2024-12-10', { fisso: '400' });
+      pagamenti()[`${p.id}|2024-12|o`] = { pagato: true, data: '2025-01-15', updatedAt: Date.now() }; DB.meta.seq++;
+      return [aggrega('2024').tot.lordo, aggrega('2025').tot.lordo];
     });
     expect(r).toEqual([0, 400]);
   });

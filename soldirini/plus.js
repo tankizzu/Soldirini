@@ -477,14 +477,14 @@ renderDoc=function(){
             <label>Pedaggi €<input inputmode="decimal" data-x="pedaggi" value="${numAttr(x.pedaggi||"")}"></label>
             <label>Altro €<input inputmode="decimal" data-x="altro" value="${numAttr(x.altro||"")}"></label>
             <label class="s2">Altro: descrizione<input data-x="altroDesc" value="${esc(x.altroDesc)}"></label>
-            <label>Pernottamenti n.<input data-x="pernN" value="${esc(x.pernN)}"></label>
+            <label>Pernottamenti n.<input inputmode="numeric" data-x="pernN" value="${esc(x.pernN)}"></label>
             <label>Pernottamenti €<input inputmode="decimal" data-x="pernEur" value="${numAttr(x.pernEur||"")}"></label>
-            <label>Pasti n.<input data-x="pastiN" value="${esc(x.pastiN)}"></label>
+            <label>Pasti n.<input inputmode="numeric" data-x="pastiN" value="${esc(x.pastiN)}"></label>
             <label>Pasti €<input inputmode="decimal" data-x="pastiEur" value="${numAttr(x.pastiEur||"")}"></label>
-            <label>Allegati n.<input data-x="allegati" value="${esc(x.allegati)}" placeholder="${sp.foto.length||''}"></label>
+            <label>Allegati n.<input inputmode="numeric" data-x="allegati" value="${esc(x.allegati)}" placeholder="${sp.foto.length||''}"></label>
             <label>Data firma<input type="date" data-x="dataFirma" value="${esc(x.dataFirma||d.dataFirma)}"></label>
             <label>Tariffa ACI €/km<input inputmode="decimal" data-x="tariffa" value="${numAttr(x.tariffa)}"></label>
-            <label>Calcolata il<input data-x="tariffaData" value="${esc(x.tariffaData)}"></label>
+            <label>Calcolata il<input data-x="tariffaData" placeholder="es. gennaio 2026" value="${esc(x.tariffaData)}"></label>
           </div></details>
         <div class="acts"><button class="btn" data-pdf="${esc(p.id)}" ${d.tot?'':'disabled'}>Scarica PDF</button><button class="btn ghost" data-inv="${esc(p.id)}" ${d.tot?'':'disabled'}>Invia</button>
           ${fileLink(D().files[`rimb|${p.id}|${y}`],'ric','Ricevute')+fileLink(D().files[`rimb|${p.id}|${y}`],'nota','Nota')+fileLink(D().files[`pdf|${p.id}|${cur}`],'pdf','PDF su Drive')+(p.cartella?.link?`<a class="btn ghost sm" href="${esc(p.cartella.link)}" target="_blank" rel="noopener">Cartella ↗</a>`:'')}${payBtn(key,d.tot)}</div>

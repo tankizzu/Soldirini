@@ -93,7 +93,7 @@ function renderTipi(){
   $('lvTipi').innerHTML=lv.l.tipi.map((t,i)=>`<div class="trow" data-i="${i}">
     <div class="trh"><input data-k="icona" value="${esc(t.icona||'')}" class="ico" aria-label="Icona" maxlength="4"><input data-k="nome" value="${esc(t.nome)}" placeholder="Nome" aria-label="Nome"><input data-k="sigla" value="${esc(t.sigla||'')}" placeholder="Sigla" class="sig" maxlength="3" aria-label="Sigla"><input type="color" data-k="colore" value="${esc(t.colore||'#888888')}" aria-label="Colore"><button type="button" class="x" data-trm="${i}" aria-label="Togli">×</button></div>
     <div class="trb"><select data-k="cat" aria-label="Tipo">${CAT_OPT}</select>${(()=>{const orari=t.cat==='lavoro',ore=['variabile','permesso','nonretr','retribuita'].includes(t.cat)||t.aggiunta;
-      return `<input type="time" data-k="da" value="${esc(t.da||'')}" aria-label="Dalle" ${orari?'':'hidden'}><input type="time" data-k="a" value="${esc(t.a||'')}" aria-label="Alle" ${orari?'':'hidden'}><input type="number" data-k="pausa" value="${esc(t.pausa??'')}" placeholder="pausa min" aria-label="Pausa in minuti" ${orari?'':'hidden'}><input type="number" step="0.25" data-k="ore" value="${esc(t.ore??'')}" placeholder="ore (vuoto = le scrivi ogni volta)" aria-label="Ore" ${ore?'':'hidden'}>`;})()}</div>
+      return `<input type="time" data-k="da" value="${esc(t.da||'')}" aria-label="Dalle" ${orari?'':'hidden'}><input type="time" data-k="a" value="${esc(t.a||'')}" aria-label="Alle" ${orari?'':'hidden'}><input type="number" inputmode="numeric" data-k="pausa" value="${esc(t.pausa??'')}" placeholder="pausa min" aria-label="Pausa in minuti" ${orari?'':'hidden'}><input type="number" inputmode="decimal" step="0.25" data-k="ore" value="${esc(t.ore??'')}" placeholder="ore (vuoto = le scrivi ogni volta)" aria-label="Ore" ${ore?'':'hidden'}>`;})()}</div>
     <label class="check sm" ${t.cat==='lavoro'&&lv.l.modo==='fisso'?'':'hidden'}><input type="checkbox" data-k="aggiunta" ${t.aggiunta?'checked':''}> Si aggiunge all’orario (straordinario)</label></div>`).join('');
   document.querySelectorAll('#lvTipi .trow').forEach(r=>r.querySelector('[data-k=cat]').value=lv.l.tipi[+r.dataset.i].cat);
 }
@@ -363,12 +363,12 @@ async function leggiBusta(file){
 async function salvaBusta(){
   const mese=$('bpMese').value;if(!/^\d{4}-\d{2}$/.test(mese)){toast('Indica il mese della busta.','err');return;}
   // 24c.6 (P2): si salvano solo numeri capiti, nel formato di sempre (punto per i decimali, niente punti delle migliaia)
-  const errati=NUM_B.filter(k=>['no','ambiguo'].includes(capisciNumero($('bp-'+k).value,true).stato));
+  const errati=NUM_B.filter(k=>['no','ambiguo'].includes(capisciScritto(k,$('bp-'+k).value).stato));
   if(errati.length){NUM_B.forEach(k=>bp.toccati.add(k));numeriBusta();toast('Controlla i numeri con il bordo rosso.','err');$('bp-'+errati[0]).focus();return;}
   const key=`${bp.lid}|${mese}`;const vecchia=BUS()[key];
   if(bp.key&&bp.key!==key){const o=BUS()[bp.key];if(o){o.deleted=true;o.updatedAt=Date.now();}}
   const prima=bp.key?BUS()[bp.key]||{}:{};
-  const val=k=>{const c=capisciNumero($('bp-'+k).value,true);if(c.stato==='ok')return String(c.n);return bp.ambigui?.[k]!=null&&bp.key===key?String(prima[k]??''):'';};
+  const val=k=>{const c=capisciScritto(k,$('bp-'+k).value);if(c.stato==='ok')return String(c.n);return bp.ambigui?.[k]!=null&&bp.key===key?String(prima[k]??''):'';};
   const b=Object.assign({},vecchia&&!vecchia.deleted?vecchia:{},bp.key?BUS()[bp.key]:{},{lid:bp.lid,mese,deleted:false,updatedAt:Date.now()});
   for(const k of ['lordo','trattenute','netto','ferie','rol','exfest'])b[k]=val(k);b.unitaFerie=$('bpUF').value;b.unitaPerm=$('bpUP').value;
   // v22: campi per la pensione; salvando dalla finestra l'utente li ha visti, quindi tolgo "da controllare"
@@ -405,14 +405,23 @@ const PEN_B=['imponibilePrev','contribLav','giorniInps'];
 const NUM_B=['lordo','trattenute','netto','ferie','rol','exfest',...PEN_B];
 const NOMI_NUM={lordo:'Lordo',trattenute:'Trattenute',netto:'Netto',ferie:'Saldo ferie',rol:'Saldo permessi',exfest:'Ex festività',imponibilePrev:'Imponibile previdenziale',contribLav:'Contributi',giorniInps:'Giorni INPS'};
 const dueLetture=s=>`${s},00 oppure ${(+s).toFixed(2).replace('.',',')}`; // "1.680" → "1.680,00 oppure 1,68"
+// 24c.7 (D-142, 02 tornata 42 §1.2): negli importi in euro scritti adesso un punto con tre cifre ("1.680") vale le migliaia: 1.680,00 €.
+// Sotto il campo "Letto come 1.680,00 €" quando l'importo scritto ha un punto o uno spazio. I valori già salvati da versioni vecchie
+// restano come nella 24c.6 (bordo rosso, nessuna scelta da sola). Saldi e giorni (non euro): "1.680" resta da riscrivere.
+const EURO_B=['lordo','trattenute','netto','imponibilePrev','contribLav'];
+function capisciScritto(k,v){const c=capisciNumero(v,true);
+  if(c.stato==='ambiguo'&&EURO_B.includes(k)){const n=leggiNumero(String(v).replace(/\./g,''),true);if(n!=null)return {stato:'ok',n,migliaia:true};}
+  return c;}
 function numeriBusta(){if(!bp||!$('bpNum'))return;const righe=[];
-  for(const k of NUM_B){const el=$('bp-'+k),v=el.value.trim(),c=capisciNumero(v,true),visto=bp.toccati&&bp.toccati.has(k);let m='';
+  for(const k of NUM_B){const el=$('bp-'+k),v=el.value.trim(),c=capisciScritto(k,v),visto=bp.toccati&&bp.toccati.has(k);let m='';
+    const lt=$('bpL-'+k);if(lt){const si=c.stato==='ok'&&/[.\s\u00a0\u202f]/.test(v);lt.textContent=si?'Letto come '+eur(c.n):'';lt.hidden=!si;}
     if(v===''&&bp.ambigui&&bp.ambigui[k]!=null)m=`${NOMI_NUM[k]}: qui c'era «${bp.ambigui[k]}», che può essere ${dueLetture(bp.ambigui[k])}. Controlla sulla busta e scrivilo con la virgola.`;
     else if(visto&&c.stato==='ambiguo')m=`${NOMI_NUM[k]}: «${v}» può essere ${dueLetture(v)}. Scrivilo con la virgola, come sulla busta.`;
     else if(visto&&c.stato==='no')m=`${NOMI_NUM[k]}: non capisco questo numero. Scrivilo così: 1.260,00 oppure 1260,00.`;
     el.classList.toggle('nonvale',!!m);if(m)el.setAttribute('aria-invalid','true');else el.removeAttribute('aria-invalid');if(m)righe.push(m);}
   $('bpNum').innerHTML=righe.map(esc).join('<br>');$('bpNum').hidden=!righe.length;
-  const p1=C.controlloBusta(bn($('bp-lordo').value),bn($('bp-trattenute').value),bn($('bp-netto').value),eur);
+  const pv=k=>capisciScritto(k,$('bp-'+k).value.trim()).n;
+  const p1=C.controlloBusta(pv('lordo'),pv('trattenute'),pv('netto'),eur);
   $('bpP1').textContent=p1?'⚠ '+p1.testo:'';$('bpP1').hidden=!p1;}
 function penBusta(){
   for(const k of PEN_B){const f=document.querySelector(`#bpModal [data-dc="${k}"]`);if(f)f.hidden=!bp.dc.includes(k);}

@@ -48,7 +48,8 @@ const COLORI=['#5b6475','#7d5c52','#6e6079','#776a52','#58665f','#8a6f3e','#4f6d
 // 24.1 (D-077): i colori arrivano anche da Drive: nella pagina (stile in linea) va solo un #rrggbb, altrimenti un grigio
 // 24.1 (D-077): un pagamento dei progetti letto da Drive conta solo con pagato===true e una data AAAA-MM-GG vera (come leggiPag di entrate.js)
 const dataOk=d=>{if(typeof d!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(d))return false;const [y,m,g]=d.split('-').map(Number);const x=new Date(y,m-1,g);return x.getFullYear()===y&&x.getMonth()===m-1&&x.getDate()===g;};
-const pagOk=g=>!!g&&typeof g==='object'&&g.pagato===true&&dataOk(g.data);
+// 24c.7 (D-142, R-D3): un pagamento con la data dopo oggi vale "non ancora entrato" fino a quel giorno, come leggiPag() di entrate.js
+const pagOk=g=>!!g&&typeof g==='object'&&g.pagato===true&&dataOk(g.data)&&g.data<=today();
 const colOk=c=>typeof c==='string'&&/^#[0-9a-fA-F]{6}$/.test(c)?c:'#707070';
 const min=t=>{const m=/^(\d{1,2})[:.](\d{2})$/.exec(String(t||'').trim());return m?(+m[1])*60+(+m[2]):null;};
 const normT=t=>{const v=min(t);return v==null?'':`${Math.floor(v/60)}:${pad(v%60)}`;};

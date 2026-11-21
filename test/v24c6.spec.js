@@ -170,14 +170,15 @@ test.describe('24c.6 · finestra della busta', () => {
     await page.fill('#bp-netto', '12abc'); await page.locator('#bp-netto').blur();
     await expect(page.locator('#bp-netto')).toHaveClass(/nonvale/); await expect(page.locator('#bp-netto')).toHaveAttribute('aria-invalid', 'true');
     await expect(page.locator('#bpNum')).toHaveText('Netto: non capisco questo numero. Scrivilo così: 1.260,00 oppure 1260,00.');
-    await page.fill('#bp-lordo', '1.680'); await page.locator('#bp-lordo').blur();
-    await expect(page.locator('#bpNum')).toContainText('Lordo: «1.680» può essere 1.680,00 oppure 1,68. Scrivilo con la virgola, come sulla busta.');
+    // dalla 24c.7 (D-142) "1.680" scritto adesso negli importi vale 1.680,00 €: resta ambiguo nei saldi (non sono euro)
+    await page.fill('#bp-ferie', '1.680'); await page.locator('#bp-ferie').blur();
+    await expect(page.locator('#bpNum')).toContainText('Saldo ferie: «1.680» può essere 1.680,00 oppure 1,68. Scrivilo con la virgola, come sulla busta.');
     await page.click('#bpSave');
     await expect(page.locator('#toast')).toHaveText('Controlla i numeri con il bordo rosso.');
     await expect(page.locator('#bpModal')).toBeVisible();
     expect(await page.evaluate(lid => (D().buste || {})[lid + '|2026-10'], lid)).toBeUndefined();
     // corretti: l'errore sparisce e si salva
-    await page.fill('#bp-netto', '1260,00'); await page.fill('#bp-lordo', '1680');
+    await page.fill('#bp-netto', '1260,00'); await page.fill('#bp-ferie', '12');
     await expect(page.locator('#bpNum')).toBeHidden(); await expect(page.locator('#bp-netto')).not.toHaveClass(/nonvale/);
     await page.click('#bpSave'); await expect(page.locator('#bpModal')).toBeHidden();
     expect(await page.evaluate(lid => D().buste[lid + '|2026-10'].netto, lid)).toBe('1260');
