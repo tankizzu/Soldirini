@@ -68,6 +68,9 @@ h2{font-size:17px;margin:0}h3{font-size:15.5px;margin:0 0 8px;display:flex;align
 .day.empty{background:transparent;border:0;cursor:default}
 .day.we .n{color:var(--mut)}
 .day .n{font-weight:700;font-size:13px}
+/* 24c.8 (D-144): festa nel calendario, segno discreto in alto a destra della casella (fondo tenue come i riquadri dei turni) */
+.day{position:relative}.day .fst{position:absolute;top:3px;right:3px;font-size:11px;line-height:17px;min-width:18px;text-align:center;padding:0 2px;border-radius:6px;background:color-mix(in srgb,var(--gold) 22%,var(--card));pointer-events:none}
+#dayFesta{margin:-4px 0 8px}
 .day.today .n{background:var(--pri);color:#fff;border-radius:999px;width:22px;height:22px;display:grid;place-items:center}
 .day.sel{outline:2.5px solid var(--pri);outline-offset:-1px}
 .day.msel{background:color-mix(in srgb,var(--gold) 30%,var(--card));border-color:#d49a12}
@@ -655,7 +658,8 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
         <details class="subfold" id="accFirma"><summary>✍️ La tua firma</summary><p class="muted sm">Firma qui con il dito: la metto sulle ricevute PDF.</p><canvas id="firmaCanvas" class="firma"></canvas>
           <div class="acts"><button class="btn ghost sm" id="firmaClr">Cancella</button><button class="btn sm" id="firmaSave">Salva firma</button><button class="btn ghost sm" id="firmaRm">Togli firma salvata</button></div><div id="firmaPrev" class="firmaprev"></div></details>
         </div>
-        <div class="card"><h3>Aspetto</h3><label>Tema<select id="tema"><option value="auto">Come il telefono</option><option value="light">Chiaro</option><option value="dark">Scuro</option></select></label></div>
+        <div class="card"><h3>Aspetto</h3><label>Tema<select id="tema"><option value="auto">Come il telefono</option><option value="light">Chiaro</option><option value="dark">Scuro</option></select></label>
+          <label class="check"><input type="checkbox" id="festeCal"> Mostra le feste nel calendario</label></div>
         <div class="card"><h3>Google Calendar</h3><div id="gcalBody"></div></div>
         <div class="card"><h3>Promemoria</h3><div class="stack">
           <label class="check"><input type="checkbox" id="promem"> Avvisami delle attività da confermare</label>

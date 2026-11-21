@@ -142,11 +142,24 @@ window.etichettaTurno=function(l,v){
   const bar=v.implicito&&l.modo==='fisso'&&calMostra(l)==='diversi';
   return {bar,full,html:`<span class="ev tu${v.implicito?' imp':''}${bar?' bar':''}" data-lid="${esc(l.id)}" style="--c:${colOk(v.colore||l.colore)}" title="${esc(full)}">${ico?`<span class="tui" aria-hidden="true">${esc(ico)}</span>`:''}<span class="tus" aria-hidden="true">${esc(sig)}</span><span class="tun" aria-hidden="true">${esc(nome)}</span><span class="vh">${esc(full)}</span></span>`};
 };
+// ---------- 24c.8 (D-144): feste nel calendario, solo vista ----------
+// Nazionali da StipCalc.festivo (stesso elenco della paga, Pasqua compresa); locali ("Festa locale") se almeno un lavoro attivo
+// in quel giorno le ha nel campo "locali". Scelta in Impostazioni → Aspetto, accesa di partenza. Nessun calcolo cambia,
+// niente su Google Calendar.
+const SEGNO_FESTA='🎉';
+const festeAccese=()=>{try{return impost().festeCal!==false;}catch(e){return true;}};
+function festaDel(iso){if(!festeAccese())return null;
+  const naz=C.festivo(iso,[]);if(naz)return naz;
+  const md=iso.slice(5);
+  return lavori().some(l=>(!l.dal||l.dal<=iso)&&(!l.al||l.al>=iso)&&C.parseLocali(l.locali).includes(md))?'Festa locale':null;}
+window.festaDel=festaDel;
 const _renderCal15=renderCal;
 renderCal=function(){
   _renderCal15();
-  // etichetta per il lettore di schermo: "Lunedì 9 novembre" prima del contenuto della casella
-  document.querySelectorAll('#grid [data-day]').forEach(b=>{const n=b.querySelector('.n');if(n&&!n.hasAttribute('aria-hidden')){n.setAttribute('aria-hidden','true');n.insertAdjacentHTML('afterend',`<span class="vh">${dataLunga(b.dataset.day)}</span>`);}});
+  // etichetta per il lettore di schermo: "Lunedì 9 novembre" prima del contenuto della casella (24c.8: con il nome della festa)
+  document.querySelectorAll('#grid [data-day]').forEach(b=>{const n=b.querySelector('.n');const f=festaDel(b.dataset.day);
+    if(n&&!n.hasAttribute('aria-hidden')){n.setAttribute('aria-hidden','true');n.insertAdjacentHTML('afterend',`<span class="vh">${dataLunga(b.dataset.day)}${f?', '+esc(f):''}</span>`);}
+    if(f&&!b.querySelector('.fst'))b.insertAdjacentHTML('beforeend',`<span class="fst" aria-hidden="true" title="${esc(f)}">${SEGNO_FESTA}</span>`);});
   const L=lavori();if(!L.length)return;
   const per={};
   for(const l of L){if(window.lavoroNascosto?.(l.id))continue;const ts=turniDi(l.id).filter(t=>t.data.startsWith(cur));const byD={};for(const t of ts)(byD[t.data]=byD[t.data]||[]).push(t);
@@ -160,7 +173,11 @@ renderCal=function(){
 };
 // riepilogo del giorno: turni e scelta veloce
 const _apriGiorno15=apriGiorno;
-apriGiorno=function(d){_apriGiorno15(d);renderTurniGiorno(d);};
+apriGiorno=function(d){_apriGiorno15(d);renderTurniGiorno(d);festaGiorno(d);};
+// 24c.8 (D-144): nel giorno aperto una riga con il nome della festa
+function festaGiorno(d){let p=$('dayFesta');const f=festaDel(d);
+  if(!p){p=document.createElement('p');p.id='dayFesta';p.className='muted sm';$('daySum').insertAdjacentElement('beforebegin',p);}
+  p.textContent=f?`${SEGNO_FESTA} ${f}`:'';p.hidden=!f;}
 function renderTurniGiorno(d){
   let box=$('dayTurni');if(!box){box=document.createElement('div');box.id='dayTurni';$('dayBox').insertBefore(box,$('dayList'));}
   const L=lavori();if(!L.length){box.innerHTML='';return;}
