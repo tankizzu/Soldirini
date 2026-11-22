@@ -13,11 +13,11 @@
   const enc = new TextEncoder(), dec = new TextDecoder();
   const VIETATI = new Set(['__proto__', 'constructor', 'prototype']);
   // parti conosciute di DB.data (V6): le altre si scartano
-  const RACCOLTE = ['pagamenti', 'progetti', 'eventi', 'mesi', 'files', 'cu', 'lavori', 'turni', 'buste', 'cedolini', 'spesePers', 'risparmi', 'fondi', 'fissi', 'entrate', 'gcal'];
+  const RACCOLTE = ['pagamenti', 'progetti', 'eventi', 'mesi', 'files', 'cu', 'lavori', 'turni', 'buste', 'cedolini', 'spesePers', 'risparmi', 'fondi', 'fissi', 'entrate', 'gcal', 'bancaImpronte']; // 24c.12 (P1 di 03): impronte dei movimenti della banca
   const OGGETTI = ['impost', 'profilo', 'root', 'pensione'];
   // raccolte in cui chi legge salta già le voci "deleted": qui una voce tolta da "Sostituisci tutto" resta come cancellata
   // (domanda 1 di 03, consiglio). Pagamenti, entrate, mesi e file di Drive non hanno questo segno: lì la voce si toglie e basta.
-  const CON_CANCELLATE = ['eventi', 'progetti', 'lavori', 'turni', 'buste', 'cedolini', 'fissi', 'spesePers', 'cu', 'fondi', 'risparmi'];
+  const CON_CANCELLATE = ['eventi', 'progetti', 'lavori', 'turni', 'buste', 'cedolini', 'fissi', 'spesePers', 'cu', 'fondi', 'risparmi', 'bancaImpronte'];
   const TIPI = { 'application/pdf': [0x25, 0x50, 0x44, 0x46], 'image/jpeg': [0xff, 0xd8, 0xff], 'image/png': [0x89, 0x50, 0x4e, 0x47] };
   // testi di 02 (report tornata 14 e 22, mockup 02-mockup-v24c-riprendi-copia e 02-mockup-v24-d054)
   const MSG = {
@@ -121,6 +121,8 @@
       for (const [id, v] of Object.entries(o[k])) {
         if (VIETATI.has(id) || !piano(v)) continue;
         if (k === 'eventi' && !v.deleted && (typeof v.data !== 'string' || typeof v.pid !== 'string')) continue;
+        // impronte: solo codici SHA-256 (64 caratteri 0-9a-f) con {updatedAt} ed eventualmente deleted, niente altro
+        if (k === 'bancaImpronte') { if (!/^[0-9a-f]{64}$/.test(id)) continue; m[id] = fix({ updatedAt: Number.isFinite(+v.updatedAt) ? +v.updatedAt : 0, ...(v.deleted ? { deleted: true } : {}) }); continue; }
         m[id] = fix(v);
       }
       d[k] = m;

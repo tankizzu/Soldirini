@@ -21,9 +21,22 @@ window.spesePersonali=speseDel;
 // mese della data o quello prima: un valore diverso (file su Drive rovinato) si ignora e conta la data, come prima.
 const RE_MESE=/^\d{4}-(0[1-9]|1[0-2])$/;
 const mesePrima=m=>{let y=+m.slice(0,4),n=+m.slice(5)-1;if(!n){n=12;y--;}return `${y}-${pad(n)}`;};
-window.meseContoDi=(data,mc)=>{const m=data.slice(0,7);return typeof mc==='string'&&RE_MESE.test(mc)&&mc===mesePrima(m)?mc:m;};
+window.meseContoDi=(data,mc)=>{const m=data.slice(0,7);return typeof mc==='string'&&RE_MESE.test(mc)&&mc===mesePrima(m)?mc:m;}; // anche mc === mese della data (24c.12): conta lì
 window.mesePrima=mesePrima;
-window.meseSpesa=s=>meseContoDi(s.data,s.meseConto);
+// 24c.12 (D-155): spese importate dalla banca prima della regola dello stipendio (origine "banca" e nessun "meseConto": 24c.10, e
+// 24c.11 senza spostamento). Se nello stesso mese c'è uno stipendio o una pensione segnati entrati con una data dopo la spesa,
+// la spesa conta nel mese prima (al massimo un mese, come D-152). Si calcola ogni volta: niente si riscrive, né sul telefono né
+// su Drive (D-117), quindi nessun conflitto con gli altri telefoni. Le spese scritte a mano non hanno "origine" e non si toccano.
+// Dalla 24c.12 l'importazione salva sempre "meseConto", quindi le voci nuove non passano da qui.
+let stipCache=null;
+function stipendiEntrati(){if(stipCache)return stipCache;const E=D().entrate||{},oggi=today(),out=[];
+  const lid=new Set((window.lavori?lavori():[]).map(l=>l.id));
+  for(const [k,e] of Object.entries(E)){if(!e||typeof e!=='object'||e.entrato!==true||typeof e.data!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(e.data)||e.data>oggi)continue;
+    const p=k.split('|');if(p[0]==='pen'||(p[0]==='lav'&&lid.has(p[1])))out.push(e.data);}
+  stipCache=out;setTimeout(()=>{stipCache=null;},0);return out;}
+window.meseSpesa=s=>{if(s.origine==='banca'&&s.meseConto===undefined){const m=s.data.slice(0,7);
+    return stipendiEntrati().some(d=>d.slice(0,7)===m&&d>s.data)?mesePrima(m):m;}
+  return meseContoDi(s.data,s.meseConto);};
 
 // ================= apertura della finestra =================
 const _openEv16=openEv;
@@ -83,7 +96,7 @@ function renderSp(){
     `<div class="spcats">${CATS.map(c=>`<button type="button" class="chip ${S.cat===c[0]?'on':''}" data-spc="${c[0]}">${c[1]} ${esc(c[2])}</button>`).join('')}</div>
     <div class="g2"><label>Importo €<input id="spPImp" inputmode="decimal" placeholder="0,00"></label><label>Nota<input id="spPNota" placeholder="es. regalo, pranzo"></label></div>
     <div class="acts"><button type="button" class="btn ghost sm" id="spPAdd">+ Aggiungi spesa</button>${tot?`<span class="muted sm" style="align-self:center">Totale ${eur(tot)}</span>`:''}</div>
-    <div class="acts"><button type="button" class="btn ghost sm" data-bcimp>🏦 Importa movimenti della banca</button></div>`; // 24c.10 (D-147): banca.js
+    <div class="acts"><button type="button" class="btn ghost sm" data-bcimp>🏦 Importa movimenti della banca</button></div><p class="sm bcerr" role="alert" hidden></p>`; // 24c.10 (D-147): banca.js
 }
 function aggiungiSp(){const v=num($('spPImp').value);if(!(v>0))return false;S.sp.push({cat:S.cat,importo:Math.round(v*100)/100,nota:$('spPNota').value.trim()});renderSp();aggiornaSum();return true;}
 

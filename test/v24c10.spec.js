@@ -91,7 +91,7 @@ test.describe('24c.10 · D-147: movimenti della banca dal CSV', () => {
     await expect(page.locator('#bcModal')).toBeVisible();
     const R = await righe(page);
     expect(R.length).toBe(7); expect(R.every(r => r.gia && r.spento && !r.on && r.scelta === null)).toBe(true);
-    await expect(page.locator('#bcList .bcinfo').first()).toHaveText('Già importato');
+    await expect(page.locator('#bcList .bcinfo').first()).toHaveText('Già importato Questo movimento è già in Soldirini.'); // 24c.12: testi di 02
     await expect(page.locator('#bcImporta')).toBeDisabled();
     await page.click('#bcAnn'); await expect(page.locator('#bcModal')).toBeHidden();
     expect(await page.evaluate(() => JSON.stringify([D().spesePers, D().entrate, pagamenti()]))).toBe(n);
@@ -101,18 +101,18 @@ test.describe('24c.10 · D-147: movimenti della banca dal CSV', () => {
   test('saldo che non torna → avviso; file di un’altra banca, rovinato o vuoto → messaggio e niente salvato; il pulsante c’è nelle spese', async ({ browser }) => {
     const { page, errori } = await telefono(browser);
     await page.setInputFiles('#bcFile', file(CSV.replace('"+1.692,51"', '"+1.692,50"')));
-    await expect(page.locator('#bcAvviso')).toBeVisible(); await expect(page.locator('#bcAvviso')).toHaveText('Il file sembra incompleto: controlla prima di importare.');
+    await expect(page.locator('#bcAvviso')).toBeVisible(); await expect(page.locator('#bcAvviso')).toHaveText('⚠ Il file sembra incompleto. Il saldo iniziale più i movimenti non dà il saldo finale: forse manca qualche riga. Controlla le proposte prima di importare, oppure scarica di nuovo la lista.');
     await expect(page.locator('#bcOk')).toBeHidden();
     await page.click('#bcAnn');
     const casi = [
-      [file('Data;Descrizione;Importo\r\n01/11/2026;Spesa;-4,50\r\n', 'altra-banca.csv'), 'Questo file non sembra la lista movimenti di ING (CSV o Excel): per ora Soldirini legge solo quella. Non ho importato niente.'],
-      [file(CSV.replace('"-4,50"', '"-4,5x"')), 'Il file non si legge bene: non ho importato niente.'],
-      [file(CSV.split('\r\n').slice(0, 1).join('\r\n') + '\r\n01/11/2026,,,"+500,00",,Saldo iniziale\r\n'), 'Nel file non ci sono movimenti.'],
-      [file('DATA CONTABILE,DATA VALUTA,USCITE,ENTRATE,CAUSALE,DESCRIZIONE OPERAZIONE\r\n03/11/2026,01/11/2026,"-4,50,,Pagamento Carta,x\r\n'), 'Il file non si legge bene: non ho importato niente.'],
+      [file('Data;Descrizione;Importo\r\n01/11/2026;Spesa;-4,50\r\n', 'altra-banca.csv'), 'Questo file non è la lista movimenti di ING in CSV o Excel, l\'unica che Soldirini sa leggere per ora. Non è stato importato niente.'],
+      [file(CSV.replace('"-4,50"', '"-4,5x"')), 'Una riga del file non si legge bene, quindi non è stato importato niente. Prova a scaricare di nuovo la lista.'],
+      [file(CSV.split('\r\n').slice(0, 1).join('\r\n') + '\r\n01/11/2026,,,"+500,00",,Saldo iniziale\r\n'), 'Nel file non ci sono movimenti: controlla il periodo scelto in banca.'],
+      [file('DATA CONTABILE,DATA VALUTA,USCITE,ENTRATE,CAUSALE,DESCRIZIONE OPERAZIONE\r\n03/11/2026,01/11/2026,"-4,50,,Pagamento Carta,x\r\n'), 'Una riga del file non si legge bene, quindi non è stato importato niente. Prova a scaricare di nuovo la lista.'],
     ];
     for (const [f, msg] of casi) {
       await page.setInputFiles('#bcFile', f);
-      await expect(page.locator('#toast')).toHaveText(msg);
+      await expect(page.locator('#bcErr')).toHaveText(msg); // 24c.12: sotto il pulsante (02)
       await expect(page.locator('#bcModal')).toBeHidden();
     }
     expect(await page.evaluate(() => [Object.keys(D().spesePers || {}).length, Object.keys(D().bancaImpronte || {}).length])).toEqual([0, 0]);

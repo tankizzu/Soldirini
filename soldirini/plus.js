@@ -548,6 +548,7 @@ function applyTema(){const t=impost().tema,r=document.documentElement;
   if(t==='auto'&&SAMSUNG_INTERNET)r.dataset.theme='dark';else if(t==='auto')delete r.dataset.theme;else r.dataset.theme=t;}
 function renderImpost(){
   const I=impost();$('tema').value=I.tema||'auto';$('promem').checked=!!I.promemoria;$('festeCal').checked=I.festeCal!==false; // 24c.8 (D-144): accesa di partenza
+  $('contiDa').value=/^\d{4}-(0[1-9]|1[0-2])$/.test(I.contiDa||'')?I.contiDa:''; // 24c.12 (D-157)
   $('soglieEd').innerHTML=I.soglie.map((s,i)=>`<label>${esc(s.nome)}<input inputmode="decimal" data-sg="${i}" value="${numAttr(s.limite)}"></label>`).join('');
 }
 
@@ -627,6 +628,8 @@ function bindPlus(){
   $('firmaRm').onclick=()=>{delete D().profilo.firma;D().profilo.updatedAt=Date.now();changed();renderFirma();};
   $('tema').onchange=()=>{const I=impost();I.tema=$('tema').value;I.updatedAt=Date.now();applyTema();changed();};
   $('festeCal').onchange=()=>{const I=impost();I.festeCal=$('festeCal').checked;I.updatedAt=Date.now();changed();render();};
+  // 24c.12 (D-157): "Inizia i conti da"; vuoto o non valido = dal primo mese con dati, come prima
+  $('contiDa').onchange=()=>{const I=impost(),v=$('contiDa').value;if(/^\d{4}-(0[1-9]|1[0-2])$/.test(v))I.contiDa=v;else delete I.contiDa;I.updatedAt=Date.now();changed();render();};
   $('promem').onchange=async()=>{const I=impost();if($('promem').checked&&'Notification' in window&&Notification.permission!=='granted'){const r=await Notification.requestPermission();if(r!=='granted'){$('promem').checked=false;toast('Il telefono non ha dato il permesso per le notifiche.','err');return;}}
     I.promemoria=$('promem').checked;I.updatedAt=Date.now();changed();toast(I.promemoria?'Ti avviso la sera, quando apri Soldirini, delle attività da confermare.':'Promemoria spento');};
   $('soglieEd').addEventListener('change',e=>{const i=e.target.dataset.sg;if(i==null)return;const I=impost();I.soglie[+i].limite=+String(e.target.value).replace(',','.')||0;I.updatedAt=Date.now();changed();toast('Soglia aggiornata');});

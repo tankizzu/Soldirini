@@ -97,8 +97,12 @@ function pagineReport(y){
   return pages;
 }
 pdfAnnoBytes=async function(y){return {bytes:await pagesToPdf(pagineReport(y)),name:`Riepilogo ${y} per il commercialista.pdf`};};
+// 24c.12 (E11 di 03, OWASP CSV injection): un testo che comincia con = + - @ tabulazione o a capo prende un apostrofo davanti,
+// così il foglio di calcolo non lo legge come formula. I numeri (anche negativi, "-12,5") restano numeri.
+function cellaSicura(t){return /^[=+\-@\t\r\n]/.test(t)&&!/^[+-]?\d+(,\d+)?$/.test(t)?"'"+t:t;}
+window.cellaSicura=cellaSicura;
 function csvAnno(y){
-  const A=aggrega(y);const n=v=>v?String(r2(v)).replace('.',','):'';const q=s=>`"${String(s??'').replace(/"/g,'""')}"`;
+  const A=aggrega(y);const n=v=>v?String(r2(v)).replace('.',','):'';const q=s=>`"${cellaSicura(String(s??'')).replace(/"/g,'""')}"`;
   const L=[[`Riepilogo ${y} – ${[D().profilo.nome,D().profilo.cognome].filter(Boolean).join(' ')}`],[],['PER COMMITTENTE'],['Committente','Tipo','Ore','Lordo','Ritenuta','Netto','Rimborsi spese','Incassato']];
   for(const t of Object.values(A.per).filter(t=>t.lordo||t.rimb))L.push([t.p.nome,t.p.ore.attivo?CAT_NOMI[catOf(t.p)]:'Solo rimborsi',n(t.ore),n(t.lordo),n(t.rit),n(t.netto),n(t.rimb),n(t.netto+t.rimb)]);
   L.push(['Totale','',n(A.tot.ore),n(A.tot.lordo),n(A.tot.rit),n(A.tot.netto),n(A.tot.rimb),n(A.tot.netto+A.tot.rimb)],[],['ELENCO PAGAMENTI'],['Pagato il','Committente','Mese lavorato','Voce','Lordo','Ritenuta','Netto','Rimborso']);

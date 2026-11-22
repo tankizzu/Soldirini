@@ -29,7 +29,7 @@ const conLavoroELuce = page => page.evaluate(() => {
 });
 const righe = page => page.locator('#bcList .bcrow').evaluateAll(R => R.map(r => ({
   data: r.querySelector('.bcd').textContent, scelta: r.querySelector('select')?.value ?? null,
-  mese: r.querySelector('.bcmese')?.textContent ?? null, gia: r.classList.contains('gia') })));
+  mese: r.querySelector('.bcmese')?.textContent.trim() ?? null, gia: r.classList.contains('gia') })));
 const speseSalvate = page => page.evaluate(() => Object.values(D().spesePers).map(s => [s.data, s.importo, s.meseConto ?? null]).sort((a, b) => a[0].localeCompare(b[0])));
 
 test.describe('24c.11', () => {
@@ -85,10 +85,10 @@ test.describe('24c.11', () => {
     await page.setInputFiles('#bcFile', file(L));
     await expect(page.locator('#bcOk')).toBeVisible();
     expect(await righe(page)).toEqual([
-      { data: '01/11', scelta: 'sp:bar', mese: 'Conta nei soldi di ottobre', gia: false },
-      { data: '03/11', scelta: 'sp:spesa', mese: 'Conta nei soldi di ottobre', gia: false },
+      { data: '01/11', scelta: 'sp:bar', mese: 'Conta in ottobre.', gia: false },
+      { data: '03/11', scelta: 'sp:spesa', mese: 'Conta in ottobre.', gia: false },
       { data: '05/11', scelta: expect.stringMatching(/^fx:/), mese: null, gia: false }, // uscita fissa già contata: resta com'è
-      { data: '06/11', scelta: expect.stringMatching(/\|2026-10\|r$/), mese: 'Conta nei soldi di ottobre', gia: false },
+      { data: '06/11', scelta: expect.stringMatching(/\|2026-10\|r$/), mese: 'Conta in ottobre.', gia: false },
       { data: '09/11', scelta: `en:lav|${lid}|2026-10`, mese: null, gia: false },
       { data: '09/11', scelta: 'sp:bar', mese: null, gia: false }, // lo stesso giorno dello stipendio: novembre
       { data: '11/11', scelta: 'sp:spesa', mese: null, gia: false },
@@ -96,7 +96,7 @@ test.describe('24c.11', () => {
     const prima = await page.evaluate(() => [contiMese('2026-10'), contiMese('2026-11')].map(c => [c.sp, c.prog, c.lav.v, c.fTot]));
     await page.click('#bcImporta');
     expect(rete).toEqual([]);
-    expect(await speseSalvate(page)).toEqual([['2026-11-01', 4.5, '2026-10'], ['2026-11-03', 20, '2026-10'], ['2026-11-09', 7, null], ['2026-11-11', 30, null]]);
+    expect(await speseSalvate(page)).toEqual([['2026-11-01', 4.5, '2026-10'], ['2026-11-03', 20, '2026-10'], ['2026-11-09', 7, '2026-11'], ['2026-11-11', 30, '2026-11']]);
     const dopo = await page.evaluate(() => [contiMese('2026-10'), contiMese('2026-11')].map(c => [c.sp, c.prog, c.lav.v, c.fTot]));
     expect(prima).toEqual([[0, 0, 0, 0], [0, 0, 0, 40]]);
     expect(dopo).toEqual([[24.5, 80, 0, 0], [37, 0, 1500, 40]]);
@@ -118,8 +118,8 @@ test.describe('24c.11', () => {
     await page.setInputFiles('#bcFile', file(lista([carta('21/10/2026', '20/10/2026', -5, 'BAR ESEMPIO'), stip('27/10/2026', 1500, 'OTTOBRE 2026'),
       carta('29/10/2026', '28/10/2026', -6, 'BAR ESEMPIO'), carta('16/11/2026', '15/11/2026', -7, 'BAR ESEMPIO'), stip('26/11/2026', 1500, 'NOVEMBRE 2026'),
       carta('01/12/2026', '30/11/2026', -8, 'BAR ESEMPIO'), carta('03/12/2026', '02/12/2026', -9, 'BAR ESEMPIO')])));
-    expect((await righe(page)).map(r => [r.data, r.mese])).toEqual([['20/10', 'Conta nei soldi di settembre'], ['27/10', null], ['28/10', null],
-      ['15/11', 'Conta nei soldi di ottobre'], ['26/11', null], ['30/11', null], ['02/12', 'Conta nei soldi di novembre']]);
+    expect((await righe(page)).map(r => [r.data, r.mese])).toEqual([['20/10', 'Conta in settembre.'], ['27/10', null], ['28/10', null],
+      ['15/11', 'Conta in ottobre.'], ['26/11', null], ['30/11', 'Conta in novembre.'], ['02/12', 'Conta in novembre.']]); // 30/11: in banca l'1/12, conta nel mese dell'acquisto (02)
     await page.click('#bcAnn');
     // nessuno stipendio: niente cambia
     await page.setInputFiles('#bcFile', file(lista([carta('02/11/2026', '01/11/2026', -4.5, 'BAR ESEMPIO'), carta('12/11/2026', '11/11/2026', -30, 'SUPERMERCATO ESEMPIO')])));
@@ -128,8 +128,8 @@ test.describe('24c.11', () => {
     // stipendio di ottobre già segnato a mano (entrato il 10/11): la riga dello stipendio è "Ignora", ma il mese parte lo stesso dal 09/11
     await page.evaluate(lid => { D().entrate[`lav|${lid}|2026-10`] = { entrato: true, data: '2026-11-10', importo: 1480, updatedAt: 1 }; changed(); }, lid);
     await page.setInputFiles('#bcFile', file(lista([carta('04/11/2026', '03/11/2026', -20, 'SUPERMERCATO ESEMPIO'), stip('09/11/2026', 1500, 'OTTOBRE 2026')])));
-    expect(await righe(page)).toEqual([{ data: '03/11', scelta: 'sp:spesa', mese: 'Conta nei soldi di ottobre', gia: false }, { data: '09/11', scelta: 'no', mese: null, gia: false }]);
-    await expect(page.locator('#bcList .bcrow').nth(1).locator('.bcinfo').first()).toHaveText('Già segnato come entrato il 10/11');
+    expect(await righe(page)).toEqual([{ data: '03/11', scelta: 'sp:spesa', mese: 'Conta in ottobre.', gia: false }, { data: '09/11', scelta: 'no', mese: null, gia: false }]);
+    await expect(page.locator('#bcList .bcrow').nth(1).locator('.bcinfo').first()).toHaveText('Già segnato come entrato il 10/11.');
     await page.click('#bcImporta');
     expect(await page.evaluate(lid => D().entrate[`lav|${lid}|2026-10`], lid)).toMatchObject({ data: '2026-11-10', importo: 1480 }); // non cambia
     // meseConto non valido (non è il mese prima della data) o rovinato: conta la data, come prima
@@ -188,9 +188,9 @@ test.describe('24c.11', () => {
     expect(await page.evaluate(() => JSON.stringify(D()))).not.toMatch(/MARIO|Intestatario|1\.734|IT00X|xxxx/);
     // un Excel con un'altra intestazione, uno rovinato
     await page.setInputFiles('#bcFile', xfile(await xlsx({ mov, saldo }, ['Data', 'Valuta', 'Causale', 'Descrizione', 'Importo'])));
-    await expect(page.locator('#toast')).toHaveText('Questo file non sembra la lista movimenti di ING (CSV o Excel): per ora Soldirini legge solo quella. Non ho importato niente.');
+    await expect(page.locator('#bcErr')).toHaveText('Questo file non è la lista movimenti di ING in CSV o Excel, l\'unica che Soldirini sa leggere per ora. Non è stato importato niente.');
     await page.setInputFiles('#bcFile', xfile(Buffer.from('PK\u0003\u0004 non è uno zip')));
-    await expect(page.locator('#toast')).toHaveText('Questo file non sembra la lista movimenti di ING (CSV o Excel): per ora Soldirini legge solo quella. Non ho importato niente.');
+    await expect(page.locator('#bcErr')).toHaveText('Questo file non è la lista movimenti di ING in CSV o Excel, l\'unica che Soldirini sa leggere per ora. Non è stato importato niente.');
     await expect(page.locator('#bcModal')).toBeHidden();
     expect(errori).toEqual([]);
   });

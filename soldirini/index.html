@@ -313,7 +313,10 @@ input.manca,input.nonvale{border-color:var(--err)}
 #bcList .bcn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#bcList .bci{font-variant-numeric:tabular-nums;white-space:nowrap}#bcList .bci.ent{color:var(--ok)}
 #bcList .bcinfo{display:block;margin:0 0 6px 30px}#bcList select,#bcList input:not([type=checkbox]){margin:4px 0 0 30px;width:calc(100% - 30px)}
 #rieRim{margin:14px 0}#rieRim p{margin:10px 0 0} /* 24c.11 (D-151): sezione "Rimasti dai mesi prima" */
-.bcimp .btn{width:100%}.bcimp p{margin:8px 0 0}#bcOk{color:var(--ok);margin:0 0 4px}
+.bcimp .btn{width:100%}.bcimp p{margin:8px 0 0}.bcimp h3{margin:0 0 6px}#bcOk{color:var(--ok);margin:0 0 4px}
+/* 24c.12: errori del file sotto il pulsante (02, tornata 49), etichetta "Già importato", avviso della riga, nome della spesa */
+.bcerr{color:var(--err);font-weight:650;margin:8px 0 0}#bcList .bctag{font-size:11.5px;font-weight:650;background:color-mix(in srgb,var(--mut) 15%,transparent);color:var(--mut);border-radius:6px;padding:1px 6px;margin-right:4px}
+#bcList .bcavv{display:block;margin:0 0 6px 30px;color:var(--warn)}#bcList .bccampo{display:block;margin:6px 0 0 30px}#bcList .bccampo input{margin:2px 0 0;width:100%}#bcList .bcnote{margin:4px 0 6px}
 .sprow{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px dashed var(--line)}.sprow .tx{flex:1;min-width:0;display:flex;flex-direction:column}.sprow small{color:var(--mut)}
 .spcats{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
 #v-pro .stack>details.fold{margin-bottom:0}
@@ -579,7 +582,7 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
     <div class="monthbar"><h2>Spese giornaliere</h2></div>
     <div class="per"><button class="ib pgPrev" aria-label="Periodo prima">‹</button><span class="pgper"></span><button class="ib pgNext" aria-label="Periodo dopo">›</button></div>
     <div class="testa"></div>
-    <div class="card bcimp"><button type="button" class="btn ghost" data-bcimp>🏦 Importa movimenti della banca</button><p class="muted sm">La lista movimenti della banca in CSV o Excel (per ora solo ING). Il file si legge solo sul telefono e non viene conservato.</p></div>
+    <div class="card bcimp"><h3><span aria-hidden="true">🏦</span> Movimenti della banca</h3><p class="muted sm">Scegli la lista movimenti della tua banca in CSV o Excel (per ora solo ING). Soldirini la legge solo sul telefono e non conserva il file.</p><button type="button" class="btn ghost" data-bcimp>🏦 Importa movimenti della banca</button><p class="muted sm">La lista si scarica dall'app o dal sito della banca, tra i movimenti del conto.</p><p class="sm bcerr" id="bcErr" role="alert" hidden></p></div>
     <div class="cards" id="rieSpese"></div>
   </section>
 
@@ -673,7 +676,10 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
         </div>
         <div class="card"><h3>Aspetto</h3><label>Tema<select id="tema"><option value="auto">Come il telefono</option><option value="light">Chiaro</option><option value="dark">Scuro</option></select></label>
           <label class="check"><input type="checkbox" id="festeCal" aria-describedby="festeCalNota"> Mostra le feste nel calendario</label>
-          <p class="muted sm" id="festeCalNota">Le feste nazionali italiane, con 🎉. Il santo patrono si aggiunge nel lavoro, in “Feste locali”.</p></div>
+          <p class="muted sm" id="festeCalNota">Le feste nazionali italiane, con 🎉. Il santo patrono si aggiunge nel lavoro, in “Feste locali”.</p>
+          <!-- 24c.12 (D-157): mese da cui parte "Rimasti dai mesi prima" -->
+          <label>Inizia i conti da<input type="month" id="contiDa" aria-describedby="contiDaNota"></label>
+          <p class="muted sm" id="contiDaNota">Nel Riepilogo, “Rimasti dai mesi prima” somma i mesi da qui in poi. I mesi prima restano nell’app ma non entrano nel totale. Vuoto: dal primo mese con dati.</p></div>
         <div class="card"><h3>Google Calendar</h3><div id="gcalBody"></div></div>
         <div class="card"><h3>Promemoria</h3><div class="stack">
           <label class="check"><input type="checkbox" id="promem"> Avvisami delle attività da confermare</label>
@@ -1001,11 +1007,11 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
 <div class="modal" id="bcModal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="bcTit">
   <div class="sheethead"><h2 id="bcTit">Movimenti da importare</h2><button class="x" id="bcClose" aria-label="Chiudi">×</button></div>
   <p class="muted sm" id="bcSub" style="margin-top:0"></p>
-  <div class="note" id="bcAvviso" role="alert" hidden>Il file sembra incompleto: controlla prima di importare.</div>
-  <p class="sm ok" id="bcOk" hidden>Lettura completa ✓</p>
-  <p class="muted sm" style="margin:4px 0 8px">Controlla le proposte: niente si salva finché non tocchi “Importa”.</p>
+  <div class="vcavv" id="bcAvviso" role="status" hidden><b>⚠ Il file sembra incompleto.</b> Il saldo iniziale più i movimenti non dà il saldo finale: forse manca qualche riga. Controlla le proposte prima di importare, oppure scarica di nuovo la lista.</div>
+  <p class="sm ok" id="bcOk" hidden><b>✓ Lettura completa:</b> i saldi del file tornano.</p>
+  <p class="muted sm" style="margin:4px 0 8px">Controlla le proposte: niente si salva finché non tocchi «Importa».</p>
   <div id="bcList"></div>
-  <p class="sm" id="bcTot" style="margin:10px 0 0"></p>
+  <p class="sm" id="bcTot" style="margin:10px 0 0"></p><p class="muted sm" id="bcTipi" style="margin:2px 0 0"></p>
   <div class="foot"><button class="btn ghost" id="bcAnn">Annulla</button><button class="btn" id="bcImporta">Importa</button></div></div></div>
 <div class="modal" id="dlg" hidden><div class="sheet dlg" role="alertdialog" aria-modal="true"><p id="dlgMsg"></p><div class="acts" id="dlgBtns"></div></div></div>
 <div class="modal" id="cuModal" hidden>

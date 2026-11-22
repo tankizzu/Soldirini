@@ -45,7 +45,11 @@ function primoMeseConDati(){let p=null;const min=m=>{if(ymOk(m)&&(!p||m<p))p=m;}
   if(window.Entrate)for(const m of Object.keys(Entrate.indice()))min(m);
   for(const f of fissi())min(f.dal);
   return p;}
-function rimastiPrima(ym){const p=primoMeseConDati();if(!p||p>=ym)return null; // nessun mese prima con dati: la sezione non c'è
+// 24c.12 (D-157): "Inizia i conti da" (impost().contiDa): la somma parte da quel mese (o dal primo mese con dati, se è dopo);
+// nel mese scelto e prima la sezione non c'è. I mesi prima restano nell'app.
+const contiDa=()=>{const v=impost().contiDa;return ymOk(v)?v:null;};
+function inizioConti(){const p=primoMeseConDati(),d=contiDa();return d&&(!p||d>p)?d:p;}
+function rimastiPrima(ym){const p=inizioConti();if(!p||p>=ym)return null; // nessun mese prima da contare: la sezione non c'è
   const I=window.Entrate?Entrate.indice():{};let x=0,m=p,n=0;
   while(m<ym&&n++<1200){x+=contiMese(m,I).rimanenti;m=meseDopo(m);}
   return r2(x);}
@@ -98,7 +102,7 @@ renderRiepilogo=function(){_renderRie18();
   if(!anno){const X=rimastiPrima(cur);if(X!=null){const s=v=>eur(v).replace(/^-/,'−'),T=r2(X+C.rimanenti);
     hero.insertAdjacentHTML('afterend',`<div class="cards" id="rieRim"><div class="card rimprima" data-fid="rimasti" data-sum="${s(X)}"><h3>↪️ Rimasti dai mesi prima</h3>
       <div class="kv"><span>Rimasti dai mesi prima</span><b>${s(X)}</b></div><div class="kv"><span>Rimanenti del mese</span><b>${s(C.rimanenti)}</b></div>
-      <div class="kv big"><span>Totale</span><b>${s(T)}</b></div><p class="muted sm">Dal primo mese con dati, ${esc(monthName(primoMeseConDati()))}. Il numero grande resta solo del mese.</p></div></div>`);
+      <div class="kv big"><span>Totale</span><b>${s(T)}</b></div><p class="muted sm">${contiDa()&&contiDa()===inizioConti()?`Da ${esc(monthName(contiDa()))}, come scelto in Impostazioni → Aspetto.`:`Dal primo mese con dati, ${esc(monthName(inizioConti()))}.`} Il numero grande resta solo del mese.</p></div></div>`);
     foldify($('rieRim'),'rie');}}
   // 24b.1 (D-098, 02 §2): la testata di ogni pagina mostra lo stesso importo della sua casella
   window.VALORI_RIE={dfx:C.fTot,dsp:C.sp,dlav:lavV,pen:penV,drim:tot.rimb,drit:tot.rit,dinc:daInc,inc:anno?r2(tot.netto+tot.rimb):0,mesi:C.mesi};
