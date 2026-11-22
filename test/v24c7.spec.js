@@ -20,6 +20,7 @@ const TESTO = new Set([
   'fpNome', 'cd-altreNota', 'ftNome', 'fxNome', 'fxNota', 'obNome', 'mvNota', 'cuComm', 'cuCaus', 'wTit',
   'data-li=nome', 'data-pf=nome', 'data-lk=nota', 'data-tm=nome', 'tnNome', 'spPNota', 'data-x=altroDesc', 'data-x=tariffaData',
   'data-k=icona', 'data-k=nome', 'data-k=sigla',
+  'evExNota', 'xeNota', // 24c.13 (D-074): nota dell'entrata extra
 ]);
 const SALTA = ['checkbox', 'radio', 'date', 'month', 'time', 'color', 'file', 'hidden', 'range', 'search', 'email', 'password', 'button', 'submit'];
 const campi = page => page.evaluate(SALTA => [...document.querySelectorAll('input')].filter(i => !SALTA.includes(i.type)).map(i => {

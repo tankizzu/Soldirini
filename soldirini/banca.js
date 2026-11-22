@@ -13,6 +13,7 @@ const TESTA=['DATA CONTABILE','DATA VALUTA','USCITE','ENTRATE','CAUSALE','DESCRI
 const SP=()=>D().spesePers||(D().spesePers={});
 const EN=()=>D().entrate||(D().entrate={});
 const IMP=()=>D().bancaImpronte||(D().bancaImpronte={});
+const DC=()=>D().daConfermare||(D().daConfermare={}); // 24c.13 (D-165): entrate da confermare (extra.js)
 const CATS=window.CATS_SPESE; // 24c.11 (D-150): lo stesso elenco di attivita.js
 const gm=d=>`${d.slice(8)}/${d.slice(5,7)}`;
 const segno=v=>(v<0?'−':'+')+eur(Math.abs(v));
@@ -160,6 +161,7 @@ function vociProgetti(ym){if(!window.Entrate)return [];
 function proponi(m){const c=m.caus.toLowerCase(),d=m.desc;const ym=m.dv.slice(0,7);let nome='',info='',avviso='',data=m.dv,val='no',contaIn=null;const scelte=[];
   const spese=cat=>CATS.map(k=>({val:'sp:'+k[0],txt:`Spesa · ${k[1]} ${k[2]}`})).sort((a,b)=>(b.val==='sp:'+cat)-(a.val==='sp:'+cat));
   const ignora=(t='Non importare')=>({val:'no',txt:t});
+  const daConf={val:'dc:',txt:'Entrata da confermare · scegli dopo cos’è'}; // 24c.13 (D-165)
   const fissi=()=>fissiNel(ym).map(x=>({val:'fx:'+x.id,txt:`Uscita fissa «${x.nome}» · già contata`}));
   if(c==='pagamento carta'){
     data=dataIt(tra(d,/Operazione \S+ del (\d{2}\/\d{2}\/\d{4})/))||m.dv;
@@ -195,8 +197,10 @@ function proponi(m){const c=m.caus.toLowerCase(),d=m.desc;const ym=m.dv.slice(0,
     const note=tra(d,/ Note: (.*)$/);
     const V=vociProgetti(ym);const rimb=/rimbors/i.test(note);
     const punti=x=>(x.imp!=null&&Math.abs(x.imp-m.v)<0.005?4:0)+(nomeComune(x.nome,nome)?2:0)+(rimb===(x.t==='r')?1:0);
-    V.sort((a,b)=>punti(b)-punti(a));scelte.push(...V,ignora());const best=V[0];val=best&&punti(best)>=2?best.val:'no';
-    info=val!=='no'?`Bonifico ricevuto: sembra ${best.t==='r'?'il rimborso':'il compenso'} di ${best.mese} del progetto «${best.nome}».`:'Bonifico ricevuto: scegli a cosa si riferisce, oppure lascialo fuori.';}
+    // 24c.13 (D-165): un bonifico ricevuto che non è un compenso o un rimborso riconosciuto va tra le "Entrate da confermare",
+    // con data, importo e nome di chi lo manda: non conta finché l'utente non sceglie cos'è (Riepilogo → Ancora da incassare)
+    V.sort((a,b)=>punti(b)-punti(a));scelte.push(...V,daConf,ignora());const best=V[0];val=best&&punti(best)>=2?best.val:'dc:';
+    info=val!=='dc:'?`Bonifico ricevuto: sembra ${best.t==='r'?'il rimborso':'il compenso'} di ${best.mese} del progetto «${best.nome}».`:'Bonifico ricevuto: va tra le «Entrate da confermare», dove scegli cos’è. Finché non scegli, non conta.';}
   else if(c==='bonifico in uscita'){
     const note=tra(d,/ Note: (.*)$/);nome=note||'Bonifico'; // 03, decisione 1: niente nomi delle persone, si propone la nota
     info=note?`Bonifico fatto, con la nota «${note}».`:'Bonifico fatto, senza nota.';
@@ -204,7 +208,7 @@ function proponi(m){const c=m.caus.toLowerCase(),d=m.desc;const ym=m.dv.slice(0,
     scelte.push(...fissi(),...spese(cat),ignora());val=f?'fx:'+f.id:'sp:'+cat;}
   else if(c==='giroconto'){nome='Giroconto';info='Giroconto: soldi spostati su un tuo conto, non è una spesa.';
     scelte.push(ignora('Non importare (soldi tuoi)'));if(m.v<0)scelte.push(...spese('altro'));val='no';}
-  else{nome=m.caus;info=m.caus;if(m.v<0){scelte.push(...spese('altro'),ignora());val='sp:altro';}else scelte.push(ignora());}
+  else{nome=m.caus;info=m.caus;if(m.v<0){scelte.push(...spese('altro'),ignora());val='sp:altro';}else{scelte.push(daConf,ignora());val='dc:';}} // 24c.13 (D-165): entrata sconosciuta
   return {nome:nome.slice(0,60),info,avviso,scelte,val,data,contaIn};}
 
 // 24c.11 (D-152): il mese parte dallo stipendio. Nella lista si cercano gli accrediti di stipendio o pensione (data valuta).
@@ -220,7 +224,7 @@ function meseDaStipendio(mov){const S=mov.filter(m=>m.caus.toLowerCase()==='accr
 const nomeMese=(m,d)=>MESI[+m.slice(5)-1]+(m.slice(0,4)===d.slice(0,4)?'':' '+m.slice(0,4));
 // "Conta in {mese}." (02): il mese dello stipendio (D-152) o, per la carta, quello dell'acquisto se in banca è arrivata il mese dopo
 const contaIn=r=>sposta(r)?r.mc:(r.contaIn&&/^sp:/.test(r.val)?r.contaIn:null);
-const sposta=r=>!!r.mc&&/^(sp|en|pg):/.test(r.val);
+const sposta=r=>!!r.mc&&/^(sp|en|pg|dc):/.test(r.val);
 
 // impronta della riga del file (E4): SHA-256, si salva solo questa
 // 24c.11: si calcola sulla riga con gli spazi già sistemati (uguale per CSV ed Excel); si riconosce anche l'impronta della riga
@@ -242,7 +246,7 @@ function errore(t){for(const e of document.querySelectorAll('.bcerr')){e.textCon
   if(!el||!el.classList.contains('bcerr'))el=$('bcErr');el.textContent=t;el.hidden=false;}
 async function apriFile(file){
   if(!file)return;
-  errore('');
+  errore('');if(window.EntrateExtra)EntrateExtra.riquadro(0);
   if(file.size>MAX_BYTE){errore(ERRORI.grande);return;}
   let A;try{const buf=await file.arrayBuffer();const u=new Uint8Array(buf,0,Math.min(4,buf.byteLength));
     // 24c.11 (D-153): un file .xlsx è uno zip (comincia con "PK"); tutto il resto si legge come CSV
@@ -271,10 +275,10 @@ function disegna(){const tutti=L.length&&L.every(r=>r.gia);
   $('bcAnn').textContent=tutti?'Chiudi':'Annulla';aggiornaTot();}
 const pl=(n,uno,tanti)=>`${n} ${n===1?uno:tanti}`;
 // conto per tipo (piede e messaggio finale): le parti a 0 non si scrivono
-function contoTipi(S){const k=t=>S.filter(r=>r.val.startsWith(t));const sp=k('sp:').length,fx=k('fx:').length;
+function contoTipi(S){const k=t=>S.filter(r=>r.val.startsWith(t));const sp=k('sp:').length,fx=k('fx:').length,dc=k('dc:').length;
   const en=k('en:'),pg=k('pg:');const st=en.filter(r=>r.val.startsWith('en:lav')).length,pe=en.length-st,ri=pg.filter(r=>r.val.endsWith('|r')).length,co=pg.length-ri;
   const ent=[st&&pl(st,'stipendio','stipendi'),pe&&pl(pe,'pensione','pensioni'),ri&&pl(ri,'rimborso','rimborsi'),co&&pl(co,'compenso','compensi')].filter(Boolean);
-  return {sp,fx,ne:en.length+pg.length,piede:[sp&&pl(sp,'spesa','spese'),ent.length&&ent.join(' e ')+(ent.length===1&&(st+pe+ri+co)===1?' entrato':' entrati'),fx&&(fx===1?'1 uscita fissa già contata':`${fx} uscite fisse già contate`)].filter(Boolean).join(' · ')};}
+  return {sp,fx,dc,ne:en.length+pg.length,piede:[sp&&pl(sp,'spesa','spese'),ent.length&&ent.join(' e ')+(ent.length===1&&(st+pe+ri+co)===1?' entrato':' entrati'),dc&&(dc===1?'1 entrata da confermare':`${dc} entrate da confermare`),fx&&(fx===1?'1 uscita fissa già contata':`${fx} uscite fisse già contate`)].filter(Boolean).join(' · ')};}
 function aggiornaTot(){const S=L.filter(r=>r.on&&!r.gia&&r.val!=='no');const u=S.filter(r=>r.v<0).reduce((a,r)=>a-cent(r.v),0)/100,e=S.filter(r=>r.v>0).reduce((a,r)=>a+cent(r.v),0)/100;
   $('bcTot').textContent=S.length?`Uscite ${eur(u)} · Entrate ${eur(e)}`:'Niente da importare';$('bcTipi').textContent=S.length?contoTipi(S).piede:'';
   const b=$('bcImporta');b.textContent=S.length===1?'Importa 1 movimento':`Importa ${S.length} movimenti`;b.disabled=!S.length;}
@@ -289,13 +293,21 @@ function importa(){if(!L)return;const now=Date.now();let n=0,k=0;const imp=IMP()
       if(t==='sp'){const id=uid();SP()[id]={id,data:r.data,...mc,created:now+k++,updatedAt:now,cat:x,importo:r2(Math.abs(r.v)),nota:pulisci(r.nome).slice(0,60),origine:'banca'};}
       else if(t==='en')EN()[x]={entrato:true,data:r.data,...mc,importo:r2(r.v),updatedAt:now};
       else if(t==='pg')pagamenti()[x]={pagato:true,data:r.data,...mc,importo:r2(r.v),updatedAt:now};
+      // 24c.13 (D-165): data esatta del movimento (data valuta), importo, nome di chi manda (già pulito) e l'impronta della riga
+      else if(t==='dc'){const id=uid();DC()[id]={id,data:r.data,...mc,importo:r2(r.v),nome:pulisci(r.nome).slice(0,60),impronta:r.h,origine:'banca',created:now+k++,updatedAt:now};}
       // 'fx': uscita fissa già contata nel mese: si collega e non si aggiunge niente
       n++;}
     // righe importate e righe da ignorare: la prossima volta sono "già importato"; una riga solo tolta dalla casella torna
     if((r.on&&r.val!=='no')||r.val==='no')imp[r.h]={updatedAt:now};
   }
-  const T=contoTipi(S);const parti=[T.sp&&pl(T.sp,'spesa','spese'),T.ne&&(T.ne===1?'1 entrata segnata':`${T.ne} entrate segnate`),T.fx&&(T.fx===1?'1 uscita fissa già contata':`${T.fx} uscite fisse già contate`)].filter(Boolean);
-  chiudi();changed();render();toast(`✓ ${n===1?'Importato 1 movimento':`Importati ${n} movimenti`}: ${parti.join(', ')}.`);}
+  const T=contoTipi(S);const parti=[T.sp&&pl(T.sp,'spesa','spese'),T.ne&&(T.ne===1?'1 entrata segnata':`${T.ne} entrate segnate`),T.dc&&(T.dc===1?'1 entrata da confermare':`${T.dc} entrate da confermare`),T.fx&&(T.fx===1?'1 uscita fissa già contata':`${T.fx} uscite fisse già contate`)].filter(Boolean);
+  const dopo=dove();chiudi();changed();render();toast(`✓ ${n===1?'Importato 1 movimento':`Importati ${n} movimenti`}: ${parti.join(', ')}.`);
+  // 24c.13 (D-165): riquadro sotto il pulsante usato, con "Controlla" che porta all'elenco
+  if(window.EntrateExtra)EntrateExtra.riquadro(T.dc,dopo);}
+// posto sotto l'ultimo pulsante "Importa movimenti" toccato (lo stesso degli errori)
+function dove(){const btn=ultimo&&document.contains(ultimo)&&!ultimo.closest('[hidden]')?ultimo:null;
+  const el=btn&&(btn.closest('.bcimp')?.querySelector('.bcerr')||btn.closest('.acts')?.nextElementSibling);
+  return el&&el.classList.contains('bcerr')?el:$('bcErr');}
 
 function bind(){
   document.addEventListener('click',e=>{const b=e.target.closest('[data-bcimp]');if(b){ultimo=b;const f=$('bcFile');f.value='';f.click();}});

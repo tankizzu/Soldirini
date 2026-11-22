@@ -29,11 +29,15 @@ window.mesePrima=mesePrima;
 // su Drive (D-117), quindi nessun conflitto con gli altri telefoni. Le spese scritte a mano non hanno "origine" e non si toccano.
 // Dalla 24c.12 l'importazione salva sempre "meseConto", quindi le voci nuove non passano da qui.
 let stipCache=null;
-function stipendiEntrati(){if(stipCache)return stipCache;const E=D().entrate||{},oggi=today(),out=[];
+let stipChiave=null;
+function stipendiEntrati(){const E=D().entrate||{},oggi=today();if(stipCache&&stipChiave&&stipChiave.E===E&&stipChiave.oggi===oggi)return stipCache;stipChiave={E,oggi};const out=[];
   const lid=new Set((window.lavori?lavori():[]).map(l=>l.id));
   for(const [k,e] of Object.entries(E)){if(!e||typeof e!=='object'||e.entrato!==true||typeof e.data!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(e.data)||e.data>oggi)continue;
     const p=k.split('|');if(p[0]==='pen'||(p[0]==='lav'&&lid.has(p[1])))out.push(e.data);}
-  stipCache=out;setTimeout(()=>{stipCache=null;},0);return out;}
+  stipCache=out;return out;}
+// 24c.13 (nota della verifica della 24c.12): la lista si rifà dopo ogni modifica (changed) e quando i dati cambiano oggetto
+// (sincronizzazione, "Sostituisci tutto"): prima si svuotava con setTimeout(0) e un conto fatto nello stesso giro vedeva la lista vecchia
+{const _changed=changed;changed=function(){stipCache=null;return _changed.apply(this,arguments);};}
 window.meseSpesa=s=>{if(s.origine==='banca'&&s.meseConto===undefined){const m=s.data.slice(0,7);
     return stipendiEntrati().some(d=>d.slice(0,7)===m&&d>s.data)?mesePrima(m):m;}
   return meseContoDi(s.data,s.meseConto);};
@@ -61,6 +65,7 @@ openEv=function(dates,e,tieni){
   // v23 (D-043): con almeno un lavoro a turni, "Turni da foto" anche da qui
   $('evFoto').hidden=modifica||!lavoriTurni().length;
   if(window.FissaEv&&!tieni)FissaEv.prepara(md.dates,modifica); // tornando dalla creazione di un progetto restano i campi compilati
+  if(window.ExtraEv&&!tieni)ExtraEv.prepara(md.dates,modifica); // 24c.13 (D-074): entrata extra
   renderLav();renderSp();aggiornaSum();
 };
 const lavoriTurni=()=>lavori().filter(l=>l.modo==='turni');
@@ -153,7 +158,9 @@ saveEv=async function(){
   const sp=S.sp;
   const fx=!!(window.FissaEv&&FissaEv.compilata()); // v24 (D-060): uscita fissa da qui
   if(fx&&!FissaEv.valida())return;
-  if(!progOn&&!st&&!sp.length&&!fx){toast('Non c’è niente da salvare: apri una sezione e compilala.','err');return;}
+  const xe=!!(window.ExtraEv&&ExtraEv.compilata()); // 24c.13 (D-074): entrata extra da qui
+  if(xe&&!ExtraEv.valida())return;
+  if(!progOn&&!st&&!sp.length&&!fx&&!xe){toast('Non c’è niente da salvare: apri una sezione e compilala.','err');return;}
   if(st){const l=lav0(st.lid),t=st.tipo?C.tipoDi(l,st.tipo):null;
     if(!t&&!(st.da&&st.a)&&!st.ore){toast('Lavoro: scrivi l’orario (dalle–alle) o le ore.','err');$('secLav').open=true;return;}
     if(t&&serveOre(t,l)&&!(st.da&&st.a)&&!st.ore){toast('Lavoro: scrivi quante ore.','err');$('secLav').open=true;return;}}
@@ -174,7 +181,8 @@ saveEv=async function(){
   if(sp.length){const now=Date.now();let i=0;for(const d of dates)for(const x of sp){const id=uid();SP()[id]=Object.assign({id,data:d,created:now+i++,updatedAt:now},x);}
     parti.push(sp.length===1?'1 spesa':`${sp.length} spese`);}
   if(fx){FissaEv.salva();parti.push('uscita fissa');}
-  if(st||sp.length||fx){changed();render();}
+  if(xe){ExtraEv.salva();parti.push('entrata extra');}
+  if(st||sp.length||fx||xe){changed();render();}
   if(parti.length>1||!progOn)toast('Salvato: '+parti.join(', ')+'.');
 };
 

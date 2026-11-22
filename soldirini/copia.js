@@ -13,11 +13,11 @@
   const enc = new TextEncoder(), dec = new TextDecoder();
   const VIETATI = new Set(['__proto__', 'constructor', 'prototype']);
   // parti conosciute di DB.data (V6): le altre si scartano
-  const RACCOLTE = ['pagamenti', 'progetti', 'eventi', 'mesi', 'files', 'cu', 'lavori', 'turni', 'buste', 'cedolini', 'spesePers', 'risparmi', 'fondi', 'fissi', 'entrate', 'gcal', 'bancaImpronte']; // 24c.12 (P1 di 03): impronte dei movimenti della banca
+  const RACCOLTE = ['pagamenti', 'progetti', 'eventi', 'mesi', 'files', 'cu', 'lavori', 'turni', 'buste', 'cedolini', 'spesePers', 'risparmi', 'fondi', 'fissi', 'entrate', 'gcal', 'bancaImpronte', 'entrateExtra', 'daConfermare']; // 24c.12 (P1 di 03): impronte dei movimenti della banca; 24c.13 (D-074, D-165)
   const OGGETTI = ['impost', 'profilo', 'root', 'pensione'];
   // raccolte in cui chi legge salta già le voci "deleted": qui una voce tolta da "Sostituisci tutto" resta come cancellata
   // (domanda 1 di 03, consiglio). Pagamenti, entrate, mesi e file di Drive non hanno questo segno: lì la voce si toglie e basta.
-  const CON_CANCELLATE = ['eventi', 'progetti', 'lavori', 'turni', 'buste', 'cedolini', 'fissi', 'spesePers', 'cu', 'fondi', 'risparmi', 'bancaImpronte'];
+  const CON_CANCELLATE = ['eventi', 'progetti', 'lavori', 'turni', 'buste', 'cedolini', 'fissi', 'spesePers', 'cu', 'fondi', 'risparmi', 'bancaImpronte', 'entrateExtra', 'daConfermare'];
   const TIPI = { 'application/pdf': [0x25, 0x50, 0x44, 0x46], 'image/jpeg': [0xff, 0xd8, 0xff], 'image/png': [0x89, 0x50, 0x4e, 0x47] };
   // testi di 02 (report tornata 14 e 22, mockup 02-mockup-v24c-riprendi-copia e 02-mockup-v24-d054)
   const MSG = {

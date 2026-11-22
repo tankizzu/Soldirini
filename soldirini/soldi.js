@@ -26,14 +26,15 @@ function contiMese(ym,IDX){
   const sp=r2((window.spesePersonali?spesePersonali(s=>meseSpesa(s)===ym):[]) // 24c.11 (D-152): mese in cui conta
     .reduce((a,s)=>a+num(s.importo),0));
   const prog=r2(I.prog),lav={v:r2(I.lav),stima:false},pen={v:r2(I.pen),stima:false};
-  const entrate=r2(prog+lav.v+pen.v);const usciti=r2(fTot+sp);
-  return {prog,lav,pen,fAdd,fTot,fArrivo:r2(fTot-fAdd),sp,entrate,usciti,rimanenti:r2(entrate-usciti)};
+  const ext=r2(I.ext||0); // 24c.13 (D-074): entrate extra del mese (extra.js); mai nei conti fiscali
+  const entrate=r2(prog+lav.v+pen.v+ext);const usciti=r2(fTot+sp);
+  return {prog,lav,pen,ext,fAdd,fTot,fArrivo:r2(fTot-fAdd),sp,entrate,usciti,rimanenti:r2(entrate-usciti)};
 }
 // vista Anno (E-13 a): anno in corso fino al mese in corso; anni passati tutti i 12 mesi; anni futuri nessun mese.
 // fResto = uscite fisse dei mesi dopo quello in corso (riga "ancora da addebitare entro dicembre"), non contate.
-function contiAnno(y){const T={prog:0,lav:0,pen:0,fAdd:0,fTot:0,sp:0,entrate:0,usciti:0,rimanenti:0,fResto:0,stima:false,penStima:false};
+function contiAnno(y){const T={prog:0,lav:0,pen:0,ext:0,fAdd:0,fTot:0,sp:0,entrate:0,usciti:0,rimanenti:0,fResto:0,stima:false,penStima:false};
   const ora=today().slice(0,7),oy=+ora.slice(0,4);const ult=+y<oy?12:+y===oy?+ora.slice(5):0;T.mesi=ult;const I=window.Entrate?Entrate.indice():{};
-  for(let m=1;m<=ult;m++){const c=contiMese(`${y}-${pad(m)}`,I);for(const k of ['prog','fAdd','fTot','sp','entrate','usciti','rimanenti'])T[k]+=c[k];T.lav+=c.lav.v;T.pen+=c.pen.v;}
+  for(let m=1;m<=ult;m++){const c=contiMese(`${y}-${pad(m)}`,I);for(const k of ['prog','ext','fAdd','fTot','sp','entrate','usciti','rimanenti'])T[k]+=c[k];T.lav+=c.lav.v;T.pen+=c.pen.v;}
   if(+y===oy)for(let m=ult+1;m<=12;m++)T.fResto+=fissiMese(`${y}-${pad(m)}`).fTot;
   for(const k in T)if(typeof T[k]==='number')T[k]=r2(T[k]);return T;}
 window.contiMese=contiMese;window.contiAnno=contiAnno;
@@ -67,7 +68,7 @@ const _renderRie18=renderRiepilogo;
 renderRiepilogo=function(){_renderRie18();
   const anno=rieMode==='anno',y=cur.slice(0,4);const hero=$('rieTot').querySelector('.hero');if(!hero)return;
   const {tot}=anno?aggrega(y):riepilogo(cur);const daInc=r2(dovuti().filter(d=>!d.pag).reduce((a,d)=>a+d.imp,0));
-  const C=anno?contiAnno(y):contiMese(cur);const lavV=anno?C.lav:C.lav.v,penV=anno?C.pen:C.pen.v;
+  const C=anno?contiAnno(y):contiMese(cur);const nConf=window.EntrateExtra?EntrateExtra.daConf().length:0;const lavV=anno?C.lav:C.lav.v,penV=anno?C.pen:C.pen.v;
   // 24b.1 (D-098 punto 3): ogni casella del riquadro aperto porta alla sua pagina di dettaglio (data-vai = scheda)
   const cella=(t,v,cls='',nota='',pag='')=>({h:c=>{const k=[cls,c,pag?'hcel':''].filter(Boolean).join(' '),dentro=`<small>${t}</small><b>${v}</b>${nota?`<small class="nota">${nota}</small>`:''}`;
     return pag?`<button type="button" class="${k}" data-vai="${pag}">${dentro}<span class="vh">, apri la pagina${/lungo/.test(k)?' Uscite fisse':''}</span></button>`:`<div class="${k}">${dentro}</div>`;}});
@@ -85,7 +86,9 @@ renderRiepilogo=function(){_renderRie18();
   const entrate=[lavV||(lavori().length&&conVoce('lav'))?cella('Lavoro dipendente',eur(lavV),'',!lavV&&inArrivo('lav')?'stipendio in arrivo':'','dlav'):null,
     penV||conVoce('pen')?cella('Pensione',eur(penV),'',!penV&&inArrivo('pen')?'pensione in arrivo':'','pen'):null,
     anno&&r2(tot.netto+tot.rimb)?cella('Incassato dai progetti',eur(r2(tot.netto+tot.rimb)),'','','dinc'):null, // 02 (Decisione 3): "Mese per mese (incassi)"
-    daInc?cella('Ancora da incassare',eur(daInc),'','','dinc'):null,tot.rimb?cella('Rimborsi spese',eur(tot.rimb),'','','drim'):null,tot.rit?cella('Ritenuta d’acconto',eur(tot.rit),'','','drit'):null].filter(Boolean);
+    // 24c.13 (D-074): entrate extra del periodo; (D-165) "Ancora da incassare" c'è anche con sole entrate da confermare, con il loro numero
+    C.ext?cella('Entrate extra',eur(C.ext),'','','dinc'):null,
+    daInc||nConf?cella('Ancora da incassare',eur(daInc),'',nConf?(nConf===1?'1 entrata da confermare':`${nConf} entrate da confermare`):'','dinc'):null,tot.rimb?cella('Rimborsi spese',eur(tot.rimb),'','','drim'):null,tot.rit?cella('Ritenuta d’acconto',eur(tot.rit),'','','drit'):null].filter(Boolean);
   const caselle=entrate.concat(uscite);
   // D-101: nessuna entrata nel periodo e nessuna casella delle entrate → la frase dell'utente (stile di 02, tornata 27 §1)
   const nessuna=!C.entrate&&!entrate.length?'<p class="nient" role="note"><span class="em" aria-hidden="true">🙁</span><span>Mi dispiace che non hai entrate</span></p>':'';

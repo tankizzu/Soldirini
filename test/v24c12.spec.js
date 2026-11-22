@@ -172,8 +172,10 @@ test.describe('24c.12', () => {
     expect(csv).toContain('"\'=HYPERLINK(""x"")"'); expect(csv).not.toMatch(/;"=HYPERLINK/);
     // informativa (03, tornata 49 §5)
     const pr = await page.evaluate(async () => (await fetch('privacy.html')).text());
-    expect(pr).toContain('né i nomi di chi ti manda o riceve un bonifico. Se la causale di un tuo bonifico contiene un nome, puoi cambiarla prima di importare.');
-    expect(pr).toContain('versione 24c.12');
+    // 24c.13 (D-165): il nome di chi manda il bonifico si salva solo per le entrate da confermare (v24c13.spec.js)
+    expect(pr).toContain('né i nomi di chi riceve un tuo bonifico. Per i bonifici ricevuti che l’app non sa riconoscere');
+    expect(pr).toContain('Se la causale di un tuo bonifico contiene un nome, puoi cambiarla prima di importare.');
+    expect(pr).toContain('versione 24c.1');
     expect(errori).toEqual([]);
   });
 
