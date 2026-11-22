@@ -72,9 +72,9 @@ test.describe('24c.10 · D-147: movimenti della banca dal CSV', () => {
     expect([prima.entrate, prima.fTot, prima.sp, prima.rimanenti]).toEqual([0, 40, 0, -40]);
     await page.setInputFiles('#bcFile', file(CSV)); await page.click('#bcImporta');
     const dopo = await page.evaluate(() => contiMese('2026-11'));
-    expect([dopo.lav.v, dopo.prog, dopo.fTot, dopo.sp, dopo.rimanenti]).toEqual([1500, 150, 40, 317.49, 1292.51]);
-    // ottobre non cambia (lo stipendio di ottobre è entrato a novembre, D-009)
-    expect(await page.evaluate(() => contiMese('2026-10').entrate)).toBe(0);
+    // 24c.11 (D-152): lo stipendio è arrivato il 10/11, quindi i movimenti dell'1-6/11 contano in ottobre (spese 17,49 e rimborso 150)
+    expect([dopo.lav.v, dopo.prog, dopo.fTot, dopo.sp, dopo.rimanenti]).toEqual([1500, 0, 40, 300, 1160]);
+    expect(await page.evaluate(() => [contiMese('2026-10').entrate, contiMese('2026-10').sp])).toEqual([150, 17.49]);
     const salvato = await page.evaluate(() => JSON.stringify(D()) + JSON.stringify(Object.fromEntries(Object.keys(localStorage).map(k => [k, localStorage.getItem(k)]))));
     for (const vietato of ['IT00X', 'IT00ZZZ', 'xxxx', 'XXXXITMM', 'Creditor', 'Mandato', 'Debitore', 'MARIO', 'Mario', 'Rossi', 'ROSSI', 'VIA ESEMPIO', '0000000000', 'Anagrafica', 'Ordinante', 'Rimborso spese ottobre', 'Mastercard', '1692.51', '1.692,51', 'Saldo'])
       expect(salvato, vietato).not.toContain(vietato);
@@ -105,7 +105,7 @@ test.describe('24c.10 · D-147: movimenti della banca dal CSV', () => {
     await expect(page.locator('#bcOk')).toBeHidden();
     await page.click('#bcAnn');
     const casi = [
-      [file('Data;Descrizione;Importo\r\n01/11/2026;Spesa;-4,50\r\n', 'altra-banca.csv'), 'Questo file non sembra la lista movimenti in CSV di ING: per ora Soldirini legge solo quella. Non ho importato niente.'],
+      [file('Data;Descrizione;Importo\r\n01/11/2026;Spesa;-4,50\r\n', 'altra-banca.csv'), 'Questo file non sembra la lista movimenti di ING (CSV o Excel): per ora Soldirini legge solo quella. Non ho importato niente.'],
       [file(CSV.replace('"-4,50"', '"-4,5x"')), 'Il file non si legge bene: non ho importato niente.'],
       [file(CSV.split('\r\n').slice(0, 1).join('\r\n') + '\r\n01/11/2026,,,"+500,00",,Saldo iniziale\r\n'), 'Nel file non ci sono movimenti.'],
       [file('DATA CONTABILE,DATA VALUTA,USCITE,ENTRATE,CAUSALE,DESCRIZIONE OPERAZIONE\r\n03/11/2026,01/11/2026,"-4,50,,Pagamento Carta,x\r\n'), 'Il file non si legge bene: non ho importato niente.'],

@@ -23,8 +23,9 @@ function dataValida(d){if(typeof d!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(d))re
 const importoValido=v=>typeof v==='number'&&isFinite(v);
 // voce entrata: {data, importo|null} se valida; altrimenti null (= in attesa)
 // 24c.6 (R-D3, D-052): una data dopo oggi vale "non ancora entrata" fino a quel giorno (Riepilogo, In arrivo e conti uguali)
-function leggi(r){if(!r||typeof r!=='object'||r.entrato!==true||!dataValida(r.data)||r.data>today())return null;return {data:r.data,importo:importoValido(r.importo)?r.importo:null};}
-function leggiPag(g){if(!g||typeof g!=='object'||g.pagato!==true||!dataValida(g.data)||g.data>today())return null;return {data:g.data,importo:importoValido(g.importo)?g.importo:null};}
+// 24c.11 (D-152): mese = mese in cui conta nei soldi ("meseConto" dell'importazione della banca, se valido; altrimenti quello della data)
+function leggi(r){if(!r||typeof r!=='object'||r.entrato!==true||!dataValida(r.data)||r.data>today())return null;return {data:r.data,importo:importoValido(r.importo)?r.importo:null,mese:meseContoDi(r.data,r.meseConto)};}
+function leggiPag(g){if(!g||typeof g!=='object'||g.pagato!==true||!dataValida(g.data)||g.data>today())return null;return {data:g.data,importo:importoValido(g.importo)?g.importo:null,mese:meseContoDi(g.data,g.meseConto)};}
 
 // ---------- le voci del mese (E-1) ----------
 const lavoroDi=id=>lavori().find(l=>l.id===id);
@@ -67,9 +68,9 @@ const importoDi=v=>v.ent?(v.ent.importo!=null?v.ent.importo:(v.pr.imp||0)):0;
 function indice(){const I={};const add=(ym,k,v)=>{const x=I[ym]||(I[ym]={lav:0,pen:0,prog:0});x[k]=r2(x[k]+v);};const E=EN();
   for(const [k,r] of Object.entries(E)){const e=leggi(r);if(!e)continue;
     let m=/^lav\|([^|]+)\|(\d{4}-\d{2})$/.exec(k);
-    if(m){const l=lavoroDi(m[1]);if(!l)continue;const imp=e.importo!=null?e.importo:(propostaLav(l,m[2])||{}).imp||0;add(e.data.slice(0,7),'lav',imp);continue;}
-    m=/^pen\|(\d{4}-\d{2})$/.exec(k);if(m){const imp=e.importo!=null?e.importo:(propostaPen(m[1])||{}).imp||0;add(e.data.slice(0,7),'pen',imp);}}
-  for(const d of dovuti()){const e=leggiPag(d.pag);if(!e)continue;add(e.data.slice(0,7),'prog',e.importo!=null?e.importo:d.imp);}
+    if(m){const l=lavoroDi(m[1]);if(!l)continue;const imp=e.importo!=null?e.importo:(propostaLav(l,m[2])||{}).imp||0;add(e.mese,'lav',imp);continue;}
+    m=/^pen\|(\d{4}-\d{2})$/.exec(k);if(m){const imp=e.importo!=null?e.importo:(propostaPen(m[1])||{}).imp||0;add(e.mese,'pen',imp);}}
+  for(const d of dovuti()){const e=leggiPag(d.pag);if(!e)continue;add(e.mese,'prog',e.importo!=null?e.importo:d.imp);}
   return I;}
 
 // ---------- finestra "È entrato / È entrata / Entrati" (E-3, E-4, E-5, D-052) ----------
@@ -105,9 +106,11 @@ function controlla(){const v=aperta;if(!v)return false;const P=parole(v);const d
     w.textContent=`⚠ ${v.pr.fonte==='busta'?'La busta':'Il cedolino'} dice ${eur(v.pr.imp)}. Conta quello che hai scritto: correggilo se serve.`;
   $('enSave').disabled=!ok;return ok;}
 function salva(){const v=aperta;if(!v||!controlla())return;const d=$('enData').value;const imp=r2(num($('enImp').value));const now=Date.now();
-  if(v.tipo==='prog')pagamenti()[v.key.slice(5)]={pagato:true,data:d,importo:imp,updatedAt:now}; // T-P6: l'importo si salva sempre
-  else EN()[v.key]={entrato:true,data:d,importo:imp,updatedAt:now};
-  const P=parole(v);chiudi();changed();render();toast(`${P.si} il ${gm(d)}: conta nei soldi di ${monthName(d.slice(0,7))}.`);}
+  // 24c.11 (D-152): se la data non cambia resta il mese in cui conta deciso dall'importazione della banca
+  const vec=v.tipo==='prog'?pagamenti()[v.key.slice(5)]:EN()[v.key];const mc=vec&&vec.data===d&&meseContoDi(d,vec.meseConto)!==d.slice(0,7)?{meseConto:vec.meseConto}:{};
+  if(v.tipo==='prog')pagamenti()[v.key.slice(5)]={pagato:true,data:d,importo:imp,...mc,updatedAt:now}; // T-P6: l'importo si salva sempre
+  else EN()[v.key]={entrato:true,data:d,importo:imp,...mc,updatedAt:now};
+  const P=parole(v);chiudi();changed();render();toast(`${P.si} il ${gm(d)}: conta nei soldi di ${monthName(mc.meseConto||d.slice(0,7))}.`);}
 function nonEntrato(){const v=aperta;if(!v)return;const now=Date.now();
   if(v.tipo==='prog')pagamenti()[v.key.slice(5)]={pagato:false,data:'',updatedAt:now};
   else EN()[v.key]={entrato:false,data:'',updatedAt:now}; // segnata, non cancellata: vince anche sugli altri telefoni

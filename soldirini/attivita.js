@@ -8,7 +8,8 @@ const SP=()=>D().spesePers||(D().spesePers={});
 // 24c.6 (R-D5): una spesa senza data o con la data non di testo (file su Drive rovinato) si salta in silenzio, senza errori
 const dataSpesa=d=>typeof d==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(d);
 const speseDel=fn=>Object.values(SP()).filter(s=>s&&typeof s==='object'&&!s.deleted&&dataSpesa(s.data)&&fn(s)).sort((a,b)=>(a.data+a.created).localeCompare(b.data+b.created));
-const CATS=[['online','📦','Online / Amazon'],['negozio','🛍️','Negozio'],['spesa','🛒','Supermercato'],['bar','☕','Bar e ristoranti'],['amici','🍻','Amici e uscite'],['trasporti','🚗','Trasporti e benzina'],['casa','🏠','Casa e bollette'],['altro','•','Altro']];
+// 24c.11 (D-150): "Online" al posto di "Online / Amazon"; stesso codice e stessa icona. Un solo elenco, usato anche da banca.js
+const CATS=window.CATS_SPESE=[['online','📦','Online'],['negozio','🛍️','Negozio'],['spesa','🛒','Supermercato'],['bar','☕','Bar e ristoranti'],['amici','🍻','Amici e uscite'],['trasporti','🚗','Trasporti e benzina'],['casa','🏠','Casa e bollette'],['altro','•','Altro']];
 const catDi=k=>CATS.find(c=>c[0]===k)||CATS[CATS.length-1];
 const num=v=>leggiNumero(v)??0; // 24c.6 (P2): importi scritti a mano all'italiana (numeri.js)
 const numP=v=>leggiNumeroPunto(v)??0; // 24c.6: campi type="number" (giorni, rate, mesi, percentuale): punto decimale, come prima
@@ -16,6 +17,13 @@ const numP=v=>leggiNumeroPunto(v)??0; // 24c.6: campi type="number" (giorni, rat
 try{localStorage.removeItem('soldirini-sez');localStorage.removeItem('soldirini-foldpro');}catch(e){}
 let S={lav:null,sp:[],cat:'online'};let pick=false,modTurno=null; // stato delle sezioni mentre la finestra è aperta
 window.spesePersonali=speseDel;
+// 24c.11 (D-152): mese in cui una voce conta nei soldi. "meseConto" (salvato dall'importazione della banca) vale solo se è il
+// mese della data o quello prima: un valore diverso (file su Drive rovinato) si ignora e conta la data, come prima.
+const RE_MESE=/^\d{4}-(0[1-9]|1[0-2])$/;
+const mesePrima=m=>{let y=+m.slice(0,4),n=+m.slice(5)-1;if(!n){n=12;y--;}return `${y}-${pad(n)}`;};
+window.meseContoDi=(data,mc)=>{const m=data.slice(0,7);return typeof mc==='string'&&RE_MESE.test(mc)&&mc===mesePrima(m)?mc:m;};
+window.mesePrima=mesePrima;
+window.meseSpesa=s=>meseContoDi(s.data,s.meseConto);
 
 // ================= apertura della finestra =================
 const _openEv16=openEv;
@@ -171,10 +179,10 @@ renderCal=function(){_renderCal16();const per={};for(const s of speseDel(s=>s.da
   document.querySelectorAll('#grid [data-day]').forEach(b=>{const v=per[b.dataset.day];if(v)b.querySelector('.evs').insertAdjacentHTML('beforeend',`<span class="ev sp" style="--c:#8a8f98">🛒 ${nf(v,v%1?2:0)} €</span>`);});};
 const _renderRie16=renderRiepilogo;
 renderRiepilogo=function(){_renderRie16();$('rieSpese').innerHTML='';
-  const y=cur.slice(0,4);const anno=rieMode==='anno';const L=speseDel(s=>anno?s.data.startsWith(y):s.data.startsWith(cur));if(!L.length)return;
+  const y=cur.slice(0,4);const anno=rieMode==='anno';const L=speseDel(s=>anno?meseSpesa(s).startsWith(y):meseSpesa(s)===cur);if(!L.length)return; // 24c.11 (D-152): il mese in cui conta
   const tot=L.reduce((a,s)=>a+num(s.importo),0);const per={};for(const s of L)per[s.cat]=(per[s.cat]||0)+num(s.importo);
   const righe=Object.entries(per).sort((a,b)=>b[1]-a[1]).map(([k,v])=>{const c=catDi(k);return `<div class="kv"><span>${c[1]} ${esc(c[2])}</span><b>${eur(r2(v))}</b></div>`;}).join('');
-  let mesi='';if(anno){const pm={};for(const s of L){const m=s.data.slice(0,7);pm[m]=(pm[m]||0)+num(s.importo);}mesi='<p class="muted sm">Per mese</p>'+Object.keys(pm).sort().map(m=>`<div class="kv"><span>${esc(monthName(m))}</span><b>${eur(r2(pm[m]))}</b></div>`).join('');}
+  let mesi='';if(anno){const pm={};for(const s of L){const m=meseSpesa(s);pm[m]=(pm[m]||0)+num(s.importo);}mesi='<p class="muted sm">Per mese</p>'+Object.keys(pm).sort().map(m=>`<div class="kv"><span>${esc(monthName(m))}</span><b>${eur(r2(pm[m]))}</b></div>`).join('');}
   const h=`<div class="card"><h3>🛒 Spese giornaliere${anno?' '+y:''}</h3>${righe}<div class="kv big"><span>Totale</span><b>${eur(r2(tot))}</b></div>${mesi}</div>`;
   $('rieSpese').insertAdjacentHTML('beforeend',h);}; // 24b.1 (D-098): nella pagina "Spese giornaliere" (mese e anno)
 

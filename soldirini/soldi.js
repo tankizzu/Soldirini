@@ -23,7 +23,8 @@ const fissiMese=ym=>{const F=fissiDel(ym);const t=today();return {F,fTot:r2(F.re
 function contiMese(ym,IDX){
   const I=(IDX||(window.Entrate?Entrate.indice():{}))[ym]||{lav:0,pen:0,prog:0}; // all'avvio entrate.js può non essere ancora caricato
   const {fAdd,fTot}=fissiMese(ym);
-  const sp=r2((window.spesePersonali?spesePersonali(s=>s.data.startsWith(ym)):[]).reduce((a,s)=>a+num(s.importo),0));
+  const sp=r2((window.spesePersonali?spesePersonali(s=>meseSpesa(s)===ym):[]) // 24c.11 (D-152): mese in cui conta
+    .reduce((a,s)=>a+num(s.importo),0));
   const prog=r2(I.prog),lav={v:r2(I.lav),stima:false},pen={v:r2(I.pen),stima:false};
   const entrate=r2(prog+lav.v+pen.v);const usciti=r2(fTot+sp);
   return {prog,lav,pen,fAdd,fTot,fArrivo:r2(fTot-fAdd),sp,entrate,usciti,rimanenti:r2(entrate-usciti)};
@@ -36,6 +37,19 @@ function contiAnno(y){const T={prog:0,lav:0,pen:0,fAdd:0,fTot:0,sp:0,entrate:0,u
   if(+y===oy)for(let m=ult+1;m<=12;m++)T.fResto+=fissiMese(`${y}-${pad(m)}`).fTot;
   for(const k in T)if(typeof T[k]==='number')T[k]=r2(T[k]);return T;}
 window.contiMese=contiMese;window.contiAnno=contiAnno;
+// 24c.11 (D-151): soldi rimasti nei mesi prima, a catena. Primo mese con dati: il più vecchio tra spese (mese in cui contano),
+// entrate segnate e inizio delle uscite fisse. X = somma dei rimanenti (contiMese) di ogni mese da lì fino al mese prima di ym.
+const meseDopo=m=>{let y=+m.slice(0,4),n=+m.slice(5)+1;if(n>12){n=1;y++;}return `${y}-${pad(n)}`;};
+function primoMeseConDati(){let p=null;const min=m=>{if(ymOk(m)&&(!p||m<p))p=m;};
+  if(window.spesePersonali)for(const s of spesePersonali(()=>true))min(meseSpesa(s));
+  if(window.Entrate)for(const m of Object.keys(Entrate.indice()))min(m);
+  for(const f of fissi())min(f.dal);
+  return p;}
+function rimastiPrima(ym){const p=primoMeseConDati();if(!p||p>=ym)return null; // nessun mese prima con dati: la sezione non c'è
+  const I=window.Entrate?Entrate.indice():{};let x=0,m=p,n=0;
+  while(m<ym&&n++<1200){x+=contiMese(m,I).rimanenti;m=meseDopo(m);}
+  return r2(x);}
+window.rimastiPrima=rimastiPrima;
 
 // ---------- riepilogo: in alto i soldi rimanenti, poi lavoro dipendente, rimborsi, ritenuta, pagamenti fissi ----------
 // 24.2 (D-085): riquadro riducibile. Chiuso: soldi rimanenti, "Entrate · Uscite". Aperto: le caselle.
@@ -79,6 +93,13 @@ renderRiepilogo=function(){_renderRie18();
   const imp=eur(C.rimanenti).replace(/^-/,'−');
   hero.innerHTML=`<button type="button" class="rim${C.rimanenti<0?' neg':''}" aria-controls="heroDet"><small class="tit">Soldi rimanenti</small>${sotto?`<small class="dm">${sotto}</small>`:''}<b>${imp}</b><small class="det">Entrate ${eur(C.entrate)} · Uscite ${eur(C.usciti)}</small><span class="vh">, dettagli</span></button><div id="heroDet" class="heroDet">${det}</div>`;
   heroStato(hero);
+  // 24c.11 (D-151): sezione "Rimasti dai mesi prima", solo nella vista Mese, sotto il riquadro e chiusa a ogni apertura (D-010).
+  // Il numero grande resta solo del mese (D-067); qui si somma a catena quello che è rimasto nei mesi prima.
+  if(!anno){const X=rimastiPrima(cur);if(X!=null){const s=v=>eur(v).replace(/^-/,'−'),T=r2(X+C.rimanenti);
+    hero.insertAdjacentHTML('afterend',`<div class="cards" id="rieRim"><div class="card rimprima" data-fid="rimasti" data-sum="${s(X)}"><h3>↪️ Rimasti dai mesi prima</h3>
+      <div class="kv"><span>Rimasti dai mesi prima</span><b>${s(X)}</b></div><div class="kv"><span>Rimanenti del mese</span><b>${s(C.rimanenti)}</b></div>
+      <div class="kv big"><span>Totale</span><b>${s(T)}</b></div><p class="muted sm">Dal primo mese con dati, ${esc(monthName(primoMeseConDati()))}. Il numero grande resta solo del mese.</p></div></div>`);
+    foldify($('rieRim'),'rie');}}
   // 24b.1 (D-098, 02 §2): la testata di ogni pagina mostra lo stesso importo della sua casella
   window.VALORI_RIE={dfx:C.fTot,dsp:C.sp,dlav:lavV,pen:penV,drim:tot.rimb,drit:tot.rit,dinc:daInc,inc:anno?r2(tot.netto+tot.rimb):0,mesi:C.mesi};
   // uscite fisse del mese (D-065: "Uscite fisse" ovunque; righe "addebitata il N" / "addebito il N")
