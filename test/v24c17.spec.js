@@ -296,7 +296,7 @@ test.describe('24c.17 · D-160 file della banca dopo «Importa»', () => {
     expect(pr).not.toContain('Il file non viene caricato su Google Drive, né altrove, e non viene conservato.');
     expect(pr).toContain('Con «Archivia su Drive» l’app mette una copia del file, così com’è, nella cartella “Soldirini/Movimenti banca” del <b>tuo</b> Google Drive.');
     expect(pr).toContain('e la cartella “Movimenti banca” se hai archiviato le liste della banca');
-    expect(pr).toContain('Per togliere solo un mese: Impostazioni → Account → «Elimina i dati di un mese…».');
+    expect(pr).toContain('Per togliere solo un mese: Impostazioni → Copia di sicurezza → «Elimina i dati di un mese…».');
     expect(errori).toEqual([]);
   });
 });
