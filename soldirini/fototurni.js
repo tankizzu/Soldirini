@@ -16,9 +16,11 @@ function immagineDaFile(file){return new Promise((ok,ko)=>{const url=URL.createO
 
 // ---------------- motore di Strafobico (non modificato) ----------------
   /** Immagine in scala di grigi, ingrandita perché il testo sia ben leggibile. */
-  function preparaTela(img) {
+  function preparaTela(img, forte) {
     // le immagini piccole vengono ingrandite molto: il lettore lavora bene con lettere alte almeno 25-30 pixel
-    const w = img.naturalWidth, h = img.naturalHeight, s = Math.min(5, Math.max(1, 3200 / w));
+    // (24c.15, D-170) seconda lettura "forte": anche le immagini molto larghe e basse (tabelle stile Excel)
+    // vengono ingrandite in base all'area, non solo alla larghezza, così i numeri piccoli diventano leggibili
+    const w = img.naturalWidth, h = img.naturalHeight, s = Math.min(5, Math.max(1, 3200 / w, forte ? Math.sqrt(8e6 / (w * h)) : 0));
     const c = document.createElement('canvas'); c.width = Math.round(w * s); c.height = Math.round(h * s); c.scala = s;
     const x = c.getContext('2d', { willReadFrequently: true });
     x.imageSmoothingQuality = 'high';
@@ -33,9 +35,65 @@ function immagineDaFile(file){return new Promise((ok,ko)=>{const url=URL.createO
     c.inclinazione = ang;
     const id = x.getImageData(0, 0, c.width, c.height), p = id.data;
     for (let i = 0; i < p.length; i += 4) { const g = 0.299 * p[i] + 0.587 * p[i + 1] + 0.114 * p[i + 2]; p[i] = p[i + 1] = p[i + 2] = g; }
+    if (forte) {
+      // seconda lettura: la lettura di tutta l'immagine (dove sono giorni e nomi) si fa su una copia con il contrasto
+      // locale (c.ocr); le celle invece si ritagliano dai grigi originali, dove le lettere sfocate restano lettere
+      // e non diventano macchie. I grigi originali servono anche a riconoscere le celle grigie piene.
+      const g = new Uint8Array(c.width * c.height); for (let i = 0; i < g.length; i++) g[i] = p[i * 4]; c.grigio = g;
+      const orig = new ImageData(new Uint8ClampedArray(p), c.width, c.height);
+      contrastoLocale(p, c.width, c.height, s);
+      c.linee = togliGriglia(p, c.width, c.height, s);
+      const o = document.createElement('canvas'); o.width = c.width; o.height = c.height; o.scala = s;
+      o.getContext('2d').putImageData(id, 0, 0); c.ocr = o;
+      togliGriglia(orig.data, c.width, c.height, s);
+      x.putImageData(orig, 0, 0);
+      return c;
+    }
     c.linee = togliGriglia(p, c.width, c.height, s);
     x.putImageData(id, 0, 0);
     return c;
+  }
+
+  /**
+   * (24c.15, D-170) Contrasto locale per le foto sbiadite: ogni pixel viene diviso per il fondo che ha intorno
+   * (il più chiaro nelle vicinanze). Fondi colorati o grigi (testata rosa, celle grigie piene) diventano bianchi,
+   * le scritte sottili e sfocate tornano scure. Solo nella seconda lettura: le scritte chiare su fondo scuro
+   * qui si perderebbero, per questo la prima lettura resta com'era.
+   */
+  function contrastoLocale(p, w, h, scala) {
+    const r = Math.max(4, Math.round(3 * (scala || 1))), n = w * h, g = new Float32Array(n), t = new Float32Array(n);
+    for (let i = 0; i < n; i++) g[i] = p[i * 4];
+    // massimo e media su finestre (2r+1), prima per righe e poi per colonne, in tempo lineare
+    // (massimo: metodo di van Herk con blocchi; media: somma scorrevole)
+    const L = Math.max(w, h), sx = new Float32Array(L + 2 * r + 2), dx = new Float32Array(L + 2 * r + 2), riga = new Float32Array(L);
+    const passa = (src, dst, lung, conta, passo, salto, f) => {
+      const k = 2 * r + 1;
+      for (let c = 0; c < conta; c++) {
+        const base = c * salto;
+        for (let i = 0; i < lung; i++) riga[i] = src[base + i * passo];
+        if (f === 'max') {
+          // sequenza allungata ai bordi con 0 (non cambia il massimo, i valori sono ≥ 0)
+          const N = lung + 2 * r, at = j => (j < r || j >= lung + r) ? 0 : riga[j - r];
+          for (let j = 0; j < N; j++) sx[j] = (j % k === 0) ? at(j) : Math.max(sx[j - 1], at(j));
+          for (let j = N - 1; j >= 0; j--) dx[j] = (j === N - 1 || (j + 1) % k === 0) ? at(j) : Math.max(dx[j + 1], at(j));
+          for (let i = 0; i < lung; i++) dst[base + i * passo] = Math.max(dx[i], sx[i + 2 * r]);
+        } else {
+          let somma = 0, a = 0, b = -1;
+          for (let i = 0; i < lung; i++) {
+            const na = Math.max(0, i - r), nb = Math.min(lung - 1, i + r);
+            while (b < nb) somma += riga[++b];
+            while (a < na) somma -= riga[a++];
+            dst[base + i * passo] = somma / (nb - na + 1);
+          }
+        }
+      }
+    };
+    passa(g, t, w, h, 1, w, 'max'); const bg = new Float32Array(n); passa(t, bg, h, w, w, 1, 'max');
+    passa(bg, t, w, h, 1, w, 'media'); passa(t, bg, h, w, w, 1, 'media');
+    for (let i = 0; i < n; i++) {
+      const v = g[i] / Math.max(1, bg[i]) * 255, q = Math.max(0, Math.min(255, (v - 110) / 125 * 255));
+      p[i * 4] = p[i * 4 + 1] = p[i * 4 + 2] = q;
+    }
   }
 
   /**
@@ -220,57 +278,137 @@ function immagineDaFile(file){return new Promise((ok,ko)=>{const url=URL.createO
    * una griglia 48×20 bianco/nero più il rapporto larghezza/altezza. Serve a confrontare celle tra loro.
    */
   function firmaForma(c) {
-    const W = 48, H = 20, larg = Math.max(1, c.width - 48), t = document.createElement('canvas');
+    // (24c.15, D-170) grigi (non bianco/nero): con le foto sfocate il bianco/nero confonde M e P
+    const W = 32, H = 16, larg = Math.max(1, c.width - 48), t = document.createElement('canvas');
     t.width = W; t.height = H;
     const x = t.getContext('2d', { willReadFrequently: true });
-    x.fillStyle = '#fff'; x.fillRect(0, 0, W, H);
-    x.drawImage(c, 24, 24, larg, 48, 0, 0, Math.min(W, larg * H / 48), H);
-    const p = x.getImageData(0, 0, W, H).data, v = new Uint8Array(W * H);
-    for (let i = 0; i < v.length; i++) v[i] = p[i * 4] < 140 ? 1 : 0;
+    x.imageSmoothingQuality = 'high'; x.drawImage(c, 24, 24, larg, 48, 0, 0, W, H);
+    const p = x.getImageData(0, 0, W, H).data, v = new Float32Array(W * H);
+    for (let i = 0; i < v.length; i++) v[i] = p[i * 4] / 255;
     return { v, ar: larg / 48 };
   }
-  function distanzaForme(a, b) {
-    let d = 0;
-    for (let i = 0; i < a.v.length; i++) d += a.v[i] !== b.v[i];
-    return d / a.v.length + 0.12 * Math.abs(a.ar - b.ar);
-  }
   /**
-   * Nella stessa riga le sigle si ripetono: una cella che il lettore non ha capito viene confrontata
-   * con quelle lette con sicurezza; se la forma è quasi identica prende la stessa sigla.
-   * Corregge anche le letture isolate in disaccordo con tutte le celle dalla forma uguale (es. "MP" letto "M").
+   * Quanto sono diverse due forme: ≤ 1 vuol dire "la stessa scritta". Tre controlli, tutti devono essere piccoli:
+   * la differenza più forte in una zona di 3×3 (una P e una R differiscono solo nella gamba, ma lì molto),
+   * la differenza media dei grigi e la differenza di proporzioni (una sigla di due lettere è larga il doppio).
    */
-  function confrontaForme(letti, incerti, forme) {
-    let campioni = Object.keys(letti).filter(d => forme[d]).map(d => ({ d: +d, k: letti[d].join('+'), f: forme[d] }));
-    if (campioni.length < 3) return;
-    const mediana = a => { const s = a.slice().sort((x, y) => x - y); return s[Math.floor(s.length / 2)]; };
-    // 0) una sigla singola scritta in uno spazio molto più largo del solito (es. "MP" letto "M"): meglio segnarla da controllare
-    const arPer = {};
-    campioni.forEach(c => { (arPer[c.k] = arPer[c.k] || []).push(c.f.ar); });
-    campioni.forEach(c => {
-      if (c.k.includes('+') || (arPer[c.k] || []).length < 3) return;
-      if (c.f.ar > mediana(arPer[c.k]) * 1.6) { delete letti[c.d]; incerti.push(c.d); }
-    });
-    campioni = campioni.filter(c => letti[c.d]);
-    // 1) celle incerte: prendono la sigla solo se la forma è quasi identica a più celle sicure con la stessa sigla
-    const vicini = (f, escludi) => campioni.filter(c => c.d !== escludi).map(c => ({ k: c.k, dist: distanzaForme(f, c.f) })).sort((a, b) => a.dist - b.dist);
-    for (let i = incerti.length - 1; i >= 0; i--) {
-      const d = incerti[i]; if (!forme[d]) continue;
-      const v = vicini(forme[d], d);
-      if (v.length < 2) continue;
-      const k = v[0].k, altro = v.find(x => x.k !== k);
-      if (v[0].dist < 0.09 && v[1].k === k && v[1].dist < 0.11 && (!altro || altro.dist > v[1].dist * 1.5)) {
-        letti[d] = k.split('+'); incerti.splice(i, 1);
-      }
+  function distanzaForme(a, b) {
+    const W = 32, H = 16, df = new Float32Array(W * H);
+    let media = 0;
+    for (let i = 0; i < df.length; i++) { df[i] = Math.abs(a.v[i] - b.v[i]); media += df[i]; }
+    media /= df.length;
+    let zona = 0;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      let s = 0, n = 0;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const yy = y + dy, xx = x + dx; if (yy >= 0 && yy < H && xx >= 0 && xx < W) { s += df[yy * W + xx]; n++; } }
+      if (s / n > zona) zona = s / n;
     }
-    incerti.sort((a, b) => a - b);
+    return Math.max(zona / 0.42, media / 0.09, Math.abs(Math.log(a.ar / b.ar)) / 0.25);
   }
 
+  /**
+   * (24c.15, D-170) Ritaglio più stretto per il lettore: la scritta alta 32 px con poco margine.
+   * Una lettera da sola ("M") in un ritaglio grande spesso non viene letta affatto.
+   */
+  function compatta(c) {
+    const larg = Math.max(1, c.width - 48), k = 32 / 48, t = document.createElement('canvas');
+    t.width = Math.round(larg * k) + 24; t.height = 32 + 24;
+    const x = t.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, t.width, t.height);
+    x.imageSmoothingQuality = 'high'; x.drawImage(c, 24, 24, larg, 48, 12, 12, t.width - 24, 32);
+    return t;
+  }
+
+  /**
+   * (24c.15, D-170) Mette in fila su una riga le celle ritagliate (scritta alta 32 px, 40 px di spazio tra l'una
+   * e l'altra). duro: bianco e nero puro (soglia a metà tra il più chiaro e il più scuro di ogni cella).
+   * Restituisce { tela, pezzi: [{ d, x0, x1 }] } per ritrovare a quale giorno appartiene ogni lettera letta.
+   */
+  function rigaDiCelle(celle, duro) {
+    const giorni = Object.keys(celle).map(Number).sort((a, b) => a - b); if (!giorni.length) return null;
+    const H = 32, S = 40, pezzi = [];
+    let x = S;
+    const im = giorni.map(d => { const c = celle[d], larg = Math.max(1, Math.round((c.width - 48) * H / 48)); pezzi.push({ d, x0: x, x1: x + larg }); x += larg + S; return { c, larg }; });
+    const t = document.createElement('canvas'); t.width = x; t.height = H + 24;
+    const g = t.getContext('2d', { willReadFrequently: true }); g.fillStyle = '#fff'; g.fillRect(0, 0, t.width, t.height);
+    g.imageSmoothingQuality = 'high';
+    im.forEach(({ c, larg }, i) => g.drawImage(c, 24, 24, c.width - 48, 48, pezzi[i].x0, 12, larg, H));
+    if (duro) {
+      const dati = g.getImageData(0, 0, t.width, t.height), p = dati.data;
+      pezzi.forEach(pz => {
+        let mi = 255, ma = 0;
+        for (let yy = 12; yy < 12 + H; yy++) for (let xx = pz.x0; xx < pz.x1; xx++) { const v = p[(yy * t.width + xx) * 4]; if (v < mi) mi = v; if (v > ma) ma = v; }
+        const soglia = (mi + ma) / 2;
+        for (let yy = 12; yy < 12 + H; yy++) for (let xx = pz.x0; xx < pz.x1; xx++) { const i = (yy * t.width + xx) * 4, v = p[i] < soglia ? 0 : 255; p[i] = p[i + 1] = p[i + 2] = v; }
+      });
+      g.putImageData(dati, 0, 0);
+    }
+    return { tela: t, pezzi };
+  }
+
+  /**
+   * (24c.15, D-170) Decide la sigla di ogni cella della riga.
+   * Nella stessa tabella una sigla è scritta sempre allo stesso modo: le celle dalla forma quasi uguale formano
+   * un gruppo e il gruppo prende la sigla letta più spesso dalle sue celle (così una "M" non letta o un "MP"
+   * letto "M" prendono la sigla giusta dalle altre). Se il gruppo non è d'accordo, le sue celle restano da controllare.
+   * letture: { giorno: ['M', 'M+P', …] } (le letture riuscite di ogni cella); forme: { giorno: firmaForma }.
+   * Restituisce { letti: { giorno: ['M','P'] }, incerti: [giorni] }.
+   */
+  function decidiCelle(letture, forme) {
+    // una cella entra in un gruppo solo se è uguale a tutte le celle del gruppo (lettere simili come P e R
+    // non si uniscono passando da una cella all'altra)
+    const giorni = Object.keys(forme).map(Number).sort((a, b) => a - b), gruppi = [];
+    giorni.forEach(d => {
+      const g = gruppi.find(g => g.every(e => distanzaForme(forme[d], forme[e]) <= 1));
+      if (g) g.push(d); else gruppi.push([d]);
+    });
+    const letti = {}, incerti = [], sigle = [];
+    // una sigla vince se è letta almeno due volte e almeno il doppio di ogni altra
+    const vince = voti => { const ord = Object.entries(voti).sort((a, b) => b[1] - a[1]), primo = ord[0], secondo = ord[1]; return primo && primo[1] >= 2 && (!secondo || primo[1] >= secondo[1] * 2) ? primo[0] : null; };
+    const info = gruppi.map(g => {
+      const voti = {};
+      g.forEach(d => (letture[d] || []).forEach(k => { voti[k] = (voti[k] || 0) + 1; }));
+      return { g, voti, ar: g.map(d => forme[d].ar).sort((a, b) => a - b)[Math.floor(g.length / 2)], k: vince(voti) };
+    });
+    // forme diverse = scritte diverse: se una sigla è già di un altro gruppo (sicuro e dalla forma diversa),
+    // le letture di quella sigla in un gruppo incerto sono sbagliate (es. "MP" letto "P") e non contano
+    const prese = new Set(info.filter(x => x.k).map(x => x.k));
+    info.forEach(x => {
+      if (x.k) return;
+      const voti = {}; Object.entries(x.voti).forEach(([k, n]) => { if (!prese.has(k)) voti[k] = n; });
+      x.k = vince(voti);
+    });
+    info.forEach(x => { if (x.k) sigle.push({ k: x.k, ar: x.ar, g: x.g }); else x.g.forEach(d => incerti.push(d)); });
+    // due gruppi con la stessa sigla di una lettera ma uno molto più largo (es. "MP" letto sempre "M"): il più largo va controllato
+    // e una sigla di una sola lettera scritta molto larga (una lettera maiuscola è al massimo poco più larga che alta)
+    sigle.forEach(x => {
+      if (x.k.includes('+')) return;
+      const altri = sigle.filter(y => y !== x && y.k === x.k && y.ar * 1.4 < x.ar);
+      if (altri.length || (x.k.length === 1 && x.ar > 1.45)) x.dubbio = true;
+    });
+    sigle.forEach(x => x.g.forEach(d => { if (x.dubbio) incerti.push(d); else letti[d] = x.k.split('+'); }));
+    incerti.sort((a, b) => a - b);
+    return { letti, incerti };
+  }
+
+  /**
+   * (24c.15, D-170) Cella colorata o grigia senza scritta, guardando i grigi originali (prima del contrasto locale):
+   * fondo non bianco e nessun punto molto più scuro del fondo.
+   */
+  function cellaPiena(tela, x0, y0, w, h) {
+    const g = tela.grigio, W = tela.width, ist = new Uint32Array(256);
+    for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) ist[g[y * W + x]]++;
+    let fondo = 0; for (let i = 1; i < 256; i++) if (ist[i] > ist[fondo]) fondo = i;
+    if (fondo >= 235) return false;
+    let scuri = 0; for (let i = 0; i < fondo - 45; i++) scuri += ist[i];
+    return scuri < Math.max(12, w * h * 0.004);
+  }
 
   /** Ritaglia una cella; restituisce null se è vuota (niente "inchiostro"). */
   function tagliaCella(tela, x0, y0, x1, y1, duro) {
     x0 = Math.max(0, Math.round(x0)); y0 = Math.max(0, Math.round(y0));
     x1 = Math.min(tela.width, Math.round(x1)); y1 = Math.min(tela.height, Math.round(y1));
     const w = x1 - x0, h = y1 - y0; if (w < 3 || h < 3) return null;
+    if (tela.grigio && cellaPiena(tela, x0, y0, w, h)) return null;
     const dati = tela.getContext('2d').getImageData(x0, y0, w, h), p = dati.data, n = w * h;
     // colore di fondo = il grigio più frequente; la scritta è ciò che se ne stacca (più scura o più chiara)
     const ist = new Array(256).fill(0);
@@ -309,6 +447,8 @@ function immagineDaFile(file){return new Promise((ok,ko)=>{const url=URL.createO
       if (testo) { tot++; if (xx < bx0) bx0 = xx; if (xx > bx1) bx1 = xx; if (yy < by0) by0 = yy; if (yy > by1) by1 = yy; }
     }
     if (bx1 < 0 || tot < Math.max(12, Math.min(n * 0.012, h * h * 0.02))) return null;
+    // (24c.15, D-170) cella grigia piena (giorno non disponibile): l'"inchiostro" è un blocco pieno e largo, non una scritta
+    if (tot > (bx1 - bx0 + 1) * (by1 - by0 + 1) * 0.9 && (bx1 - bx0 + 1) > w * 0.6 && (by1 - by0 + 1) > h * 0.6) return null;
     const m = Math.round(h * 0.08);
     bx0 = Math.max(0, bx0 - m); by0 = Math.max(0, by0 - m); bx1 = Math.min(w - 1, bx1 + m); by1 = Math.min(h - 1, by1 + m);
     const bw = bx1 - bx0 + 1, bh = by1 - by0 + 1, k = 48 / bh;
@@ -317,15 +457,33 @@ function immagineDaFile(file){return new Promise((ok,ko)=>{const url=URL.createO
     c.width = Math.round(bw * k) + 48; c.height = 48 + 48;
     const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);
     x.imageSmoothingQuality = 'high'; x.drawImage(t, bx0, by0, bw, bh, 24, 24, c.width - 48, 48);
+    c.altezza = bh; c.centro = x0 + bx0 + bw / 2;
     return c;
   }
 
 
   /**
+   * (24c.15, D-170) Numeri dei giorni di una riga → quelli che stanno su una stessa retta x = a + b·giorno
+   * (colonne tutte larghe uguali), anche se in mezzo ci sono numeri letti male. Un numero per giorno, ordinati.
+   */
+  function rettaRobusta(el, H) {
+    let meglio = null;
+    for (let i = 0; i < el.length; i++) for (let j = i + 1; j < el.length; j++) {
+      const p = el[i], q = el[j]; if (p.d === q.d) continue;
+      const b = (q.xc - p.xc) / (q.d - p.d); if (!(b > H * 0.5)) continue;
+      const a = p.xc - b * p.d, per = {};
+      el.forEach(o => { const e = Math.abs(o.xc - (a + b * o.d)); if (e <= b * 0.3 && (!per[o.d] || e < per[o.d].e)) per[o.d] = { o, e }; });
+      const v = Object.values(per), err = v.reduce((s, x) => s + x.e, 0);
+      if (!meglio || v.length > meglio.v.length || (v.length === meglio.v.length && err < meglio.err)) meglio = { v, err };
+    }
+    return meglio ? meglio.v.map(x => x.o).sort((a, b) => a.d - b.d) : null;
+  }
+
+  /**
    * Legge la riga di una persona da una tabella turni (nomi sulle righe, giorni sulle colonne).
    * parole: [{ t: testo, x0, y0, x1, y1 }] con le posizioni restituite dall'OCR.
    */
-  function leggiTabella(parole, nome, giorniMese) {
+  function leggiTabella(parole, nome, giorniMese, rigaY) {
     const norm = s => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const W = parole.map(p => ({ t: String(p.t).trim(), x0: p.x0, y0: p.y0, x1: p.x1, y1: p.y1,
       xc: (p.x0 + p.x1) / 2, yc: (p.y0 + p.y1) / 2, h: p.y1 - p.y0 })).filter(p => p.t);
@@ -352,8 +510,13 @@ function immagineDaFile(file){return new Promise((ok,ko)=>{const url=URL.createO
       const lung = el.map(() => 1), prec = el.map(() => -1);
       for (let i = 0; i < el.length; i++) for (let j = 0; j < i; j++)
         if (el[j].d < el[i].d && lung[j] + 1 > lung[i]) { lung[i] = lung[j] + 1; prec[i] = j; }
-      let k = lung.indexOf(Math.max(...lung)); const seq = [];
+      let k = lung.indexOf(Math.max(...lung)); let seq = [];
       while (k >= 0) { seq.unshift(el[k]); k = prec[k]; }
+      // (24c.15, D-170) numeri piccoli o sfocati letti male ("3" per "11"): spezzano la sequenza crescente.
+      // Allora si cerca la retta giorno → posizione su cui cadono più numeri (ogni coppia di numeri propone una retta)
+      // (la sequenza crescente può contenere un numero sbagliato che sposta tutta la retta: si preferisce quella robusta)
+      const robusta = rettaRobusta(el, H);
+      if (robusta && robusta.length >= 5 && robusta.length >= seq.length * 0.6) seq = robusta;
       if (!migliore || seq.length > migliore.seq.length) migliore = { yc: r.yc, seq };
     });
     if (!migliore || migliore.seq.length < 5) return { errore: 'intestazione' };
@@ -400,9 +563,18 @@ function immagineDaFile(file){return new Promise((ok,ko)=>{const url=URL.createO
         D[i][j] = Math.min(D[i - 1][j] + 1, D[i][j - 1] + 1, D[i - 1][j - 1] + (s[i - 1] === t[j - 1] ? 0 : 1));
       return D[m][k];
     };
+    // (24c.15, D-170) righe da mostrare se il nome non si legge: si sceglie la propria riga guardando l'immagine
+    const fineRiga = r => { const el = r.el.slice().sort((p, q) => p.x0 - q.x0); let f = el[0].x1; for (let i = 1; i < el.length && el[i].x0 - f < Math.min(passo * 0.6, H * 1.2); i++) f = Math.max(f, el[i].x1); return f; };
+    const righeScelta = righeNomi.filter(r => r.el.some(p => /[a-zà-ü]{2}/i.test(p.t))).map(r => ({ yc: r.yc, testo: r.testo, fine: fineRiga(r) }));
+    const nonTrovato = () => ({ errore: 'nome', nomiTrovati, colonne, meseTabella, righe: righeScelta, primaX });
     const pezzi = String(nome || '').split(/\s+/).map(norm).filter(x => x.length >= 2);
-    if (!pezzi.length) return { errore: 'nome', nomiTrovati, colonne, meseTabella };
-    let rigaNome = null, punti = 0;
+    let rigaNome = null, punti = 0, pari = 0;
+    if (rigaY != null) {
+      // riga scelta toccandola nell'elenco
+      righeNomi.forEach(r => { if (Math.abs(r.yc - rigaY) < H * 0.6 && (!rigaNome || Math.abs(r.yc - rigaY) < Math.abs(rigaNome.yc - rigaY))) rigaNome = r; });
+      if (!rigaNome) return nonTrovato();
+    }
+    if (!rigaNome && !pezzi.length) return nonTrovato();
     // contiene pz anche con una lettera sbagliata (per nomi letti "attaccati", es. ROSSIANNAMARIA)
     const contieneQuasi = (testo, pz) => {
       if (pz.length < 4) return false;
@@ -410,16 +582,19 @@ function immagineDaFile(file){return new Promise((ok,ko)=>{const url=URL.createO
         for (let i = 0; i + L <= testo.length; i++) if (distanza(testo.substr(i, L), pz) <= 1) return true;
       return false;
     };
-    righeNomi.forEach(r => {
+    if (rigaY == null) righeNomi.forEach(r => {
       const parole = r.el.map(p => norm(p.t)).filter(Boolean), tutto = parole.join('');
       let s = 0;
       pezzi.forEach(pz => {
         if (parole.includes(pz) || tutto === pz || (pz.length >= 3 && tutto.includes(pz))) s += 2;
         else if (parole.some(w => (pz.length >= 4 && distanza(w, pz) <= 1) || (w.length >= 3 && pz.startsWith(w))) || contieneQuasi(tutto, pz)) s += 1;
       });
-      if (s > punti) { punti = s; rigaNome = r; }
+      if (s > punti) { punti = s; rigaNome = r; pari = 0; } else if (s && s === punti) pari++;
     });
-    if (!rigaNome) return { errore: 'nome', nomiTrovati, colonne, meseTabella };
+    // (24c.15, D-170) somiglianza troppo debole (nomi sfocati letti a caso) o due righe ugualmente simili
+    // (es. "Maria" in due nomi): meglio far scegliere la riga guardando l'immagine che prendere quella sbagliata
+    if (rigaY == null && rigaNome && (punti < pezzi.length || pari)) rigaNome = null;
+    if (!rigaNome) return nonTrovato();
 
     // 3) prima stima delle celle dalla lettura complessiva (usata come riserva)
     const fineNome = Math.max(...rigaNome.el.map(p => p.x1));
@@ -448,12 +623,7 @@ function immagineDaFile(file){return new Promise((ok,ko)=>{const url=URL.createO
     const fascia = { top: Math.max((sopra + rigaNome.yc) / 2, rigaNome.yc - altezza * 0.75), bottom: Math.min((rigaNome.yc + sotto) / 2, rigaNome.yc + altezza * 0.75) };
     // dove finiscono nomi e ruoli: valore tipico su tutte le righe (una cella letta come "nome" in una riga non conta)
     // per ogni riga si prende il primo gruppo di parole vicine tra loro (il nome); le sigle nelle celle sono staccate
-    const fineGruppo = r => {
-      const el = r.el.slice().sort((p, q) => p.x0 - q.x0);
-      let fine = el[0].x1;
-      for (let i = 1; i < el.length && el[i].x0 - fine < Math.min(passo * 0.6, H * 1.2); i++) fine = Math.max(fine, el[i].x1);
-      return fine;
-    };
+    const fineGruppo = fineRiga;
     const fineEtichette = mediana(righeNomi.map(fineGruppo));
     const posNumeri = {}; seq.forEach(p => { posNumeri[p.d] = p.xc; });
     return { giorni, colonne, passo, dal, al, retta: { a, b }, numeri: posNumeri, intestazione: { yc: migliore.yc, h: H }, fineNome: fineEtichette,
@@ -500,8 +670,10 @@ function immagineDaFile(file){return new Promise((ok,ko)=>{const url=URL.createO
       return best[str.length];
     };
     let parti = dividi(t);
+    // (24c.15, D-170, caso L2/L3 di 04) si toglie solo un segno sottile come quelli lasciati dal bordo della cella
+    // (I, L, J, 1): una lettera vera come la P di "MP" non viene mai buttata via
     if (!parti && t.length <= 4) {
-      for (let i = 0; i < t.length && !parti; i++) parti = dividi(t.slice(0, i) + t.slice(i + 1));
+      for (let i = 0; i < t.length && !parti; i++) if ('ILJ1'.includes(t[i])) parti = dividi(t.slice(0, i) + t.slice(i + 1));
     }
     if (!parti || parti.length > 3) return [];
     const ordine = sig.map(x => x.s);
@@ -512,19 +684,52 @@ function immagineDaFile(file){return new Promise((ok,ko)=>{const url=URL.createO
 const passo=n=>{[1,2,3,4].forEach(i=>{$('ft'+i).hidden=i!==n;});};
 function apriFoto(lid,ym){
   const L=lavori();if(!L.length){toast('Prima aggiungi il tuo lavoro in Impostazioni.','err');return;}
-  ft={lid:lid||L[0].id,ym:ym||cur,proposta:null};
+  ft={lid:lid||L[0].id,ym:ym||cur,proposta:null,rigaY:null};
   $('ftLavBox').hidden=L.length<2;$('ftLav').innerHTML=L.map(l=>`<option value="${esc(l.id)}">${esc(l.nome)}</option>`).join('');$('ftLav').value=ft.lid;
   $('ftMese').value=ft.ym;$('ftNome').value=lav0(ft.lid).nomeTab||'';passo(1);chiudiSezioni($('ftModal'));$('ftModal').hidden=false;document.body.classList.add('noscroll');
 }
 const lav0=id=>(D().lavori||{})[id];
 function chiudiFoto(){$('ftModal').hidden=true;$('ftFile').value='';if(['evModal','pjModal','cuModal','dayModal','listModal','confModal','lvModal','tuModal','bpModal','bpArch'].every(x=>!$(x)||$(x).hidden))document.body.classList.remove('noscroll');}
 function msgErr(e){return errMsg(e);}
+// lettura di tutta l'immagine: parole con la loro posizione
+async function leggiParole(w,tela){
+  await w.setParameters({tessedit_pageseg_mode:'11',tessedit_char_whitelist:''});const {data}=await w.recognize(tela);
+  return (data.words||[]).map(p=>({t:p.text,x0:p.bbox.x0,y0:p.bbox.y0,x1:p.bbox.x1,y1:p.bbox.y1}));
+}
+// (24c.15, D-170) fasce orizzontali con della scritta (righe di testo), dall'alto in basso
+function fasceTesto(tela){
+  const W=tela.width,H=tela.height,s=tela.scala||1,p=tela.getContext('2d').getImageData(0,0,W,H).data,conta=new Uint32Array(H);
+  for(let y=0;y<H;y++){let c=0;for(let x=0;x<W;x+=2)if(p[(y*W+x)*4]<128)c++;conta[y]=c;}
+  const min=Math.max(2,W*0.0015),out=[];let y=0;
+  while(y<H){if(conta[y]<min){y++;continue;}let y2=y;while(y2<H&&(conta[y2]>=min||(y2+1<H&&conta[y2+1]>=min)))y2++;out.push([y,y2]);y=y2+1;}
+  return out.filter(([a,b])=>b-a>=3*s&&b-a<=40*s);
+}
+// (24c.15, D-170) riga dei giorni con numeri piccoli: ogni fascia di testo viene riletta da sola cercando solo cifre
+async function numeriFasce(w,tela){
+  await w.setParameters({tessedit_pageseg_mode:'11',tessedit_char_whitelist:'0123456789'});const out=[];
+  for(const [a,b] of fasceTesto(tela)){
+    const m=Math.round((b-a)*0.5),y0=Math.max(0,a-m),y1=Math.min(tela.height,b+m),c=document.createElement('canvas');
+    c.width=tela.width;c.height=y1-y0;c.getContext('2d').drawImage(tela,0,y0,tela.width,y1-y0,0,0,tela.width,y1-y0);
+    const {data}=await w.recognize(c);
+    (data.words||[]).forEach(p=>{if(/^\d{1,2}$/.test(p.text.trim()))out.push({t:p.text.trim(),x0:p.bbox.x0,y0:p.bbox.y0+y0,x1:p.bbox.x1,y1:p.bbox.y1+y0});});
+  }
+  await w.setParameters({tessedit_char_whitelist:''});return out;
+}
+// quanto è riuscita la lettura della tabella: 0 niente, 1 giorni trovati ma non il nome, 2 tutto
+const esitoTabella=r=>!r.errore?2:r.errore==='nome'?1:0;
 async function leggiImmagine(file){
   passo(2);progresso(0,'Preparazione…');
   try{const w=await preparaLettore();
-    if(file){const img=await immagineDaFile(file);const tela=preparaTela(img);progresso(0.22,'Cerco i giorni e i nomi nella tabella…');
-      await w.setParameters({tessedit_pageseg_mode:'11',tessedit_char_whitelist:''});const {data}=await w.recognize(tela);
-      const parole=(data.words||[]).map(p=>({t:p.text,x0:p.bbox.x0,y0:p.bbox.y0,x1:p.bbox.x1,y1:p.bbox.y1}));ultimaImmagine={tela,parole};}
+    if(file){const img=await immagineDaFile(file);let tela=preparaTela(img);progresso(0.22,'Cerco i giorni e i nomi nella tabella…');
+      let parole=await leggiParole(w,tela);
+      const nome=$('ftNome').value.trim(),giorni=new Date(...$('ftMese').value.split('-').map(Number),0).getDate(),e1=esitoTabella(leggiTabella(parole,nome,giorni));
+      if(e1<2){
+        // seconda lettura più attenta (immagini molto larghe e basse, scritte piccole o sbiadite): si tiene se va meglio
+        progresso(0.24,'Leggo la tabella con più attenzione…');
+        const t2=preparaTela(img,true),p2=(await leggiParole(w,t2.ocr)).concat(await numeriFasce(w,t2.ocr));
+        if(esitoTabella(leggiTabella(p2,nome,giorni))>e1){tela=t2;parole=p2;}
+      }
+      ultimaImmagine={tela,parole};}
     if(!ultimaImmagine)throw new Error('nessuna immagine');await analizza();
   }catch(e){mostraErrore('Si è verificato un problema: '+msgErr(e)+'.');}
 }
@@ -532,9 +737,9 @@ async function analizza(){
   const {tela,parole}=ultimaImmagine,nome=$('ftNome').value.trim();const l=lav0(ft.lid);
   const [anno,mese]=$('ftMese').value.split('-').map(Number);ft.ym=$('ftMese').value;
   tipi=l.tipi.filter(t=>t.sigla||t.nome).map(t=>({id:t.id,nome:t.nome,sigla:t.sigla||t.nome.slice(0,1),cat:t.cat,icona:t.icona,ore:t.ore}));
-  const n=new Date(anno,mese,0).getDate();const r=leggiTabella(parole,nome,n);
+  const n=new Date(anno,mese,0).getDate();const r=leggiTabella(parole,nome,n,ft.rigaY);
   if(r.errore==='vuoto'||r.errore==='intestazione'){mostraErrore('Non trovo la riga con i numeri dei giorni (1, 2, 3…). Prova con uno screenshot più nitido, dritto e ritagliato sulla tabella, con la riga dei giorni ben visibile.');return;}
-  if(r.errore==='nome'){mostraErrore(nome?'Non trovo «'+nome+'» nella tabella.':'Scrivi il tuo nome com’è nella tabella.',r.nomiTrovati);return;}
+  if(r.errore==='nome'){mostraErrore(nome?'Non trovo «'+nome+'» nella tabella.':'Scrivi il tuo nome com’è nella tabella.',r.nomiTrovati,r);return;}
     const w = lettore, griglia = cellePerLinee(r, tela);
     // ai bordi della tabella un numero di giorno può sfuggire alla prima lettura: lo verifico cella per cella
     await w.setParameters({ tessedit_pageseg_mode: '8', tessedit_char_whitelist: '0123456789' });
@@ -552,7 +757,23 @@ async function analizza(){
         // con la griglia confermata basta un numero a due cifre con una sola cifra sbagliata (foto sfocata: "23" per "28")
         if (box && giusto.length === 2 && letto.length === 2 && (letto[0] === giusto[0] || letto[1] === giusto[1])) return true;
       }
-      return false;
+      return pareNumero(c);
+    };
+    // (24c.15, D-170) numeri piccoli e sfocati che il lettore non riconosce: se la retta dei giorni è sicura
+    // (almeno 8 numeri letti bene) basta che sopra la colonna ci sia una scritta alta come gli altri numeri
+    // e che non sia una parola (es. "TOT" o "ORE" di una colonna dei totali)
+    const noti = Object.keys(r.numeri).map(Number), rettaSicura = noti.length >= 8;
+    let altNumeri = 0;
+    if (rettaSicura) {
+      const alt = noti.map(d => { const xc = r.numeri[d], c = tagliaCella(tela, xc - r.passo * 0.48, r.intestazione.yc - r.intestazione.h * 1.1, xc + r.passo * 0.48, r.intestazione.yc + r.intestazione.h * 1.1); return c ? c.altezza : 0; }).filter(Boolean).sort((a, b) => a - b);
+      altNumeri = alt.length ? alt[Math.floor(alt.length / 2)] : 0;
+    }
+    const pareNumero = async c => {
+      if (!rettaSicura || !altNumeri || Math.abs(c.altezza - altNumeri) > altNumeri * 0.3) return false;
+      await w.setParameters({ tessedit_pageseg_mode: '8', tessedit_char_whitelist: '' });
+      const t = (await w.recognize(c)).data.text;
+      await w.setParameters({ tessedit_char_whitelist: '0123456789' });
+      return !/[A-Za-z]{3,}/.test(t);
     };
     progresso(0.27, 'Controllo i bordi della tabella…');
     if (griglia) {
@@ -567,15 +788,42 @@ async function analizza(){
     }
     while (!griglia && r.al < n) {
       const xc = r.retta.a + r.retta.b * (r.al + 1);
-      if (xc + r.passo / 2 > tela.width + 2 || !(await numeroIn(r.al + 1))) break;
+      // l'ultima colonna può essere tagliata dal bordo dell'immagine: basta che se ne veda la metà
+      if (xc + r.passo * 0.05 > tela.width || !(await numeroIn(r.al + 1))) break;
       r.al++; r.colonne[r.al] = xc;
+    }
+
+    // (24c.15, D-170) senza linee della griglia: la retta dei giorni viene rifinita con il centro della scritta
+    // di ogni numero (i numeri sono centrati nella colonna); su 31 colonne un piccolo errore del passo
+    // basterebbe a tagliare le sigle delle ultime colonne
+    if (!griglia && r.al - r.dal >= 7) {
+      const pt = [];
+      for (let d = r.dal; d <= r.al; d++) {
+        const xc = r.colonne[d], c = tagliaCella(tela, xc - r.passo * 0.48, r.intestazione.yc - r.intestazione.h * 1.1, xc + r.passo * 0.48, r.intestazione.yc + r.intestazione.h * 1.1);
+        if (c) pt.push({ d, x: c.centro });
+      }
+      let sel = pt;
+      for (let giro = 0; giro < 6 && sel.length >= 8; giro++) {
+        const n2 = sel.length, sx = sel.reduce((s, p) => s + p.d, 0), sy = sel.reduce((s, p) => s + p.x, 0);
+        const sxx = sel.reduce((s, p) => s + p.d * p.d, 0), sxy = sel.reduce((s, p) => s + p.d * p.x, 0);
+        const b2 = (n2 * sxy - sx * sy) / (n2 * sxx - sx * sx), a2 = (sy - b2 * sx) / n2;
+        const resto = sel.filter(p => Math.abs(p.x - (a2 + b2 * p.d)) <= r.passo * 0.15);
+        if (resto.length === sel.length) {
+          if (Math.abs(b2 - r.passo) < r.passo * 0.1 && sel.length >= (r.al - r.dal + 1) * 0.6) {
+            for (let d = r.dal; d <= r.al; d++) r.colonne[d] = a2 + b2 * d;
+            r.passo = b2;
+          }
+          break;
+        }
+        sel = resto;
+      }
     }
 
     // seconda lettura: cella per cella, solo le lettere delle sigle e dei nomi dei tuoi turni
     await w.setParameters({ tessedit_pageseg_mode: '8', tessedit_char_whitelist: letterePermesse(tipi) });
-    const giorniLetti = {}, incerti = [], forme = {};
+    const letture = {}, forme = {}, celle = {};
+    const leggi = async (im, psm) => { await w.setParameters({ tessedit_pageseg_mode: psm }); const c = codiceTurno((await w.recognize(im)).data.text.trim(), tipi); return c.length ? c.join('+') : null; };
     for (let d = r.dal; d <= r.al; d++) {
-      progresso(0.3 + 0.68 * ((d - r.dal + 1) / (r.al - r.dal + 1)), 'Leggo il giorno ' + d + '…');
       let cella;
       if (griglia && griglia.colonna(d)) {
         const [cx0, cx1] = griglia.colonna(d), [ry0, ry1] = griglia.riga, ins = griglia.margine;
@@ -585,25 +833,38 @@ async function analizza(){
         cella = tagliaCella(tela, xc - r.passo * 0.46, r.riga.top + m, xc + r.passo * 0.46, r.riga.bottom - m);
       }
       if (!cella) continue;
-      forme[d] = firmaForma(cella);
-      let testo = (await w.recognize(cella)).data.text.trim();
-      if (!testo) {
-        await w.setParameters({ tessedit_pageseg_mode: '13' });
-        testo = (await w.recognize(cella)).data.text.trim();
-        await w.setParameters({ tessedit_pageseg_mode: '8' });
-      }
-      const cod = codiceTurno(testo, tipi);
-      if (cod.length) giorniLetti[d] = cod;
-      else if (r.giorni[d]) giorniLetti[d] = r.giorni[d];
-      else incerti.push(d);
+      celle[d] = cella; forme[d] = firmaForma(cella); letture[d] = [];
     }
+    // (24c.15, D-170) le celle della riga messe in fila su una sola riga di testo: il lettore riconosce molto meglio
+    // le lettere in una riga che da sole (una "M" isolata spesso non viene letta). Due versioni: bianco/nero e grigi.
+    progresso(0.4, 'Leggo la riga…');
+    for (const duro of [true, false]) {
+      const fila = rigaDiCelle(celle, duro);
+      if (!fila) break;
+      await w.setParameters({ tessedit_pageseg_mode: '7' });
+      const simboli = ((await w.recognize(fila.tela)).data.symbols || []).map(x => ({ t: x.text, xc: (x.bbox.x0 + x.bbox.x1) / 2 }));
+      fila.pezzi.forEach(pz => {
+        const t = simboli.filter(x => x.xc > pz.x0 - 4 && x.xc < pz.x1 + 4).map(x => x.t).join('');
+        const c = codiceTurno(t, tipi); if (c.length) letture[pz.d].push(c.join('+'));
+      });
+    }
+    // celle lette in modo diverso o non lette: anche da sole (ritaglio grande come parola, stretto come riga)
+    const giorniCelle = Object.keys(celle).map(Number);
+    for (const [i, d] of giorniCelle.entries()) {
+      progresso(0.5 + 0.48 * ((i + 1) / giorniCelle.length), 'Controllo il giorno ' + d + '…');
+      const v = letture[d];
+      if (v.length === 2 && v[0] === v[1]) continue;
+      v.push(await leggi(celle[d], '8'), await leggi(compatta(celle[d]), '13'));
+      letture[d] = v.filter(Boolean);
+    }
+    giorniCelle.forEach(d => { if (r.giorni[d]) letture[d].push(r.giorni[d].join('+')); });
     await w.setParameters({ tessedit_pageseg_mode: '11', tessedit_char_whitelist: '' });
-    confrontaForme(giorniLetti, incerti, forme);
+    const { letti: giorniLetti, incerti } = decidiCelle(letture, forme);
   const tipoPer=sg=>tipi.find(t=>String(t.sigla).toUpperCase()===sg);
   const proposta={},dubbi=new Set(incerti.map(d=>`${ft.ym}-${pad(d)}`));
   for(let d=r.dal;d<=r.al;d++)proposta[`${ft.ym}-${pad(d)}`]=(giorniLetti[d]||[]).map(tipoPer).filter(Boolean).map(t=>t.id);
   ft.proposta=proposta;ft.dubbi=dubbi;ft.nome=nome;
-  const righe=['Riga trovata: <b>'+esc(r.rigaTrovata)+'</b>','Giorni nella foto: '+(r.dal===1&&r.al===n?'tutto il mese':'dal '+r.dal+' al '+r.al+' (gli altri giorni non vengono toccati)')];
+  const righe=[ft.rigaY!=null?'Riga scelta: <b>la '+ft.rigaN+'ª dell’elenco</b>':'Riga trovata: <b>'+esc(r.rigaTrovata)+'</b>','Giorni nella foto: '+(r.dal===1&&r.al===n?'tutto il mese':'dal '+r.dal+' al '+r.al+' (gli altri giorni non vengono toccati)')];
   if(dubbi.size)righe.push(`<span class="warn">${dubbi.size} ${dubbi.size===1?'giorno':'giorni'} da controllare (segnati con ⚠)</span>`);
   if((r.riga.h/(tela.scala||1))<18)righe.push('<span class="warn">⚠️ La foto è piccola: alcune lettere possono essere lette male. Per risultati migliori ingrandisci la tabella e rifai lo screenshot.</span>');
   if(r.meseTabella&&r.meseTabella!==mese)righe.push(`<span class="warn">Attenzione: la tabella sembra di ${MESI[r.meseTabella-1]}, ma stai importando in ${MESI[mese-1]}.</span>`);
@@ -617,10 +878,25 @@ function testoLetto(){
   return 'Immagine '+ultimaImmagine.tela.width+'×'+ultimaImmagine.tela.height+' px, '+P.length+' parole\n\n'+righe.map(r=>r.el.sort((a,b)=>a.x-b.x).map(p=>p.t).join('  ')).join('\n');
 }
 function riempiLetto(){document.querySelectorAll('#ftModal .lettoTesto').forEach(e=>{e.textContent=testoLetto();});}
-function mostraErrore(testo,nomi){
+function mostraErrore(testo,nomi,tab){
   riempiLetto();$('ftFile').value='';$('ftErr').textContent=testo;
-  $('ftNomi').innerHTML=(nomi||[]).slice(0,30).map(nm=>`<button type="button" class="chip" data-ftnome="${esc(nm)}">${esc(nm)}</button>`).join('');
-  $('ftNomiBox').hidden=!(nomi&&nomi.length);passo(3);
+  const righe=tab&&tab.righe&&ultimaImmagine?tab.righe.slice(0,40):[];
+  if(righe.length){
+    // (24c.15, D-170) nomi piccoli o sfocati: ogni riga della tabella con il suo pezzo d'immagine, si tocca la propria
+    const tela=ultimaImmagine.tela,gy=righe.map(x=>x.yc).sort((a,b)=>a-b).map((y,i,a)=>i?y-a[i-1]:0).filter(Boolean).sort((a,b)=>a-b);
+    const alto=gy.length?gy[Math.floor(gy.length/2)]:40*(tela.scala||1);
+    $('ftNomi').innerHTML=righe.map((x,i)=>{
+      const y0=Math.max(0,Math.round(x.yc-alto*0.5)),y1=Math.min(tela.height,Math.round(x.yc+alto*0.5)),x1=Math.min(tela.width,Math.round(Math.min(x.fine,tab.primaX)+alto*0.3)); // solo nome (e sigla del ruolo), non le celle dei giorni
+      const c=document.createElement('canvas'),k=64/Math.max(1,y1-y0);c.height=64;c.width=Math.max(1,Math.min(1600,Math.round(x1*k)));
+      c.getContext('2d').drawImage(tela,0,y0,x1,y1-y0,0,0,c.width,64);
+      return `<button type="button" class="ftriga" data-ftriga="${Math.round(x.yc)}" data-ftn="${i+1}" aria-label="Riga ${i+1}: ${esc(x.testo)}"><img alt="" src="${c.toDataURL('image/png')}"><small>${esc(x.testo)}</small></button>`;
+    }).join('');
+    $('ftNomiTit').textContent='Righe della tabella: tocca la tua';
+  }else{
+    $('ftNomi').innerHTML=(nomi||[]).slice(0,30).map(nm=>`<button type="button" class="chip" data-ftnome="${esc(nm)}">${esc(nm)}</button>`).join('');
+    $('ftNomiTit').textContent='Nomi che ho letto nella tabella: tocca il tuo';
+  }
+  $('ftNomiBox').hidden=!(righe.length||(nomi&&nomi.length));passo(3);
 }
 // controllo giorno per giorno: tocca i tipi per aggiungerli o toglierli
 function renderProposta(){
@@ -642,14 +918,15 @@ function confermaFoto(){
 document.addEventListener('click',e=>{
   const o=e.target.closest('[data-ftopen]');if(o){apriFoto(o.dataset.ftopen||null,cur);return;}
   const c=e.target.closest('[data-ftd]');if(c){const d=c.dataset.ftd,t=c.dataset.ftt;const a=ft.proposta[d];const i=a.indexOf(t);if(i>=0)a.splice(i,1);else a.push(t);ft.dubbi.delete(d);renderProposta();return;}
-  const nm=e.target.closest('[data-ftnome]');if(nm){$('ftNome').value=nm.dataset.ftnome;passo(2);progresso(0.3,'Leggo la riga di '+nm.dataset.ftnome+'…');analizza().catch(er=>mostraErrore(msgErr(er)));}
+  const rg=e.target.closest('[data-ftriga]');if(rg){ft.rigaY=+rg.dataset.ftriga;ft.rigaN=+rg.dataset.ftn;passo(2);progresso(0.3,'Leggo la riga scelta…');analizza().catch(er=>mostraErrore(msgErr(er)));return;}
+  const nm=e.target.closest('[data-ftnome]');if(nm){ft.rigaY=null;$('ftNome').value=nm.dataset.ftnome;passo(2);progresso(0.3,'Leggo la riga di '+nm.dataset.ftnome+'…');analizza().catch(er=>mostraErrore(msgErr(er)));}
 });
 function bind(){
   $('ftClose').onclick=chiudiFoto;$('ftAnnulla').onclick=chiudiFoto;$("ftSalva").onclick=confermaFoto;$('ftLav').onchange=()=>{ft.lid=$('ftLav').value;$('ftNome').value=lav0(ft.lid).nomeTab||'';};
   $('ftScegli').onclick=e=>{if(!$('ftNome').value.trim()){e.preventDefault();$('ftNome').focus();$('ftNome').placeholder='Scrivi prima il tuo nome';}};
-  $('ftFile').onchange=e=>{const f=e.target.files&&e.target.files[0];if(f)leggiImmagine(f);};
+  $('ftFile').onchange=e=>{const f=e.target.files&&e.target.files[0];if(f){ft.rigaY=null;leggiImmagine(f);}};
   $('ftModal').addEventListener('click',e=>{if(e.target.id==='ftModal')chiudiFoto();});
 }
 bind();
-window.FotoTurni={apriFoto,leggiTabella,codiceTurno};
+window.FotoTurni={apriFoto,leggiTabella,codiceTurno,decidiCelle};
 })();

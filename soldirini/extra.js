@@ -174,5 +174,5 @@ function bind(){
   $('xeModal').addEventListener('click',e=>{if(e.target.id==='xeModal')chiudi();});
   $('evExImp').addEventListener('input',exSum);}
 bind();
-window.EntrateExtra={extra,daConf,apri,riquadro,TIPI};
+window.EntrateExtra={extra,daConf,apri,riquadro,TIPI,delGiorno,tipoDi};
 })();

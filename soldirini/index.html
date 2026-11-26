@@ -326,13 +326,13 @@ input.manca,input.nonvale{border-color:var(--err)}
 #rieLav{margin-bottom:12px}
 .ic{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:9px;margin-right:10px;font-size:16px;flex:none;background:color-mix(in srgb,var(--ic) 22%,var(--card));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ic) 35%,transparent)}
 #v-pro details.fold>summary .st{display:inline-flex;align-items:center}
-#ftModal{z-index:60}.ftg{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px dashed var(--line)}.ftg.dub{background:color-mix(in srgb,#e8590c 10%,transparent);border-radius:8px;padding-left:6px}
+#ftModal{z-index:60}.ftriga{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;margin:0 0 6px;padding:6px 8px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:inherit;text-align:left;min-height:44px}.ftriga img{max-width:100%;height:32px;object-fit:contain;object-position:left;background:#fff;border-radius:4px}.ftriga small{color:var(--mut);font-size:12px}.ftg{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px dashed var(--line)}.ftg.dub{background:color-mix(in srgb,#e8590c 10%,transparent);border-radius:8px;padding-left:6px}
 .ftd{width:64px;flex:none;font-weight:700;font-size:14px}.ftc{display:flex;flex-wrap:wrap;gap:4px}.ftc .chip{min-width:38px;padding:4px 8px}
 .lettoTesto{white-space:pre-wrap;font-size:11px;max-height:200px;overflow:auto}
 /* v18 */
 .eye{margin-left:auto;background:transparent;border:0;color:inherit;width:40px;height:40px;display:grid;place-items:center;border-radius:12px;cursor:pointer}.eye .sbarra{display:none}body.nascondi .eye .sbarra{display:inline}
 #acc+.eye{margin-left:4px}
-body.nascondi :is(.hero b,.hero .rim b,.kv b,details.fold>summary .sum,#daySum b,.sprow b,.due b,.bai small,.ev.sp,.ev.fx,.rbar small,.obp b,.mnt){filter:blur(7px);user-select:none}
+body.nascondi :is(.hero b,.hero .rim b,.kv b,details.fold>summary .sum,#daySum b,.sprow b,.due b,.bai small,.ev.sp,.ev.fx,.rbar small,.obp b,.mnt,.gia .am){filter:blur(7px);user-select:none}
 .subfold{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}.subfold>summary{cursor:pointer;font-weight:700;list-style:none;padding:6px 0}.subfold>summary::-webkit-details-marker{display:none}.subfold>summary::after{content:'›';float:right;transition:transform .2s}.subfold[open]>summary::after{transform:rotate(90deg)}
 .subnav button[data-goto="ris"] .ico{background:#5c7d52}
 .hero .rim{grid-column:1/-1;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,.14);margin-bottom:4px}.hero .rim b{font-size:34px}.hero .rim small.det{display:block;opacity:.8;margin-top:2px}
@@ -344,7 +344,14 @@ body.nascondi :is(.hero b,.hero .rim b,.kv b,details.fold>summary .sum,#daySum b
 .grid.swl{animation:swl .26s ease-out}.grid.swr{animation:swr .26s ease-out}
 @keyframes swl{from{opacity:.2;transform:translateX(40px)}to{opacity:1;transform:none}}@keyframes swr{from{opacity:.2;transform:translateX(-40px)}to{opacity:1;transform:none}}
 .ev.fx{opacity:.9}
-#fxModal,#obModal,#mvModal,#xeModal{z-index:60} /* 24c.14: #xeModal anche sopra il giorno aperto */
+#fxModal,#obModal,#mvModal,#xeModal,#spModal{z-index:60} /* 24c.14: #xeModal anche sopra il giorno aperto; 24c.15: #spModal */
+/* 24c.15 (D-171): "Già segnato in questo giorno" (02, tornata 57): righe come .sprow, solo "Modifica" si tocca */
+.gia{padding:12px 14px;margin:12px 0 16px}.gia .hd{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:2px}.gia .hd h3{margin:0}.gia .hd span{font-size:13px;color:var(--mut);white-space:nowrap}
+.gia .rg{display:flex;align-items:center;gap:10px;min-height:58px;padding:8px 0;border-top:1px dashed var(--line)}.gia .hd+.rg{border-top:0}.gia .rg.nuova{animation:apri calc(280ms*var(--t)) cubic-bezier(.2,.8,.2,1) both}
+.gia .rg .bar{width:4px;align-self:stretch;border-radius:4px;background:var(--c);flex:none;margin:2px 0}.gia .rg .em{width:24px;text-align:center;font-size:18px;flex:none}
+.gia .rg .tx{flex:1;min-width:0;display:flex;flex-direction:column}.gia .rg .tx b{font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.gia .rg .tx small{font-size:13px;color:var(--mut);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gia .rg .am{color:var(--ink);font-weight:650}.gia .rg .am.ok{color:var(--ok)}.gia .rg .btn{flex:none}.gia .more{display:flex;justify-content:center;padding-top:6px;border-top:1px dashed var(--line)}
+.aggiungi{font-size:15.5px;margin:0 0 8px}
 #tmModal{z-index:61}
 /* v24b: protezione dalla pulizia automatica (Impostazioni → Account) e finestra della vecchia copia */
 .prot{margin:8px 0 4px}.prot .kv{border:0;align-items:center}.prot p.sm{margin:2px 0 8px}
@@ -707,6 +714,9 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
     <p class="muted sm" id="evSub"></p>
     <label id="evDateRow">Giorno<input type="date" id="evDate"></label>
     <div class="note" id="evStatoBox" hidden><label class="check"><input type="checkbox" id="evFatta"> Fatta (la confermo)</label></div>
+    <!-- 24c.15 (D-171): attività già segnate nel giorno, testi e disegno di 02 (tornata 57); attivita.js -->
+    <section class="card gia" id="evGia" aria-labelledby="evGiaT" hidden></section>
+    <h3 id="evAggiungi" class="aggiungi" hidden>Aggiungi</h3>
     <p class="muted sm" style="margin:0 0 6px">Apri le sezioni che ti servono: si salva quello che compili.</p>
     <div class="acts" id="evFoto" hidden style="margin:0 0 8px"><button type="button" class="btn ghost sm" id="evFotoBtn">📷 Turni da foto</button></div>
     <details class="card fold sez" id="secLav"><summary><span class="st">💼 Lavoro dipendente</span><span class="sum" id="secLavSum"></span></summary><div class="fbody" id="evLav"></div></details>
@@ -974,7 +984,7 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
     <div class="acts"><label class="btn filebtn" id="ftScegli">Scegli immagine<input type="file" id="ftFile" accept="image/*" hidden></label></div>
     <p class="muted sm">Va bene uno screenshot o una foto dritta e nitida. La prima volta scarica il lettore di testo (qualche MB). Le sigle lette sono quelle dei tuoi tipi di turno: controlla che coincidano con quelle della tabella.</p></div>
   <div id="ft2" hidden><div class="bpbar"><span id="ftBar"></span></div><p class="muted sm" id="ftFase">Preparazione…</p></div>
-  <div id="ft3" hidden><p class="warn" id="ftErr"></p><div id="ftNomiBox" hidden><p class="sm">Nomi che ho letto nella tabella: tocca il tuo</p><div class="tuchips" id="ftNomi"></div></div>
+  <div id="ft3" hidden><p class="warn" id="ftErr"></p><div id="ftNomiBox" hidden><p class="sm" id="ftNomiTit">Nomi che ho letto nella tabella: tocca il tuo</p><div class="tuchips" id="ftNomi"></div></div>
     <details class="extra"><summary>Mostra cosa ho letto</summary><pre class="lettoTesto"></pre></details>
     <div class="acts"><label class="btn filebtn" for="ftFile">Scegli un’altra immagine</label></div></div>
   <div id="ft4" hidden><p class="sm" id="ftRiass"></p><p class="muted sm">Controlla: tocca un simbolo per aggiungerlo o toglierlo da quel giorno. I giorni con ⚠ sono incerti.</p>
@@ -1017,6 +1027,15 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
   <label id="enDataL">Quando è entrato<input id="enData" type="date"></label><p class="sm" id="enDataMsg" style="margin:4px 0 0" aria-live="polite"></p>
   <div class="foot"><button class="btn ghost danger" id="enNo" hidden>Non entrato</button><button class="btn ghost" id="enAnn">Annulla</button><button class="btn" id="enSave">Salva</button></div></div></div>
 <!-- 24c.13 (D-165, D-074): scegli cos'è un'entrata da confermare / modifica un'entrata extra (extra.js) -->
+<!-- 24c.15 (D-171): modifica di una spesa giornaliera, da "Già segnato in questo giorno"; attivita.js -->
+<div class="modal" id="spModal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="spmTit">
+  <div class="sheethead"><h2 id="spmTit">Spesa giornaliera</h2><button class="x" id="spmClose" aria-label="Chiudi">×</button></div>
+  <div class="spcats" id="spmCats"></div>
+  <div class="g2"><label>Giorno<input id="spmData" type="date"></label><label>Importo €<input id="spmImp" inputmode="decimal" placeholder="0,00" autocomplete="off"></label>
+    <label class="s2">Nota<input id="spmNota" maxlength="60" placeholder="es. regalo, pranzo" autocomplete="off"></label></div>
+  <p class="sm err" id="spmErr" role="alert" hidden></p>
+  <div class="foot"><button type="button" class="btn danger" id="spmDel">Elimina</button><button type="button" class="btn ghost" id="spmAnnulla">Annulla</button><button type="button" class="btn" id="spmOk">Salva</button></div>
+</div></div>
 <div class="modal" id="xeModal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="xeTit">
   <div class="sheethead"><h2 id="xeTit">Entrata da confermare</h2><button class="x" id="xeClose" aria-label="Chiudi">×</button></div>
   <div id="xeSub" class="xesub"><b id="xeChi"></b><span class="muted sm" id="xeQuando"></span></div>

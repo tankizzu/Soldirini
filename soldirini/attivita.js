@@ -66,8 +66,96 @@ openEv=function(dates,e,tieni){
   $('evFoto').hidden=modifica||!lavoriTurni().length;
   if(window.FissaEv&&!tieni)FissaEv.prepara(md.dates,modifica); // tornando dalla creazione di un progetto restano i campi compilati
   if(window.ExtraEv&&!tieni)ExtraEv.prepara(md.dates,modifica); // 24c.13 (D-074): entrata extra
-  renderLav();renderSp();aggiornaSum();
+  if(!tieni)giaTutte=false;
+  renderLav();renderSp();aggiornaSum();renderGia();
 };
+
+// ================= 24c.15 (D-171): "Già segnato in questo giorno" in cima a Nuova attività =================
+// Disegno e testi di 02 (tornata 57): elenco corto (due righe per voce) con "Modifica"; sotto "Aggiungi" e le sezioni.
+// Solo con un giorno solo e una nuova attività; su un giorno senza voci scritte (l'orario abituale e le feste non contano)
+// l'elenco non c'è. Nessun dato cambia: "Modifica" apre la finestra di ogni voce.
+let giaTutte=false,animaDa=null; // "Mostra le altre N" aperto (si richiude a ogni apertura, D-010); righe che entrano con "apri"
+const TUR=()=>D().turni||{};
+const oreTesto=h=>nf(h,h%1?2:0);
+const gm=d=>{const x=parseYmd(d);return `${x.getDate()} ${MESI[x.getMonth()]}`;};
+function vociGia(d){
+  const out=[],L=lavori();
+  // turni e assenze, per lavoro (senza l'orario abituale, che non è una voce scritta)
+  for(const l of L){const G=C.vociGiorno(l,turniDi(l.id).filter(t=>t.data===d),d);
+    for(const v of G.voci){if(!v.id||v.implicito)continue;
+      const lavoro=v.cat==='lavoro'||v.cat==='variabile'||v.aggiunta,orari=v.daS&&v.aS?v.daS+'–'+v.aS:'';
+      // ore: quelle scritte (o del tipo), altrimenti dalle–alle meno la pausa (come nella finestra del turno)
+      const ore=v.ore!=null?v.ore:v.da!=null&&v.a!=null?Math.max(0,(((v.a-v.da+1440)%1440)||1440)-(v.pausa||0))/60:null;
+      const scritte=TUR()[v.id]&&(String(TUR()[v.id].ore||'')!==''||!!TUR()[v.id].da);
+      const r2a=lavoro?[orari,ore!=null?oreTesto(Math.round(ore*100)/100)+' ore':''].filter(Boolean):[scritte&&ore!=null?oreTesto(Math.round(ore*100)/100)+' ore':'Tutta la giornata'];
+      if(L.length>1)r2a.push(l.nome||'Lavoro');
+      out.push({k:'tu',c:v.colore||l.colore,em:v.tipo?.icona||'💼',t1:esc(v.nome),t2:esc(r2a.join(' · ')),att:`data-giatu="${esc(l.id)}|${esc(v.id)}"`,
+        lab:`Modifica ${lavoro?'il turno':'l’assenza'} ${v.nome} del ${gm(d)}`});}}
+  // attività dei progetti, per ora
+  for(const e of eventiDel(e=>e.data===d,true)){const p=prog(e.pid),f=(e.fasce||[]).filter(x=>x.da&&x.a),so=soldiOre(e);
+    const r2a=[f.length?f[0].da+'–'+f[f.length-1].a:'',e.ore&&!isFisso(e)&&so.ore?oreTesto(so.ore)+' ore':''].filter(Boolean);
+    out.push({k:'ev',c:p?.colore||'#888',em:'📁',t1:esc((p?.nome||'Progetto')+' · '+TIPI[e.tipo])+(e.stato==='previsto'?'<span class="tag">Prevista</span>':''),t2:esc(r2a.join(' · ')),
+      att:`data-giaev="${esc(e.id)}"`,lab:`Modifica l’attività ${TIPI[e.tipo]} del progetto ${p?.nome||''} del ${gm(d)}`});}
+  // entrate extra (testo di "Modifica" già definitivo, tornata 53)
+  for(const x of (window.EntrateExtra?.delGiorno?.(d)||[])){const t=EntrateExtra.tipoDi(x.tipo);
+    out.push({k:'ex',em:'🪙',t1:esc(t[2]),t2:`<span class="am ok">+${eur(x.importo)}</span>${x.nota?' · '+esc(x.nota):''}`,att:`data-xe="${esc(x.id)}"`,
+      lab:`Modifica l’entrata extra di ${eur(x.importo)} del ${d.slice(8)}/${d.slice(5,7)}/${d.slice(0,4)}`});}
+  // spese giornaliere (anche quelle importate dalla banca)
+  for(const x of speseDel(s=>s.data===d)){const c=catDi(x.cat),nome=x.nota||c[2];
+    out.push({k:'sp',em:'🛒',t1:esc(nome),t2:`<span class="am">−${eur(num(x.importo))}</span>${x.nota?' · '+esc(c[2]):''}`,att:`data-giasp="${esc(x.id)}"`,
+      lab:`Modifica la spesa ${nome} di ${eur(num(x.importo))}`});}
+  return out;
+}
+function renderGia(){
+  const box=$('evGia');if(!box)return;
+  const una=md&&!md.id&&md.dates.length===1,V=una?vociGia(md.dates[0]):[];
+  box.hidden=!V.length;$('evAggiungi').hidden=!V.length;if(!V.length){box.innerHTML='';return;}
+  const molte=V.length>5,vis=molte&&!giaTutte?V.slice(0,4):V;
+  box.innerHTML=`<div class="hd"><h3 id="evGiaT">Già segnato in questo giorno</h3><span>${V.length===1?'1 voce':V.length+' voci'}</span></div>`+
+    vis.map((v,i)=>`<div class="rg${animaDa!=null&&i>=animaDa?' nuova':''}">${v.c?`<span class="bar" style="--c:${colOk(v.c)}"></span>`:''}<span class="em" aria-hidden="true">${esc(v.em)}</span><span class="tx"><b>${v.t1}</b>${v.t2?`<small>${v.t2}</small>`:''}</span>`+
+      `<button type="button" class="btn ghost sm" ${v.att} aria-label="${esc(v.lab)}">Modifica</button></div>`).join('')+
+    (animaDa=null,'')+(molte?`<div class="more"><button type="button" class="btn ghost sm" id="evGiaPiu" aria-expanded="${giaTutte}">${giaTutte?'Mostra meno':`Mostra le altre ${V.length-4}`}</button></div>`:'');
+}
+// che cosa è già scritto nelle sezioni (per la domanda prima di aprire un'attività di un progetto nella stessa finestra)
+function sezioniScritte(){letturaLav();const n=[];
+  if(S.lav&&S.lav.tipo!==undefined)n.push('Lavoro dipendente');
+  if(md&&!md.noProj&&md.progToccato)n.push('Progetti');
+  if(S.sp.length||($('spPImp')&&num($('spPImp').value)>0)||($('spPNota')&&$('spPNota').value.trim()))n.push('Spese giornaliere');
+  if(window.FissaEv&&FissaEv.compilata())n.push('Uscita fissa');
+  if(window.ExtraEv&&ExtraEv.compilata())n.push('Entrata extra');
+  return n;}
+async function giaClick(e){
+  const piu=e.target.closest('#evGiaPiu');if(piu){giaTutte=!giaTutte;animaDa=giaTutte?4:null;renderGia();$('evGiaPiu')?.focus();return;}
+  const tu=e.target.closest('[data-giatu]');if(tu){const [lid,id]=tu.dataset.giatu.split('|');const t=TUR()[id];if(t)Stip15.apriTurno([t.data],lid,t);return;}
+  const sp=e.target.closest('[data-giasp]');if(sp){apriSpesa(sp.dataset.giasp);return;}
+  const ev=e.target.closest('[data-giaev]');if(ev){const x=D().eventi[ev.dataset.giaev];if(!x)return;
+    const n=sezioniScritte();
+    if(n.length&&!await ask(`<b>Aprire l’attività?</b><br>In questa finestra hai scritto qualcosa (${esc(n.join(', '))}). Se apri l’attività, quello che hai scritto non viene salvato.`,
+      [{t:'Resta qui',v:false},{t:'Apri senza salvare',v:true,cls:'ghost'}],true))return;
+    openEv([x.data],clone(x));}
+}
+
+// ================= 24c.15 (D-171): modifica di una spesa giornaliera (prima si poteva solo eliminare dal giorno aperto) =================
+let spEd=null; // {id, cat}
+function apriSpesa(id){const s=SP()[id];if(!s||s.deleted)return;spEd={id,cat:s.cat};
+  $('spmData').value=s.data;$('spmData').max=today();$('spmImp').value=String(num(s.importo)).replace('.',',');$('spmNota').value=s.nota||'';
+  $('spmErr').hidden=true;spmChips();$('spModal').hidden=false;$('spModal').querySelector('.sheet').scrollTop=0;document.body.classList.add('noscroll');}
+function chiudiSpesa(){$('spModal').hidden=true;spEd=null;if([...document.querySelectorAll('.modal')].every(m=>m.hidden))document.body.classList.remove('noscroll');}
+function spmChips(){$('spmCats').innerHTML=CATS.map(c=>`<button type="button" class="chip ${spEd.cat===c[0]?'on':''}" data-spmc="${c[0]}" aria-pressed="${spEd.cat===c[0]}">${c[1]} ${esc(c[2])}</button>`).join('');}
+function spmErrore(t){$('spmErr').textContent=t;$('spmErr').hidden=false;}
+function dopoSpesa(msg){chiudiSpesa();changed();render();if(!$('dayModal').hidden)apriGiorno(selDay);toast(msg);}
+function salvaSpesa(){if(!spEd)return;const s=SP()[spEd.id];if(!s)return chiudiSpesa();
+  const data=$('spmData').value,imp=leggiNumero($('spmImp').value,true);
+  if(!dataSpesa(data))return spmErrore('Scrivi la data.');if(data>today())return spmErrore('La data non può essere nel futuro.');
+  if(!(imp>0))return spmErrore('Scrivi l’importo.');
+  // il mese in cui conta (D-152, importate dalla banca) resta solo se il giorno non cambia
+  const nuova=Object.assign({},s,{data,cat:spEd.cat,importo:Math.round(imp*100)/100,nota:$('spmNota').value.trim().slice(0,60),updatedAt:Date.now()});
+  if(data!==s.data)delete nuova.meseConto;
+  SP()[spEd.id]=nuova;dopoSpesa('✓ Spesa salvata.');}
+// stessa conferma e stesso segno dell'eliminazione dal giorno aperto
+async function eliminaSpesa(){if(!spEd)return;const s=SP()[spEd.id];if(!s)return chiudiSpesa();
+  if(!await conferma(`Eliminare la spesa di ${eur(num(s.importo))}?`,'Elimina','danger'))return;
+  s.deleted=true;s.updatedAt=Date.now();dopoSpesa('✓ Spesa eliminata.');}
 const lavoriTurni=()=>lavori().filter(l=>l.modo==='turni');
 async function turniDaFoto(){const T=lavoriTurni();if(!T.length)return;
   let lid=T[0].id;
@@ -229,7 +317,7 @@ saveProj=function(){const nuovo=pe?.isNew,id=pe?.p?.id;const r=_saveProj16();
   return r;};
 // dopo un nuovo lavoro, aggiorno la sezione lavoro della finestra attività
 const _render16=render;
-render=function(){_render16();if(!$('evModal').hidden&&md&&!md.id){renderLav();aggiornaSum();}};
+render=function(){_render16();if(!$('evModal').hidden&&md&&!md.id){renderLav();aggiornaSum();renderGia();}};
 
 function bind16(){
   $('evLav').addEventListener('click',e=>{
@@ -258,6 +346,11 @@ function bind16(){
     if(t.id==='tnAdd'){const nome=$('tnNome').value.trim(),da=$('tnDa').value,a=$('tnA').value;if(!da||!a){toast('Scrivi dalle–alle del nuovo turno.','err');return;}
       const q={id:uid(),nome:nome||'Turno',da,a};p.ore.fasce.push(q);p.updatedAt=Date.now();changed();usaTurno(q);toast('Turno aggiunto al progetto.');}});
   $('evRipDur').onchange=mostraDurata;
+  // 24c.15 (D-171)
+  $('evGia').addEventListener('click',giaClick);
+  $('spmCats').addEventListener('click',e=>{const c=e.target.closest('[data-spmc]');if(c&&spEd){spEd.cat=c.dataset.spmc;spmChips();}});
+  $('spmClose').onclick=chiudiSpesa;$('spmAnnulla').onclick=chiudiSpesa;$('spmOk').onclick=salvaSpesa;$('spmDel').onclick=eliminaSpesa;
+  $('spModal').addEventListener('click',e=>{if(e.target.id==='spModal')chiudiSpesa();});
   $('dayBox').addEventListener('click',async e=>{const b=e.target.closest('[data-spdel]');if(!b)return;const s=SP()[b.dataset.spdel];if(!s)return;
     if(!await conferma(`Eliminare la spesa di ${eur(num(s.importo))}?`,'Elimina','danger'))return;s.deleted=true;s.updatedAt=Date.now();changed();render();apriGiorno(selDay);});
   // v23: compilare qualcosa nella sezione Progetti vale come "da salvare" anche se poi la sezione si richiude
@@ -265,6 +358,6 @@ function bind16(){
 }
 bind16();
 render();
-window.Att16={S,speseDel,fineDaMesi};
+window.Att16={S,speseDel,fineDaMesi,apriSpesa};
 document.addEventListener('click',e=>{if(e.target.closest('#evFotoBtn'))turniDaFoto();});
 })();
