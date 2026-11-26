@@ -2,7 +2,7 @@
 # Forma e generatore del Coordinatore (coordinamento/consegne/00-formato-turni-excel-larga.md), solo dati inventati.
 # Uso: python3 tools/turni-finti.py CARTELLA  → turni-larga.jpg (pulita, quality 85), turni-larga-sporca.jpg
 # (numeri e nomi non in grassetto, quality 60, rimpicciolita del 15% e riallargata), turni-larga-tagliata.jpg
-# (la pulita con l'ultima colonna tagliata dal bordo) e turni-larga.json (turni attesi).
+# (la pulita con l'ultima colonna tagliata dal bordo), turni-larga-piccola.jpg (la pulita all'80%) e turni-larga.json (turni attesi).
 # Seme fisso: le due immagini hanno gli stessi turni.
 import sys, random, json, io, os
 from PIL import Image, ImageDraw, ImageFont
@@ -67,6 +67,8 @@ a,atteso=crea(False);a.save(os.path.join(out,'turni-larga.jpg'),quality=85)
 b,atteso2=crea(True);b.save(os.path.join(out,'turni-larga-sporca.jpg'),quality=60)
 # ultima colonna (31) tagliata dal bordo destro dell'immagine: se ne vedono circa due terzi
 a.crop((0,0,1256,a.height)).save(os.path.join(out,'turni-larga-tagliata.jpg'),quality=85)
+# 24c.16: la pulita rimpicciolita all'80% (righe alte circa 14 px): serve per l'avviso "La foto è piccola"
+a.resize((round(a.width*0.8),round(a.height*0.8)),Image.LANCZOS).save(os.path.join(out,'turni-larga-piccola.jpg'),quality=85)
 assert atteso==atteso2
 json.dump(atteso,open(os.path.join(out,'turni-larga.json'),'w'),ensure_ascii=False,indent=1)
 print('\n'.join(n+': '+' '.join(f'{d}:{v}' for d,v in g.items()) for n,g in atteso.items()))

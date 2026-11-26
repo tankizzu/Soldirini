@@ -864,9 +864,12 @@ async function analizza(){
   const proposta={},dubbi=new Set(incerti.map(d=>`${ft.ym}-${pad(d)}`));
   for(let d=r.dal;d<=r.al;d++)proposta[`${ft.ym}-${pad(d)}`]=(giorniLetti[d]||[]).map(tipoPer).filter(Boolean).map(t=>t.id);
   ft.proposta=proposta;ft.dubbi=dubbi;ft.nome=nome;
-  const righe=[ft.rigaY!=null?'Riga scelta: <b>la '+ft.rigaN+'ª dell’elenco</b>':'Riga trovata: <b>'+esc(r.rigaTrovata)+'</b>','Giorni nella foto: '+(r.dal===1&&r.al===n?'tutto il mese':'dal '+r.dal+' al '+r.al+' (gli altri giorni non vengono toccati)')];
+  // 24c.16: nella riga trovata il nome scritto dall'utente (le lettere lette da una foto piccola sembrano un errore)
+  const lv=lav0(ft.lid),tutto=r.dal===1&&r.al===n;
+  const righe=[ft.rigaY!=null?'Riga scelta: <b>la '+ft.rigaN+'ª dell’elenco</b>':'Riga trovata: <b>'+esc(nome||lv.nomeTab||r.rigaTrovata)+'</b>','Giorni nella foto: '+(tutto?'tutto il mese':'dal '+r.dal+' al '+r.al+' (gli altri giorni non vengono toccati)')];
   if(dubbi.size)righe.push(`<span class="warn">${dubbi.size} ${dubbi.size===1?'giorno':'giorni'} da controllare (segnati con ⚠)</span>`);
-  if((r.riga.h/(tela.scala||1))<18)righe.push('<span class="warn">⚠️ La foto è piccola: alcune lettere possono essere lette male. Per risultati migliori ingrandisci la tabella e rifai lo screenshot.</span>');
+  // 24c.16: l'avviso della foto piccola solo se la lettura ha davvero dei dubbi (giorni con ⚠, o la seconda lettura non trova tutto il mese)
+  if((r.riga.h/(tela.scala||1))<18&&(dubbi.size||(tela.ocr&&!tutto)))righe.push('<span class="warn">⚠️ La foto è piccola: alcune lettere possono essere lette male. Per risultati migliori ingrandisci la tabella e rifai lo screenshot.</span>');
   if(r.meseTabella&&r.meseTabella!==mese)righe.push(`<span class="warn">Attenzione: la tabella sembra di ${MESI[r.meseTabella-1]}, ma stai importando in ${MESI[mese-1]}.</span>`);
   $('ftRiass').innerHTML=righe.join('<br>');riempiLetto();renderProposta();passo(4);
 }
@@ -902,7 +905,7 @@ function mostraErrore(testo,nomi,tab){
 function renderProposta(){
   const l=lav0(ft.lid);const giorni=Object.keys(ft.proposta).sort();
   $('ftLista').innerHTML=giorni.map(d=>{const g=parseYmd(d);const sel=ft.proposta[d];const dub=ft.dubbi.has(d);
-    return `<div class="ftg${dub?' dub':''}"><span class="ftd">${dub?'⚠ ':''}${GIORNI[g.getDay()].slice(0,3)} ${g.getDate()}</span><span class="ftc">${l.tipi.map(t=>`<button type="button" class="chip${sel.includes(t.id)?' on':''}" style="--c:${colOk(t.colore||l.colore)}" data-ftd="${d}" data-ftt="${esc(t.id)}" title="${esc(t.nome)}">${esc(t.icona||t.sigla||t.nome)}</button>`).join('')}</span></div>`;}).join('');
+    return `<div class="ftg${dub?' dub':''}"><span class="ftd">${dub?'⚠ ':''}${GIORNI[g.getDay()].slice(0,3)} ${g.getDate()}</span><span class="ftc">${l.tipi.map(t=>`<button type="button" class="chip${sel.includes(t.id)?' on':''}" style="--c:${colOk(t.colore||l.colore)}" data-ftd="${d}" data-ftt="${esc(t.id)}" title="${esc(t.nome)}" aria-label="${esc(t.nome)}" aria-pressed="${sel.includes(t.id)}"><span class="ic">${esc(t.icona||t.sigla||t.nome)}</span></button>`).join('')}</span></div>`;}).join('');
   const varT=l.tipi.find(t=>t.cat==='variabile'&&Object.values(ft.proposta).some(x=>x.includes(t.id)));
   $('ftOreBox').hidden=!varT;if(varT){$('ftOreBox').firstChild.nodeValue='Ore per ogni «'+varT.nome+'»';if(!$('ftOre').value)$('ftOre').value=varT.ore||4;}
   $('ftLegenda').innerHTML=l.tipi.map(t=>`${esc(t.icona||t.sigla||'')} = ${esc(t.nome)}`).join(' · ');
