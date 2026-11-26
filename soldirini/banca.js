@@ -236,6 +236,9 @@ async function impronta(t){const b=await crypto.subtle.digest('SHA-256',new Text
 
 // ---------- finestra "Movimenti da importare" ----------
 let L=null; // righe della finestra, solo in memoria
+// 24c.17 (D-160): il file così com'è, solo in memoria e solo finché la finestra è aperta (03, tornata 52 §2 punti 3 e 5);
+// chiudendo la finestra si perde: vale «Non conservarlo». Mai in localStorage, nella copia di sicurezza o nei dati.
+let FILE=null,dopoImp=null;
 // 24c.12: errori del file sotto il pulsante usato (02: testo --err, role="alert"), finché non si sceglie un altro file
 const ERRORI={banca:'Questo file non è la lista movimenti di ING in CSV o Excel, l\'unica che Soldirini sa leggere per ora. Non è stato importato niente.',
   grande:'Il file è troppo grande (più di 5 MB o di 5.000 righe): scarica un periodo più breve. Non è stato importato niente.',
@@ -248,12 +251,13 @@ function errore(t){for(const e of document.querySelectorAll('.bcerr')){e.textCon
   if(!el||!el.classList.contains('bcerr'))el=$('bcErr');el.textContent=t;el.hidden=false;}
 async function apriFile(file){
   if(!file)return;
-  errore('');if(window.EntrateExtra)EntrateExtra.riquadro([]);
+  FILE=null;dopoImp=null;errore('');if(window.EntrateExtra)EntrateExtra.riquadro([]);
   if(file.size>MAX_BYTE){errore(ERRORI.grande);return;}
-  let A;try{const buf=await file.arrayBuffer();const u=new Uint8Array(buf,0,Math.min(4,buf.byteLength));
+  let A,buf,xlsx=false;try{buf=await file.arrayBuffer();const u=new Uint8Array(buf,0,Math.min(4,buf.byteLength));
     // 24c.11 (D-153): un file .xlsx è uno zip (comincia con "PK"); tutto il resto si legge come CSV
-    A=u[0]===0x50&&u[1]===0x4B?await analizzaXlsx(buf):analizza(decodifica(buf));}catch(e){A={err:'rovinato'};}
+    xlsx=u[0]===0x50&&u[1]===0x4B;A=xlsx?await analizzaXlsx(buf):analizza(decodifica(buf));}catch(e){A={err:'rovinato'};}
   if(A.err){errore(ERRORI[A.err]);return;}
+  FILE={buf,xlsx,dal:A.dal,al:A.al};
   const imp=IMP();
   const vista=h=>!!imp[h]&&!imp[h].deleted;
   L=await Promise.all(A.mov.map(async m=>{const p=proponi(m);const h=await impronta(m.pulito);const gia=vista(h)||(m.grezzo!==m.pulito&&vista(await impronta(m.grezzo)));
@@ -273,8 +277,10 @@ function riga(r,i){
     ${nomeVisibile?`<label class="bccampo"><span class="muted sm">Nome della spesa</span><input data-bcnome="${i}" value="${esc(r.nome)}" maxlength="60" autocomplete="off"></label>`:''}
     ${r.val==='dc:'&&r.fonte==='bonifico'?`<label class="bccampo"><span class="muted sm">Nome di chi manda (puoi cambiarlo o cancellarlo)</span><input data-bcchi="${i}" value="${esc(r.chi)}" maxlength="60" autocomplete="off"></label>`:''}`}
   </div>`;}
-function disegna(){const tutti=L.length&&L.every(r=>r.gia);
-  $('bcList').innerHTML=(tutti?'<div class="note bcnote">Tutti i movimenti di questo file sono già in Soldirini: non c\'è niente di nuovo da importare.</div>':'')+L.map(riga).join('');
+function disegna(){const tutti=L.length&&L.every(r=>r.gia);modo(false);
+  // 24c.17 (D-160, 02 tornata 52 schermo B4): tutto già importato → sotto la nota la riga grigia e «Come cancellarlo»
+  $('bcList').innerHTML=(tutti?`<div class="note bcnote">Tutti i movimenti di questo file sono già in Soldirini: non c\'è niente di nuovo da importare.</div>
+    <p class="muted sm bcresta">Il file che hai scaricato è ancora nel telefono. <button type="button" class="btn link sm" data-bcpassi aria-expanded="false">Come cancellarlo</button></p><div class="bcpassi" hidden>${passi()}</div>`:'')+L.map(riga).join('');
   $('bcAnn').textContent=tutti?'Chiudi':'Annulla';aggiornaTot();}
 const pl=(n,uno,tanti)=>`${n} ${n===1?uno:tanti}`;
 // conto per tipo (piede e messaggio finale): le parti a 0 non si scrivono
@@ -285,7 +291,66 @@ function contoTipi(S){const k=t=>S.filter(r=>r.val.startsWith(t));const sp=k('sp
 function aggiornaTot(){const S=L.filter(r=>r.on&&!r.gia&&r.val!=='no');const u=S.filter(r=>r.v<0).reduce((a,r)=>a-cent(r.v),0)/100,e=S.filter(r=>r.v>0).reduce((a,r)=>a+cent(r.v),0)/100;
   $('bcTot').textContent=S.length?`Uscite ${eur(u)} · Entrate ${eur(e)}`:'Niente da importare';$('bcTipi').textContent=S.length?contoTipi(S).piede:'';
   const b=$('bcImporta');b.textContent=S.length===1?'Importa 1 movimento':`Importa ${S.length} movimenti`;b.disabled=!S.length;}
-function chiudi(){$('bcModal').hidden=true;L=null;$('bcList').innerHTML='';
+// ---------- 24c.17 (D-160): cosa fare del file della banca dopo «Importa» (02, tornate 52-54; 03, tornata 52 §2) ----------
+const iPhone=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(/Macintosh/.test(navigator.userAgent)&&navigator.maxTouchPoints>1);
+const PASSI={Android:['Apri l’app «File» (su Samsung «Archivio» o «I miei file»).','Apri «Download».','Tieni premuto il file della banca e tocca «Elimina».','Se c’è il «Cestino», svuotalo per toglierlo del tutto.'],
+  iPhone:['Apri l’app «File» e tocca «Sfoglia».','Apri «Download» (in «iCloud Drive» o «Sul mio iPhone»).','Tieni premuto il file della banca e tocca «Elimina».','In «Eliminati di recente» toccalo e scegli «Elimina» per toglierlo del tutto.']};
+// prima i passi del telefono in uso; se non si sa, prima Android
+function passi(){const o=iPhone()?['iPhone','Android']:['Android','iPhone'];
+  return o.map(k=>`<p class="bcpt">${k}</p><ol class="passi">${PASSI[k].map(t=>`<li>${t}</li>`).join('')}</ol>`).join('');}
+const MSG_ARCH={gen:'Soldirini non è riuscita a copiare il file su Google Drive. Controlla la connessione e riprova, oppure scegli «Non conservarlo».',
+  auth:'Soldirini non è riuscita a copiare il file su Google Drive: l’accesso a Google è scaduto. Tocca di nuovo «Archivia su Drive» per accedere, oppure scegli «Non conservarlo».',
+  pieno:'Soldirini non è riuscita a copiare il file su Google Drive: nel tuo Drive non c’è più spazio. Puoi liberarne un po’ e toccare di nuovo «Archivia su Drive», oppure scegliere «Non conservarlo».'};
+const conDrive=()=>!!(DB.meta.account&&DB.meta.dataId&&D().root?.id);
+// la finestra ha due modi: la lista da importare (com'era) e "Movimenti importati"
+function modo(dopo){for(const id of ['bcAvviso','bcOk','bcPrima','bcList','bcTot','bcTipi','bcAnn','bcImporta'])if(dopo)$(id).hidden=true;
+  if(!dopo){for(const id of ['bcPrima','bcList','bcTot','bcTipi','bcAnn','bcImporta'])$(id).hidden=false;$('bcTit').textContent='Movimenti da importare';}
+  $('bcDopo').hidden=!dopo;$('bcFatto').hidden=!dopo;}
+// riquadro delle entrate da confermare (aggiunta 16, 02 tornata 53 §3): prima della scelta senza «Controlla»
+function riqConf(){const d=dopoImp;const n=d.ids.filter(id=>DC()[id]&&!DC()[id].deleted).length;if(!n)return '';
+  const t=n===1?'<b>Nella lista c’è 1 entrata da confermare.</b> Finché non scegli cos’è, non conta nei soldi.':`<b>Nella lista ci sono ${n} entrate da confermare.</b> Finché non scegli cosa sono, non contano nei soldi.`;
+  const domanda=d.stato==='domanda'||d.stato==='copio';
+  return `<div class="note dcnote" role="status"><span>${t}${domanda?' «Controlla» compare dopo la domanda qui sotto.':''}</span>${domanda?'':'<button type="button" class="btn sm" data-bccontrolla aria-label="Controlla le entrate da confermare">Controlla</button>'}</div>`;}
+function disegnaDopo(){const d=dopoImp;if(!d)return;modo(true);$('bcTit').textContent='Movimenti importati';
+  const st=d.stato,copio=st==='copio';let h=`<p class="ok bcfatti"><b>${esc(d.titolo)}</b> ${esc(d.resto)}</p>`+riqConf();
+  if(st==='domanda'||copio)h+=`<p class="bcdom">E il file della banca?</p>
+    <p class="muted sm">Dentro ci sono anche il tuo IBAN e il tuo nome. Soldirini ne ha preso solo data, importo, nome e categoria dei movimenti.</p>
+    <button type="button" class="cpopt bcopt" id="bcArch"${copio?' disabled aria-busy="true"':''}><b>${copio?'<i class="spin" aria-hidden="true"></i>Archivio su Drive…':'Archivia su Drive'}</b><span class="muted">Una copia va nella cartella «Soldirini/Movimenti banca» del tuo Google Drive. Soldirini non la rilegge.</span></button>
+    <button type="button" class="cpopt bcopt" id="bcNoCons"${copio?' disabled':''}><b>Non conservarlo</b><span class="muted">Soldirini non tiene nessuna copia.</span></button>
+    ${d.err?`<p class="sm err bcarcerr" role="alert">${MSG_ARCH[d.err]}</p>`:''}
+    <p class="muted sm bcsolo">Si sceglie solo adesso: chiudendo la finestra, Soldirini non tiene il file.</p>`;
+  else if(st==='nocons')h+=`<p class="ok bcesito"><b>✓ Soldirini non ha tenuto il file.</b></p><p class="sm">Il file che hai scaricato è ancora nel telefono. Soldirini non può cancellarlo da sola: se vuoi, toglilo così.</p>${passi()}`;
+  // dopo «Archivia» niente passi finché l'utente non risponde alla domanda 93
+  else if(st==='archiviato')h+=`<p class="ok bcesito"><b>✓ File archiviato su Drive,</b> nella cartella «Soldirini/Movimenti banca».</p>`;
+  else h+=`<p class="muted sm">Soldirini non ha tenuto il file. Quello che hai scaricato è ancora nel telefono: se vuoi, toglilo così.</p>${passi()}`; // senza Drive
+  $('bcDopo').innerHTML=h;}
+// nome della copia: solo la banca e le date della lista, mai il nome originale del file (03, condizione 1)
+const nomeArchivio=f=>`Movimenti ING ${f.dal} – ${f.al}.${f.xlsx?'xlsx':'csv'}`;
+const MIME_X='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+async function cartellaBanca(){const root=D().root.id;let dir=DB.meta.bancaDir;
+  if(dir&&await exists(dir))return dir;
+  const q=`name='Movimenti banca' and mimeType='${FOLDER_MIME}' and '${root}' in parents and trashed=false`;
+  const r=await gfetch('GET',`${DRIVE}/files?q=${encodeURIComponent(q)}&fields=files(id,appProperties)&spaces=drive&pageSize=10`);
+  const f=(r.files||[]).find(x=>x.appProperties?.soldirini==='movimenti-banca');
+  dir=f?f.id:(await createFolder('Movimenti banca',root,{soldirini:'movimenti-banca'})).id;
+  DB.meta.bancaDir=dir;persist();return dir;} // solo l'id della cartella, sul telefono (03, condizione 3)
+async function archivia(){const d=dopoImp;if(!d||!FILE||d.stato!=='domanda')return; // un solo caricamento per file (condizione 6)
+  d.stato='copio';d.err='';disegnaDopo();
+  try{if(!navigator.onLine)throw new Error('offline');
+    await getToken(true); // dopo il tocco dell'utente: se l'accesso è scaduto si riaccede qui
+    const dir=await cartellaBanca(),mime=FILE.xlsx?MIME_X:'text/csv';
+    // stessi byte del file, senza conversione in Foglio Google; nelle proprietà solo soldirini:'banca' (condizione 2)
+    const f=await uploadNew({name:nomeArchivio(FILE),parents:[dir],mimeType:mime,appProperties:{soldirini:'banca'}},new Blob([FILE.buf],{type:mime}),mime);
+    if(!f||!f.id)throw new Error('non caricato');
+    FILE=null;d.stato='archiviato';}
+  catch(e){// niente coda e niente nuovo tentativo automatico (condizione 5, aggiunta 20): si torna alla scelta
+    d.stato='domanda';d.err=e instanceof AuthErr||e.status===401?'auth':e.status===403&&/storageQuota|quota/i.test((e.reason||'')+' '+e.message)?'pieno':'gen';}
+  if(dopoImp===d)disegnaDopo();}
+function nonConservarlo(){const d=dopoImp;if(!d||d.stato!=='domanda')return;FILE=null;d.stato='nocons';d.err='';disegnaDopo();}
+function chiudi(){$('bcModal').hidden=true;L=null;FILE=null;$('bcList').innerHTML='';$('bcDopo').innerHTML='';
+  const d=dopoImp;dopoImp=null;
+  // dopo la chiusura il riquadro delle entrate da confermare resta sotto il pulsante usato, come nella 24c.13
+  if(d&&window.EntrateExtra)EntrateExtra.riquadro(d.ids,d.dove);
   if([...document.querySelectorAll('.modal')].every(m=>m.hidden))document.body.classList.remove('noscroll');}
 function importa(){if(!L)return;const now=Date.now();let n=0,k=0;const imp=IMP();const S=L.filter(r=>!r.gia&&r.on&&r.val!=='no');
   for(const r of L){if(r.gia)continue;
@@ -293,7 +358,7 @@ function importa(){if(!L)return;const now=Date.now();let n=0,k=0;const imp=IMP()
       // 24c.11 (D-152) e 24c.12 (D-155): il mese in cui conta si salva sempre, anche quando è quello della data; così le voci
       // importate da qui in poi non passano dalla sistemazione delle voci importate prima della regola dello stipendio
       const mc={meseConto:r.mc||r.data.slice(0,7)};
-      if(t==='sp'){const id=uid();SP()[id]={id,data:r.data,...mc,created:now+k++,updatedAt:now,cat:x,importo:r2(Math.abs(r.v)),nota:pulisci(r.nome).slice(0,60),origine:'banca'};}
+      if(t==='sp'){const id=uid();SP()[id]={id,data:r.data,...mc,created:now+k++,updatedAt:now,cat:x,importo:r2(Math.abs(r.v)),nota:pulisci(r.nome).slice(0,60),origine:'banca',impronta:r.h};} // 24c.17 (D-156): l'impronta, per liberarla se la spesa si elimina con il mese
       else if(t==='en')EN()[x]={entrato:true,data:r.data,...mc,importo:r2(r.v),updatedAt:now};
       else if(t==='pg')pagamenti()[x]={pagato:true,data:r.data,...mc,importo:r2(r.v),updatedAt:now};
       // 24c.13 (D-165): data esatta del movimento (data valuta), importo, nome di chi manda (già pulito) e l'impronta della riga
@@ -305,10 +370,15 @@ function importa(){if(!L)return;const now=Date.now();let n=0,k=0;const imp=IMP()
     if((r.on&&r.val!=='no')||r.val==='no')imp[r.h]={updatedAt:now};
   }
   const T=contoTipi(S);const parti=[T.sp&&pl(T.sp,'spesa','spese'),T.ne&&(T.ne===1?'1 entrata segnata':`${T.ne} entrate segnate`),T.dc&&(T.dc===1?'1 entrata da confermare':`${T.dc} entrate da confermare`),T.fx&&(T.fx===1?'1 uscita fissa già contata':`${T.fx} uscite fisse già contate`)].filter(Boolean);
-  const dopo=dove();chiudi();changed();render();toast(`✓ ${n===1?'Importato 1 movimento':`Importati ${n} movimenti`}: ${parti.join(', ')}.`);
-  // 24c.13 (D-165): riquadro sotto il pulsante usato, con "Controlla" che porta all'elenco
-  // 24c.14: il riquadro conta le voci di questa lista ancora da scegliere (scende a ogni scelta, sparisce a 0)
-  if(window.EntrateExtra)EntrateExtra.riquadro(S.filter(r=>r.val==='dc:').map(r=>'dc'+r.h.slice(0,24)),dopo);}
+  // 24c.17 (D-160): il messaggio va in cima alla finestra, che resta aperta e chiede cosa fare del file (niente toast)
+  // 24c.13-24c.14 (D-165): il riquadro delle entrate da confermare (sotto il pulsante usato dopo la chiusura)
+  const per=FILE?`Lista movimenti ING · dal ${gm(FILE.dal)}/${FILE.dal.slice(0,4)} al ${gm(FILE.al)}/${FILE.al.slice(0,4)}`:'';
+  L=null;$('bcList').innerHTML='';changed();render();
+  dopoImp={titolo:`✓ ${n===1?'Importato 1 movimento':`Importati ${n} movimenti`}:`,resto:parti.join(', ')+'.',ids:S.filter(r=>r.val==='dc:').map(r=>'dc'+r.h.slice(0,24)),
+    dove:dove(),stato:conDrive()?'domanda':'senza',err:''};
+  if(dopoImp.stato==='senza')FILE=null;
+  if(per)$('bcSub').textContent=per; // senza il numero dei movimenti (02)
+  disegnaDopo();$('bcModal').querySelector('.sheet').scrollTop=0;}
 // posto sotto l'ultimo pulsante "Importa movimenti" toccato (lo stesso degli errori)
 function dove(){const btn=ultimo&&document.contains(ultimo)&&!ultimo.closest('[hidden]')?ultimo:null;
   const el=btn&&(btn.closest('.bcimp')?.querySelector('.bcerr')||btn.closest('.acts')?.nextElementSibling);
@@ -321,7 +391,12 @@ function bind(){
     if(t.dataset.bcon!=null){const r=L[+t.dataset.bcon];r.on=t.checked;t.closest('.bcrow').classList.toggle('off',!r.on);aggiornaTot();return;}
     if(t.dataset.bcs!=null){const i=+t.dataset.bcs,r=L[i];r.val=t.value;r.on=r.val!=='no';disegna();return;}});
   $('bcList').addEventListener('input',e=>{const t=e.target;if(t.dataset.bcnome!=null)L[+t.dataset.bcnome].nome=t.value;if(t.dataset.bcchi!=null)L[+t.dataset.bcchi].chi=t.value;});
-  $('bcClose').onclick=chiudi;$('bcAnn').onclick=chiudi;$('bcImporta').onclick=importa;}
+  $('bcClose').onclick=chiudi;$('bcAnn').onclick=chiudi;$('bcImporta').onclick=importa;$('bcFatto').onclick=chiudi;
+  // 24c.17 (D-160): le due scelte, «Controlla» (fa come «Fatto» e apre l'elenco) e «Come cancellarlo»
+  $('bcModal').addEventListener('click',e=>{const t=e.target.closest('button');if(!t)return;
+    if(t.id==='bcArch'){archivia();return;}if(t.id==='bcNoCons'){nonConservarlo();return;}
+    if(t.dataset.bccontrolla!=null){chiudi();document.querySelector('.dcnote [data-dcvai]')?.click();return;}
+    if(t.dataset.bcpassi!=null){const b=t.closest('.bcresta').nextElementSibling;b.hidden=!b.hidden;t.setAttribute('aria-expanded',String(!b.hidden));}});}
 bind();
 window.Banca={analizza,analizzaXlsx,leggiCsv,proponi,apriFile,pulisci};
 })();

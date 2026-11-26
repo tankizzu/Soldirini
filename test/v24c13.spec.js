@@ -38,7 +38,8 @@ test.describe('24c.13', () => {
     expect(R[1]).toEqual({ v: 'dc:', info: 'Bonifico ricevuto: non sembra uno stipendio né un compenso. Va tra le «Entrate da confermare», dove scegli cos’è. Finché non scegli, non conta.' });
     await expect(page.locator('#bcTipi')).toHaveText('1 spesa · 1 entrata da confermare');
     await page.click('#bcImporta');
-    await expect(page.locator('#toast')).toContainText('1 spesa, 1 entrata da confermare');
+    await expect(page.locator('#bcDopo .bcfatti')).toContainText('1 spesa, 1 entrata da confermare'); // 24c.17 (D-160)
+    await page.click('#bcFatto');
     // riquadro sotto il pulsante usato
     const nota = page.locator('#v-dsp .dcnote');
     await expect(nota).toHaveText(/Nella lista c’è 1 entrata da confermare\. Finché non scegli cos’è, non conta nei soldi\.\s*Controlla/);
@@ -68,7 +69,7 @@ test.describe('24c.13', () => {
   test('D-165 a): "Entrata extra" → +50 negli Entrati del mese giusto (anche con meseConto), niente nelle tasse; data futura rifiutata (D-078)', async ({ browser }) => {
     const { page, errori } = await telefono(browser);
     const f0 = await fisco(page);
-    await importa(page);await page.click('#bcImporta');
+    await importa(page);await page.click('#bcImporta').then(() => page.click('#bcFatto'));
     const prima = await page.evaluate(() => contiMese('2026-11'));
     await page.evaluate(() => vaiA('dinc'));
     await page.locator('#dcCard [data-dc]').click();
@@ -125,7 +126,7 @@ test.describe('24c.13', () => {
     await importa(page, due);
     const R = await page.locator('#bcList select').evaluateAll(S => S.map(s => s.value));
     expect(R).toEqual(['dc:', 'dc:']);
-    await page.click('#bcImporta');
+    await page.click('#bcImporta').then(() => page.click('#bcFatto'));
     await expect(page.locator('#v-dsp .dcnote')).toHaveText(/Nella lista ci sono 2 entrate da confermare\./);
     const f0 = await fisco(page);
     const prima = await page.evaluate(() => contiMese('2026-11'));

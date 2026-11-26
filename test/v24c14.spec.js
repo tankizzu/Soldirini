@@ -28,7 +28,7 @@ async function importa(page, righe) {
   await expect(page.locator('#bcModal')).toBeVisible();
   const R = await page.locator('#bcList .bcrow').evaluateAll(R => R.map(r => ({ data: r.querySelector('.bcd').textContent, scelta: r.querySelector('select')?.value ?? null,
     mese: r.querySelector('.bcmese')?.textContent.trim() ?? null, info: r.querySelector('.bcinfo')?.textContent.trim() })));
-  await page.click('#bcImporta'); await expect(page.locator('#bcModal')).toBeHidden();
+  await page.click('#bcImporta').then(() => page.click('#bcFatto')); await expect(page.locator('#bcModal')).toBeHidden();
   return R;
 }
 const spese = page => page.evaluate(() => Object.values(D().spesePers).filter(s => !s.deleted).map(s => [s.data.slice(8) + '/' + s.data.slice(5, 7), s.importo, meseSpesa(s)])
@@ -46,7 +46,7 @@ test.describe('24c.14', () => {
     await expect(campi.nth(0)).toHaveValue('RESTITUZIONE ESEMPIO');
     await campi.nth(1).fill('');
     await expect(page.locator('#bcList .bcrow').nth(2).locator('.bcinfo')).toHaveText('Soldi arrivati sul conto, ma Soldirini non sa cosa sono. Vanno tra le «Entrate da confermare», dove scegli cos’è. Finché non scegli, non contano.');
-    await page.click('#bcImporta');
+    await page.click('#bcImporta').then(() => page.click('#bcFatto'));
     const nota = page.locator('#v-dsp .dcnote');
     await expect(nota.locator('span')).toHaveText('Nella lista ci sono 3 entrate da confermare. Finché non scegli cosa sono, non contano nei soldi.');
     await expect(nota.locator('button')).toHaveAttribute('aria-label', 'Controlla le entrate da confermare');
@@ -224,7 +224,7 @@ test.describe('24c.14', () => {
   test('informativa definitiva di 03 (24c.11 e 24c.13)', async ({ browser }) => {
     const { page, errori } = await telefono(browser);
     const pr = await page.evaluate(async () => (await fetch('privacy.html')).text());
-    expect(pr).toContain('(versione 24c.14)');
+    expect(pr).toMatch(/\(versione 24c\.1[4-9]\)/); // 24c.17: la versione dell'informativa cambia con i rilasci che la toccano
     expect(pr).toContain('entrate extra (restituzioni, regali, vendite e altro, con la data, l’importo, il tipo e la nota se la scrivi), uscite fisse, spese, risparmi');
     expect(pr).toContain('Quando nella lista c’è lo stipendio, salva anche il mese in cui ogni movimento conta nei tuoi soldi.');
     expect(pr).toContain('I bonifici ricevuti e gli altri accrediti che l’app non sa riconoscere vanno tra le «Entrate da confermare», con la data, l’importo e il <b>nome di chi te li manda</b>, che ti serve per capire cosa sono;');
@@ -248,7 +248,7 @@ test.describe('24c.14', () => {
     await page.setInputFiles('#bcFile', B.xfile(await B.xlsx(page, R1, { cellaExtra: '<c r="G13" t="str"><f>HYPERLINK("http://esempio.invalid","clic")</f><v>clic</v></c>' })));
     await expect(page.locator('#bcModal')).toBeVisible();
     expect(await page.locator('#bcList img').count()).toBe(0);
-    await page.click('#bcImporta');
+    await page.click('#bcImporta').then(() => page.click('#bcFatto'));
     const dati = await page.evaluate(() => JSON.stringify(D()));
     expect(dati).not.toMatch(/‮|HYPERLINK|esempio\.invalid|Intestatario|NOME INVENTATO|IT00X/);
     expect(await page.evaluate(() => Object.keys(D().bancaImpronte).every(k => /^[0-9a-f]{64}$/.test(k)))).toBe(true);
@@ -266,7 +266,7 @@ test.describe('24c.14', () => {
     expect(errori).toEqual([]);
   });
 
-  test('D-169: "I soldi messi da parte si tolgono dai soldi del mese": spenta niente cambia; accesa 100 € il 02/12 → dicembre −100, prelievo 30 € il 15/12 → −70; casella "Messi da parte"; salvadanaio con la data di oggi; tasse identiche; dati rovinati ignorati', async ({ browser }) => {
+  test('D-169: "I soldi messi da parte si tolgono dai soldi del mese": spenta niente cambia; accesa 100 € il 02/12 → dicembre −100, prelievo 30 € il 15/12 → −70; casella "Messi da parte"; tasse identiche; dati rovinati ignorati', async ({ browser }) => {
     const { page, errori } = await telefono(browser, '2026-12-20T10:00:00+01:00');
     await base(page);
     const conti = () => page.evaluate(() => JSON.stringify([['2026-11', '2026-12'].map(m => contiMese(m)), contiAnno('2026'), rimastiPrima('2026-12')]));
@@ -279,7 +279,7 @@ test.describe('24c.14', () => {
     // la pagina Risparmi si apre anche con i dati rovinati
     await page.evaluate(() => { vaiA('ris'); });
     await expect(page.locator('#rsTogli')).not.toBeChecked();
-    await expect(page.locator('#rsTogliNota')).toHaveText('Spenta: i risparmi non cambiano i soldi rimanenti.');
+    await expect(page.locator('#rsTogliNota')).toHaveText('Esempio: il 2 dicembre metti da parte 100 €. Accesa, i soldi rimanenti di dicembre scendono di 100 €; se il 15 prelevi 30 €, risalgono di 30 €. Spenta, i risparmi restano un conto a parte. Le tasse non cambiano mai.');
     // accesa dalla pagina Risparmi
     await page.locator('#rsTogli').check();
     expect(await page.evaluate(() => impost().salvaToglie)).toBe(true);
@@ -301,13 +301,9 @@ test.describe('24c.14', () => {
     expect(await page.evaluate(() => r2(rimastiPrima('2027-01') - (rimastiPrima('2026-12') + contiMese('2026-12').rimanenti)))).toBe(0);
     // tasse, CU e soglie identiche
     expect(await fisco()).toBe(f0);
-    // salvadanaio con la scelta accesa: la data è oggi (il mese prima non cambia)
-    await page.evaluate(() => { D().risparmi = {}; D().entrate = { [`lav|${Object.keys(D().lavori)[0]}|2026-10`]: { entrato: true, data: '2026-11-09', importo: 1500, updatedAt: 1 } }; changed(); vaiA('ris'); });
-    const nov = await page.evaluate(() => contiMese('2026-11').rimanenti);
-    await page.click('#rsSalv');
-    const mv = await page.evaluate(() => Object.values(D().risparmi).find(m => m.salvadanaio));
-    expect(mv.data).toBe('2026-12-20');
-    expect(await page.evaluate(() => contiMese('2026-11').rimanenti)).toBe(nov);
+    // 24c.17 (D-176): niente salvadanaio a percentuale; i movimenti a mano contano con la loro data
+    await page.evaluate(() => { D().risparmi = { 'mv:a': { data: '2026-12-02', importo: '100', ob: '', nota: '', updatedAt: 1 } }; changed(); vaiA('ris'); });
+    await expect(page.locator('#rsSalv')).toHaveCount(0);
     // spenta di nuovo: si torna come prima e la voce sparisce dalle impostazioni
     await page.locator('#rsTogli').uncheck();
     expect(await page.evaluate(() => 'salvaToglie' in impost())).toBe(false);

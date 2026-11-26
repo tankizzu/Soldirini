@@ -3,7 +3,7 @@
 // Calendario a schermo pieno: tocco = riepilogo del giorno, doppio tocco = nuova attività,
 // pressione lunga = selezione di più giorni. Documenti e Tasse sono sottopagine di Riepilogo.
 
-const APP_VERSIONE='24c.16';
+const APP_VERSIONE='24c.17';
 const SUB={tas:'rie'}; // sottopagina -> scheda madre
 // 24b.1 (D-098): pagine di dettaglio del Riepilogo, una per casella del riquadro (Documenti è dentro "Rimborsi spese")
 // 24c.14 (D-168): "Uscite fisse" e "Spese giornaliere" sono una pagina sola, "Spese" (dsp); dfx resta come nome vecchio
@@ -26,7 +26,7 @@ const _render8=render;
 // 24b.1 (D-098, mockup 02 tornata 23 §2): testata scura delle pagine, con l'icona e lo stesso importo della casella toccata
 // v24c (02, tornata 24 §1): nella vista Anno dell'anno in corso tutte le testate dicono "…, fino a {mese}", come il riquadro
 const fino=f=>f?', fino a '+f:'';
-const TESTA={dsp:['🛒',(m,a,y,f)=>a?`Spese ${y}${fino(f)}`:`Spese di ${m}`], // 24c.14 (D-168): uscite fisse + spese giornaliere
+const TESTA={dsp:['💸',(m,a,y,f)=>a?`Spese ${y}${fino(f)}`:`Spese di ${m}`], // 24c.14 (D-168): uscite fisse + spese giornaliere; 24c.17: 💸 (02, tornata 55 §1.2)
   dlav:['💼',(m,a,y,f)=>a?`Entrato da lavoro dipendente nel ${y}${fino(f)}`:`Entrato da lavoro dipendente a ${m}`],pen:['🏛️',(m,a,y,f)=>a?`Pensione ${y}${fino(f)}`:`Pensione di ${m}`],
   drim:['🧾',(m,a,y,f)=>a?`Rimborsi spese ${y}${fino(f)}`:`Rimborsi spese di ${m}`],drit:['📄',(m,a,y,f)=>a?`Ritenuta d’acconto ${y}${fino(f)}`:`Ritenuta d’acconto di ${m}`],
   dinc:['⏳',(m,a)=>a?'Ancora da incassare (tutto l’anno)':'Ancora da incassare'],
@@ -63,9 +63,14 @@ render=function(){
     document.querySelectorAll('#v-'+tab+' .pgper').forEach(x=>x.textContent=per);
     const inc=tab==='dinc'&&anno&&window.testaInc,t=TESTA[inc?'inc':tab],V=window.VALORI_RIE||{},ora=today().slice(0,7);
     const f=anno&&+y===+ora.slice(0,4)?MESI[(V.mesi||+ora.slice(5))-1]:'';
-    const box=$('v-'+tab).querySelector('.testa');if(box&&t)box.innerHTML=`<span class="ic" aria-hidden="true">${t[0]}</span><div><small>${t[1](m,anno,y,f)}</small><b>${eur(V[inc?'inc':tab]||0)}</b></div>`;
-    // 24c.14 (D-168): pagina "Spese", frase se una delle due parti è vuota
-    if(tab==='dsp'){$('rieFixVuoto').hidden=!!$('rieFix').innerHTML.trim();$('rieSpeseVuoto').hidden=!!$('rieSpese').innerHTML.trim();}
+    // 24c.17 (02, tornata 55 §1.2): nella testata di "Spese" sotto il totale le due parti (quella a 0 non si scrive)
+    const righe=tab==='dsp'?[['Uscite fisse',V.fx],['Spese giornaliere',V.sp]].filter(r=>r[1]).map(r=>`<span class="tr">${r[0]} ${eur(r[1])}</span>`).join(''):'';
+    const box=$('v-'+tab).querySelector('.testa');if(box&&t)box.innerHTML=`<span class="ic" aria-hidden="true">${t[0]}</span><div><small>${t[1](m,anno,y,f)}</small><b>${eur(V[inc?'inc':tab]||0)}</b>${righe}</div>`;
+    // 24c.14 (D-168): pagina "Spese", frase se una delle due parti è vuota; 24c.17: testi di 02 (tornata 55 §1.3)
+    if(tab==='dsp'){const fx=!!$('rieFix').innerHTML.trim(),sp=!!$('rieSpese').innerHTML.trim(),mn=MESI[+cur.slice(5)-1];
+      $('rieFixVuoto').hidden=fx;$('rieSpeseVuoto').hidden=sp;
+      if(!fx)$('rieFixVuoto').textContent=`Nessuna uscita fissa ${anno?'nel '+y:'a '+mn}. Le aggiungi da Nuova attività o da Impostazioni → Uscite fisse.`;
+      if(!sp)$('rieSpeseVuoto').textContent=`Nessuna spesa giornaliera ${anno?'nel '+y:'a '+mn}. Tocca «+ Aggiungi spesa» oppure importa i movimenti della banca.`;}
   }
   // 02 (Decisione 2, consiglio): il pulsante Pensione resta solo per chi non ha né lavoro dipendente né profilo pensione
   const bp=document.querySelector('#v-rie .subnav [data-goto="pen"]');if(bp)bp.hidden=!!((typeof lavori==='function'&&lavori().length)||(window.Pensione&&Pensione.profilo()));

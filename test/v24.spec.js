@@ -42,7 +42,8 @@ test.describe('v24 · finestra "È entrato" e "In arrivo"', () => {
     await rim.click();
     // 24c.1 (4b): prima le entrate, poi Spese giornaliere e Uscite fisse in fondo
     // 24c.14 (D-168): una sola casella "Spese" = uscite fisse 570 + spese giornaliere 80
-    await expect(page.locator('#heroDet > *').nth(-1)).toHaveText('Spese650,00 €, apri la pagina');
+    await expect(page.locator('#heroDet > *').nth(-1)).toHaveText('Spese650,00 €'); // 24c.17 (02, tornata 55 §1.1): il lettore di schermo legge l'aria-label
+    await expect(page.locator('#heroDet > *').nth(-1)).toHaveAttribute('aria-label', 'Spese a novembre: 650,00 €. Uscite fisse 570,00 €, spese giornaliere 80,00 €. Apri le spese.');
     await expect(page.locator('#rieTot .hero')).not.toContainText('Pagamenti fissi');
     await expect(page.locator('#rieFix summary .st')).toHaveText('💳 Uscite fisse');
     await expect(page.locator('#rieFix .kv span').filter({ hasText: 'Affitto' })).toContainText('addebitata il 3');

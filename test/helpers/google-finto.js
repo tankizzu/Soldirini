@@ -51,7 +51,8 @@ class DriveFinto {
     const voce = m + ' ' + p;
     this.registro.push(voce);
     if (this.ritardo) { const ms = this.ritardo(voce, req); if (ms) await new Promise(r => setTimeout(r, ms)); }
-    if (this.guasto) { const st = this.guasto(voce, req); if (st) return json({ error: { message: 'guasto simulato' } }, st); }
+    if (this.guasto) { const st = this.guasto(voce, req); if (st) return typeof st === 'object' // 24c.17: anche il motivo di Google (es. storageQuotaExceeded)
+      ? json({ error: { message: st.message || 'guasto simulato', errors: [{ reason: st.reason || '' }] } }, st.status) : json({ error: { message: 'guasto simulato' } }, st); }
     if (p === '/drive/v3/about') return json({ user: { displayName: 'Mario Rossi', emailAddress: 'mario.rossi@example.com' } });
     if (p === '/drive/v3/files' && m === 'GET') {
       const q = u.searchParams.get('q') || '';

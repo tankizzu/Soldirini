@@ -94,7 +94,7 @@ test.describe('24c.11', () => {
       { data: '11/11', scelta: 'sp:spesa', mese: null, gia: false },
     ]);
     const prima = await page.evaluate(() => [contiMese('2026-10'), contiMese('2026-11')].map(c => [c.sp, c.prog, c.lav.v, c.fTot]));
-    await page.click('#bcImporta');
+    await page.click('#bcImporta').then(() => page.click('#bcFatto'));
     expect(rete).toEqual([]);
     expect(await speseSalvate(page)).toEqual([['2026-11-01', 4.5, '2026-10'], ['2026-11-03', 20, '2026-10'], ['2026-11-09', 7, '2026-11'], ['2026-11-11', 30, '2026-11']]);
     const dopo = await page.evaluate(() => [contiMese('2026-10'), contiMese('2026-11')].map(c => [c.sp, c.prog, c.lav.v, c.fTot]));
@@ -130,7 +130,7 @@ test.describe('24c.11', () => {
     await page.setInputFiles('#bcFile', file(lista([carta('04/11/2026', '03/11/2026', -20, 'SUPERMERCATO ESEMPIO'), stip('09/11/2026', 1500, 'OTTOBRE 2026')])));
     expect(await righe(page)).toEqual([{ data: '03/11', scelta: 'sp:spesa', mese: 'Conta in ottobre.', gia: false }, { data: '09/11', scelta: 'no', mese: null, gia: false }]);
     await expect(page.locator('#bcList .bcrow').nth(1).locator('.bcinfo').first()).toHaveText('Già segnato come entrato il 10/11.');
-    await page.click('#bcImporta');
+    await page.click('#bcImporta').then(() => page.click('#bcFatto'));
     expect(await page.evaluate(lid => D().entrate[`lav|${lid}|2026-10`], lid)).toMatchObject({ data: '2026-11-10', importo: 1480 }); // non cambia
     // meseConto non valido (non è il mese prima della data) o rovinato: conta la data, come prima
     expect(await page.evaluate(() => { const a = uid(), b = uid();
@@ -181,7 +181,7 @@ test.describe('24c.11', () => {
     const daCsv = await page.locator('#bcList .bcrow').evaluateAll(R => R.map(r => r.textContent.replace(/\s+/g, ' ').trim() + ' | ' + (r.querySelector('select')?.value ?? '')));
     expect(daXlsx).toEqual(daCsv); // stessi movimenti, stesse proposte, stesso "Conta nei soldi di ottobre"
     expect(daCsv.length).toBe(5); expect(daCsv[3]).toContain('−1.234,56 €');
-    await page.click('#bcImporta');
+    await page.click('#bcImporta').then(() => page.click('#bcFatto'));
     await page.setInputFiles('#bcFile', xfile(XL));
     expect((await righe(page)).every(r => r.gia)).toBe(true); // lo stesso movimento in CSV e in Excel: "Già importato"
     await page.click('#bcAnn');

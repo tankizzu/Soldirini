@@ -204,12 +204,13 @@ test.describe('24c.6 · finestra della busta', () => {
 });
 
 test.describe('24c.6 rivista · campi type="number" nella pagina', () => {
-  test('salvadanaio con la percentuale salvata "12.125" (campo type="number"): proposta 12,125% dei soldi rimasti, come la 24c.5', async ({ browser }) => {
+  // 24c.17 (D-176): la quota a percentuale non c'è più; una percentuale salvata da una versione vecchia resta nei dati e la pagina si apre senza proposta
+  test('salvadanaio con la percentuale salvata "12.125" (dati vecchi): la pagina Risparmi si apre senza errori e senza proposta (D-176)', async ({ browser }) => {
     const { page, errori } = await telefono(browser);
     const r = await page.evaluate(() => { D().entrate = { 'pen|2026-10': { entrato: true, data: '2026-10-20', importo: 1000, updatedAt: 1 } };
       D().risparmi = { cfg: { perc: '12.125', updatedAt: 1 } }; changed(); tab = 'rie'; render(); vaiA('ris');
-      const b = document.getElementById('rsSalv'); return { rim: contiMese('2026-10').rimanenti, v: b && b.dataset.v }; });
-    expect(r.rim).toBe(1000); expect(+r.v).toBe(121.25);
+      return { rim: contiMese('2026-10').rimanenti, b: !!document.getElementById('rsSalv'), perc: !!document.getElementById('rsPerc'), cfg: D().risparmi.cfg.perc }; });
+    expect(r).toEqual({ rim: 1000, b: false, perc: false, cfg: '12.125' });
     expect(errori).toEqual([]);
   });
 });

@@ -232,7 +232,7 @@ async function gfetch(method,url,{json,body,headers,raw}={}){
   if(json!==undefined){h['Content-Type']='application/json';body=JSON.stringify(json);}
   const r=await fetchTempo(url,{method,headers:h,body},url.startsWith(UPLOAD)?TEMPI.caricamento:TEMPI.richiesta,'Google Drive');
   if(r.status===401){TOK=null;localStorage.removeItem('soldirini-tok');throw new AuthErr('Accesso scaduto: tocca "Sincronizza" per riconnetterti.');}
-  if(!r.ok){let m='';try{const j=await r.json();m=j.error?.message||'';}catch(e){}const err=new Error(`Google Drive (${r.status}): ${m||r.statusText}`);err.status=r.status;throw err;}
+  if(!r.ok){let m='',rs='';try{const j=await r.json();m=j.error?.message||'';rs=j.error?.errors?.[0]?.reason||'';}catch(e){}const err=new Error(`Google Drive (${r.status}): ${m||r.statusText}`);err.status=r.status;err.reason=rs;throw err;} // 24c.17: reason (es. storageQuotaExceeded)
   if(raw)return r;
   const ct=r.headers.get('content-type')||'';return ct.includes('json')?r.json():r.text();
 }

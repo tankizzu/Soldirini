@@ -92,8 +92,9 @@ renderRiepilogo=function(){_renderRie18();
   const {tot}=anno?aggrega(y):riepilogo(cur);const daInc=r2(dovuti().filter(d=>!d.pag).reduce((a,d)=>a+d.imp,0));
   const C=anno?contiAnno(y):contiMese(cur);const nConf=window.EntrateExtra?EntrateExtra.daConf().length:0;const lavV=anno?C.lav:C.lav.v,penV=anno?C.pen:C.pen.v;
   // 24b.1 (D-098 punto 3): ogni casella del riquadro aperto porta alla sua pagina di dettaglio (data-vai = scheda)
-  const cella=(t,v,cls='',nota='',pag='')=>({h:c=>{const k=[cls,c,pag?'hcel':''].filter(Boolean).join(' '),dentro=`<small>${t}</small><b>${v}</b>${nota?`<small class="nota">${nota}</small>`:''}`;
-    return pag?`<button type="button" class="${k}" data-vai="${pag}">${dentro}<span class="vh">, apri la pagina${/lungo/.test(k)?' Uscite fisse':''}</span></button>`:`<div class="${k}">${dentro}</div>`;}});
+  // al (24c.17): testo letto dal lettore di schermo al posto di "…, apri la pagina" (02, tornata 55)
+  const cella=(t,v,cls='',nota='',pag='',al='')=>({h:c=>{const k=[cls,c,pag?'hcel':''].filter(Boolean).join(' '),dentro=`<small>${t}</small><b>${v}</b>${nota?`<small class="nota">${nota}</small>`:''}`;
+    return pag?`<button type="button" class="${k}" data-vai="${pag}"${al?` aria-label="${esc(al)}"`:''}>${dentro}${al?'':`<span class="vh">, apri la pagina${/lungo/.test(k)?' Uscite fisse':''}</span>`}</button>`:`<div class="${k}">${dentro}</div>`;}});
   // vista Anno: resta "somma dei mesi da gennaio a …"; vista Mese senza "del mese" (D-085)
   const ora=today().slice(0,7);const sotto=!anno?'':+y<+ora.slice(0,4)?'somma dei mesi da gennaio a dicembre':+y===+ora.slice(0,4)?`somma dei mesi da gennaio a ${MESI[C.mesi-1]}`:'l’anno non è ancora iniziato';
   // 24b.2 (D-101): una casella compare solo se nel periodo mostrato ha un valore diverso da zero o qualcosa da mostrare
@@ -103,9 +104,14 @@ renderRiepilogo=function(){_renderRie18();
     return Entrate.voci(fino).some(v=>v.tipo===tipo&&(anno?v.ym.startsWith(y+'-'):v.ym===cur||(cur===ora&&!v.ent)));};
   // 24c.1 (richiesta dell'utente confermata il 19/11, punto 4b): prima le entrate, poi le uscite in fondo
   // 24c.14 (D-168): una sola casella "Spese" = uscite fisse + spese giornaliere (lo stesso numero di "Uscite"); c'è se almeno una ha un valore
-  const uscite=[C.sp||C.fTot?cella('Spese',eur(r2(C.fTot+C.sp)),'','','dsp'):null,
-    // 24c.14 (D-169): "Messi da parte" (versati meno prelevati), solo con la scelta accesa e se nel periodo c'è qualcosa
-    C.risMesso||C.risPreso?cella('Messi da parte',eur(C.ris).replace(/^-/,'−'),'',C.risPreso?`prelevati ${eur(C.risPreso)}`:'','ris'):null].filter(Boolean);
+  // 24c.17 (02, tornata 55 §1.1 e §2.3): "Spese" senza nota, con l'aria-label delle due parti; "Messi da parte" oppure "Presi dai risparmi"
+  const perL=anno?'nel '+cur.slice(0,4):'a '+MESI[+cur.slice(5)-1];
+  const spL=`Spese ${perL}: ${eur(r2(C.fTot+C.sp))}.${[['Uscite fisse',C.fTot],['spese giornaliere',C.sp]].filter(x=>x[1]).map(x=>` ${x[0]} ${eur(x[1])}`).join(',')}. Apri le spese.`;
+  const preso=C.risPreso>C.risMesso,risT=preso?'Presi dai risparmi':'Messi da parte',risV=eur(Math.abs(C.ris));
+  const risN=preso?(C.risMesso?`messi da parte ${eur(C.risMesso)}`:''):(C.risPreso?`prelevati ${eur(C.risPreso)}`:'');
+  const uscite=[C.sp||C.fTot?cella('Spese',eur(r2(C.fTot+C.sp)),'','','dsp',spL):null,
+    // 24c.14 (D-169): solo con la scelta accesa e se nel periodo c'è qualcosa
+    C.risMesso||C.risPreso?cella(risT,risV,'',risN,'ris',`${risT} ${perL}: ${risV}${risN?', '+risN:''}. Apri i risparmi.`):null].filter(Boolean);
   // 24c.1 (02, tornata 27 §3): casella a 0,00 € che c'è solo per una voce in arrivo → nota "stipendio/pensione in arrivo", senza importo
   const inArrivo=t=>!anno&&cur===ora&&!!window.Entrate&&Entrate.voci(ora).some(v=>v.tipo===t&&!v.ent);
   const entrate=[lavV||(lavori().length&&conVoce('lav'))?cella('Lavoro dipendente',eur(lavV),'',!lavV&&inArrivo('lav')?'stipendio in arrivo':'','dlav'):null,

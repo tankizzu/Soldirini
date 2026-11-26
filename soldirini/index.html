@@ -370,6 +370,20 @@ body.nascondi :is(.hero b,.hero .rim b,.kv b,details.fold>summary .sum,#daySum b
 .fascia{position:sticky;top:0;z-index:40;background:color-mix(in srgb,var(--warn) 16%,var(--card));border-bottom:1px solid color-mix(in srgb,var(--warn) 45%,var(--card));color:var(--ink);padding:10px 14px;font-size:14px}.fascia b,.fascia span{display:block}.fascia span{margin-top:3px}
 .vcsumt{font-size:12.5px;font-weight:750;color:var(--mut);margin:12px 0 -4px}
 .vcriga{padding-top:8px;border-top:1px dashed var(--line)}.vcrt{font-size:14px}.vcrt small{display:block;color:var(--mut);font-size:12.5px;margin-top:2px}.vcriga .btn{min-height:44px;flex:none}
+#bcDopo .bcfatti{margin:0 0 4px}#bcDopo .ok{color:var(--ok)}#bcDopo .bcdom{font-weight:650;margin:14px 0 2px}#bcDopo .bcopt span{display:block}#bcDopo .bcopt[disabled]{opacity:.7}
+#bcDopo .bcsolo{margin-top:10px}#bcDopo .bcesito{margin:14px 0 6px}.bcpt{font-weight:650;margin:12px 0 0}.passi{margin:4px 0 0;padding-left:20px;font-size:13.5px}.passi li{margin:2px 0}
+.bcresta{margin:6px 0 0}.bcresta .btn.link{min-height:44px;padding:0 4px}
+/* 24c.17 (D-156): «Elimina i dati di un mese» */
+.emsep{border-top:1px dashed var(--line);margin-top:14px;padding-top:12px}.emsep .btn{width:100%}.emsep p{margin:6px 0 0}
+.emmese{display:block;margin:0 0 6px}.emtesta{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:10px 0 0}.emtesta p{margin:0}.emtesta .btn.link{min-height:44px;flex:none}
+.emck{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:0 6px;align-items:start;padding:4px 0;border-bottom:1px dashed var(--line);margin:0;min-height:44px;cursor:pointer}
+.emck input{width:22px;height:22px;margin:11px auto 0;accent-color:var(--pri)}.emck .t{padding-top:10px;font-weight:650}.emck .t small{display:block;font-weight:400;font-size:13px}
+.emck .n{padding-top:10px;font-variant-numeric:tabular-nums}.emck{font-size:15px;color:var(--ink)}.emck.zero{opacity:.6;cursor:default}.emck.eminc{padding-left:20px}
+.emfisse{margin-top:10px}.emvuoto{margin:18px 0 6px}.emfoot .emriep{font-size:13px;color:var(--mut);margin:0 0 8px}.emfoot .emriep b{color:var(--ink)}
+.emfoot .pls{display:flex;gap:8px;width:100%}.emfoot .pls .btn{flex:1}.emfoot .pls .btn.danger{flex:1.6}.emfoot{flex-direction:column;align-items:stretch}.emindietro{text-align:center;margin-top:4px}.emindietro .btn.link{min-height:44px}
+#emBody .vcavv{font-size:13.5px}.emimp{margin:6px 0 0}.emok{color:var(--ok);margin:12px 0 0}
+.empdf{border:0;padding:0;margin:14px 0 0}.empdf legend{font-weight:650;padding:0}.empdf .radio{display:flex;gap:10px;align-items:flex-start;min-height:44px;padding:8px 0;margin:0}.empdf .radio input{width:22px;height:22px;flex:none;margin:1px 0 0;accent-color:var(--pri)}.empdf small{display:block;font-size:13px}
+.emcopia{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--gold);border-radius:var(--r);padding:10px 12px;font-size:13.5px;margin-top:12px}.emcopia .btn{width:100%;margin-top:8px}.emcopia .check{margin:8px 0 0;font-size:14px;font-weight:400;min-height:44px}
 .dcnote{display:flex;align-items:center;gap:12px;margin:10px 0}.dcnote span{flex:1;min-width:0}.dcnote .btn{flex:none;width:auto;margin:0}
 .xescelte{border:0;padding:0;margin:4px 0 8px}.xescelte legend{color:var(--mut);margin-bottom:2px}.xescelte .check{padding:6px 0;min-height:44px;align-items:flex-start}.xescelte .check span{display:flex;flex-direction:column;gap:2px}.xescelte .check small{font-size:13px}
 .xesub{display:flex;flex-direction:column;gap:2px;margin:0 0 6px}.xesub b{font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#xeTipi .chip,#evExTipi .chip{min-height:44px}#xeConta{display:block;margin-top:4px}
@@ -400,7 +414,7 @@ body.nascondi .hero small.det{filter:blur(6px)}
 /* 24b.1 (D-098): pagine di dettaglio del Riepilogo e caselle del riquadro che ci portano (stile provvisorio, aspetta il mockup di 02) */
 .pagrie .per{display:flex;align-items:center;gap:4px;margin:-6px 0 10px}.pagrie .per .pgper{flex:1;text-align:center;font-weight:650;color:var(--mut);font-size:14px}
 .testa{background:linear-gradient(135deg,color-mix(in srgb,var(--sez) 70%,#16181b),#1f2125);color:#fff;border-radius:var(--r);padding:14px 16px;margin-bottom:12px;display:flex;align-items:center;gap:12px}
-.testa:empty{display:none}.testa div{flex:1;display:flex;flex-direction:column}.testa small{opacity:.85;font-size:12.5px}.testa b{font-size:26px;font-variant-numeric:tabular-nums}
+.testa:empty{display:none}.testa div{flex:1;display:flex;flex-direction:column}.testa small,.testa .tr{opacity:.85;font-size:12.5px}.testa b{font-size:26px;font-variant-numeric:tabular-nums}
 .testa .ic{display:grid;place-items:center;background:rgba(255,255,255,.14);width:40px;height:40px;font-size:20px;border-radius:11px;flex:none}
 .hero button.rim:active{transform:scale(.985)}
 .hero .heroDet>button.hcel:active{background:rgba(255,255,255,.18);transform:scale(.97)}
@@ -592,11 +606,11 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
     <!-- le due parti sono le schede "💳 Uscite fisse" e "🛒 Spese giornaliere"; spFissi e spGiorn sono i punti di arrivo -->
     <div class="spparte" id="spFissi"></div>
     <div class="cards" id="rieFix"></div>
-    <p class="muted sm spvuoto" id="rieFixVuoto" hidden><span aria-hidden="true">💳</span> Nessuna uscita fissa in questo periodo. Le aggiungi da Nuova attività o da Impostazioni → Uscite fisse.</p>
+    <p class="muted sm spvuoto" id="rieFixVuoto" hidden>Nessuna uscita fissa in questo periodo. Le aggiungi da Nuova attività o da Impostazioni → Uscite fisse.</p>
     <div class="spparte" id="spGiorn"></div>
-    <div class="card bcimp"><h3><span aria-hidden="true">🏦</span> Movimenti della banca</h3><p class="muted sm">Scegli la lista movimenti della tua banca in CSV o Excel (per ora solo ING). Soldirini la legge solo sul telefono e non conserva il file.</p><button type="button" class="btn ghost" data-bcimp>🏦 Importa movimenti della banca</button><p class="muted sm">La lista si scarica dall'app o dal sito della banca, tra i movimenti del conto.</p><p class="sm bcerr" id="bcErr" role="alert" hidden></p></div>
     <div class="cards" id="rieSpese"></div>
-    <p class="muted sm spvuoto" id="rieSpeseVuoto" hidden><span aria-hidden="true">🛒</span> Nessuna spesa giornaliera in questo periodo.</p>
+    <p class="muted sm spvuoto" id="rieSpeseVuoto" hidden>Nessuna spesa giornaliera in questo periodo.</p>
+    <div class="card bcimp"><h3><span aria-hidden="true">🏦</span> Movimenti della banca</h3><p class="muted sm">Scegli la lista movimenti della tua banca in CSV o Excel (per ora solo ING). Soldirini la legge solo sul telefono e ne tiene una copia solo se scegli «Archivia su Drive».</p><button type="button" class="btn ghost" data-bcimp>🏦 Importa movimenti della banca</button><p class="muted sm">La lista si scarica dall'app o dal sito della banca, tra i movimenti del conto.</p><p class="sm bcerr" id="bcErr" role="alert" hidden></p></div>
   </section>
 
   <section id="v-dlav" class="pagrie" hidden>
@@ -704,7 +718,10 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
         <div class="card"><h3>Blocco dell’app</h3><div id="sicBox"></div></div>
         <div class="card"><h3>Cestino</h3><p class="muted sm" style="margin-top:0">Le attività e i progetti eliminati restano qui 30 giorni.</p><div id="cestBox"></div></div>
         <div class="card"><h3>Storico modifiche</h3><div id="storBox" class="storbox"></div></div>
-        <div class="card"><h3>Copia di sicurezza</h3><div id="cpBox"></div></div>
+        <div class="card"><h3>Copia di sicurezza</h3><div id="cpBox"></div>
+          <!-- 24c.17 (D-156): in fondo alla scheda delle copie (02, tornata 52 schermo A1); eliminamese.js -->
+          <div class="emsep"><button type="button" class="btn danger" id="emApri">Elimina i dati di un mese…</button>
+            <p class="muted sm">Per togliere tutto quello che hai segnato in un mese, per esempio un mese importato per errore. Le uscite fisse restano.</p></div></div>
       </div>
     </div>
   </section>
@@ -1068,10 +1085,12 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
   <p class="muted sm" id="bcSub" style="margin-top:0"></p>
   <div class="vcavv" id="bcAvviso" role="status" hidden><b>⚠ Il file sembra incompleto.</b> Il saldo iniziale più i movimenti non dà il saldo finale: forse manca qualche riga. Controlla le proposte prima di importare, oppure scarica di nuovo la lista.</div>
   <p class="sm ok" id="bcOk" hidden><b>✓ Lettura completa:</b> i saldi del file tornano.</p>
-  <p class="muted sm" style="margin:4px 0 8px">Controlla le proposte: niente si salva finché non tocchi «Importa».</p>
+  <p class="muted sm" id="bcPrima" style="margin:4px 0 8px">Controlla le proposte: niente si salva finché non tocchi «Importa».</p>
   <div id="bcList"></div>
   <p class="sm" id="bcTot" style="margin:10px 0 0"></p><p class="muted sm" id="bcTipi" style="margin:2px 0 0"></p>
-  <div class="foot"><button class="btn ghost" id="bcAnn">Annulla</button><button class="btn" id="bcImporta">Importa</button></div></div></div>
+  <!-- 24c.17 (D-160): dopo «Importa», cosa fare del file della banca (02, tornata 52 schermi B1-B4) -->
+  <div id="bcDopo" hidden></div>
+  <div class="foot"><button class="btn ghost" id="bcAnn">Annulla</button><button class="btn" id="bcImporta">Importa</button><button class="btn" id="bcFatto" hidden>Fatto</button></div></div></div>
 <div class="modal" id="dlg" hidden><div class="sheet dlg" role="alertdialog" aria-modal="true"><p id="dlgMsg"></p><div class="acts" id="dlgBtns"></div></div></div>
 <div class="modal" id="cuModal" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="cuTitle">
@@ -1112,6 +1131,10 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
   <div class="foot"><button class="btn ghost" id="vcNo">Non ora</button><button class="btn" id="vcSi">Riprendi</button></div>
   <p class="muted sm" id="vcNota">Con «Non ora» la domanda torna al prossimo avvio. Puoi riprendere la copia anche da Impostazioni → Account.</p></div></div>
 <!-- v24c: copia di sicurezza (schermate 12, 13, 21a-21c, 22, 23 di 02); il contenuto lo scrive copia.js -->
+<!-- 24c.17 (D-156, D-164): «Elimina i dati di un mese», passi 1 e 2 (02, tornata 52 schermi A2-A5); eliminamese.js -->
+<div class="modal" id="emModal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="emTit">
+  <div class="sheethead"><h2 id="emTit">Elimina i dati di un mese</h2><button class="x" id="emClose" aria-label="Chiudi">×</button></div>
+  <div id="emBody"></div><div class="foot emfoot" id="emFoot"></div></div></div>
 <div class="modal" id="cpModal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="cpTit">
   <div class="sheethead"><h2 id="cpTit"></h2><button class="x" id="cpX" type="button" aria-label="Chiudi">×</button></div>
   <div id="cpBody"></div></div></div>

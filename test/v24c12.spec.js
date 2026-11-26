@@ -57,7 +57,7 @@ test.describe('24c.12', () => {
     const { page, errori } = await telefono(browser);
     const { lid } = await base(page);
     await page.setInputFiles('#bcFile', file(lista([carta('03/11/2026', '02/11/2026', -6, 'BAR ESEMPIO')])));
-    await page.click('#bcImporta');
+    await page.click('#bcImporta').then(() => page.click('#bcFatto'));
     expect(await page.evaluate(() => Object.values(D().spesePers).map(s => s.meseConto))).toEqual(['2026-11']);
     await page.evaluate(lid => { (D().entrate || (D().entrate = {}))[`lav|${lid}|2026-10`] = { entrato: true, data: '2026-11-09', importo: 1500, updatedAt: 1 }; changed(); }, lid);
     expect(await page.evaluate(() => [contiMese('2026-10').sp, contiMese('2026-11').sp])).toEqual([0, 6]);
@@ -115,7 +115,8 @@ test.describe('24c.12', () => {
     expect(R[5]).toMatchObject({ scelta: `en:lav|${id.lid}|2026-11`, avviso: '⚠ Data insolita: è prima di novembre 2026, il mese dello stipendio. Se è giusta, importa pure.' });
     await expect(page.locator('#bcTipi')).toHaveText('1 spesa · 1 stipendio e 1 pensione entrati · 2 uscite fisse già contate');
     await page.click('#bcImporta');
-    await expect(page.locator('#toast')).toHaveText('✓ Importati 5 movimenti: 1 spesa, 2 entrate segnate, 2 uscite fisse già contate.');
+    await expect(page.locator('#bcDopo .bcfatti')).toHaveText('✓ Importati 5 movimenti: 1 spesa, 2 entrate segnate, 2 uscite fisse già contate.'); // 24c.17 (D-160): in cima alla finestra
+    await page.click('#bcFatto');
     const dopo = await page.evaluate(() => [contiMese('2026-10'), contiMese('2026-11')]);
     // il reso non toglie niente; Streaming e Luce contano una volta; la spesa da 41 conta in ottobre
     expect([dopo[0].sp, dopo[1].sp, dopo[0].fTot, dopo[1].fTot]).toEqual([prima[0].sp + 41, prima[1].sp, prima[0].fTot, prima[1].fTot]);
@@ -127,7 +128,7 @@ test.describe('24c.12', () => {
     const L = lista([carta('03/11/2026', '02/11/2026', -6, 'BAR ESEMPIO'), carta('05/11/2026', '04/11/2026', -9, 'NEGOZIO ESEMPIO')]);
     const A = await telefono(browser);
     await A.page.evaluate(() => { DB.meta.skipWelcome = true; });
-    await A.page.setInputFiles('#bcFile', file(L)); await A.page.click('#bcImporta');
+    await A.page.setInputFiles('#bcFile', file(L)); await A.page.click('#bcImporta').then(() => A.page.click('#bcFatto'));
     const copia = Buffer.from(await A.page.evaluate(async () => [...await Copia.crea(null)]));
     for (const modo of ['sostituisci', 'unisci']) {
       const { page, errori } = await telefono(browser);
@@ -184,7 +185,7 @@ test.describe('24c.12', () => {
     await base(page);
     await page.evaluate(() => vaiA('dsp'));
     await expect(page.locator('#v-dsp .bcimp h3')).toHaveText('🏦 Movimenti della banca');
-    await expect(page.locator('#v-dsp .bcimp')).toContainText('Scegli la lista movimenti della tua banca in CSV o Excel (per ora solo ING). Soldirini la legge solo sul telefono e non conserva il file.');
+    await expect(page.locator('#v-dsp .bcimp')).toContainText('Scegli la lista movimenti della tua banca in CSV o Excel (per ora solo ING). Soldirini la legge solo sul telefono e ne tiene una copia solo se scegli «Archivia su Drive».'); // 24c.17 (D-160), testo provvisorio per 02
     // errore sotto il pulsante della pagina
     const [fc] = await Promise.all([page.waitForEvent('filechooser'), page.click('#v-dsp [data-bcimp]')]);
     await fc.setFiles(file('Data;Importo\r\n01/11/2026;-1\r\n', 'altra.csv'));

@@ -57,7 +57,7 @@ test.describe('24c.10 · D-147: movimenti della banca dal CSV', () => {
     expect(await page.evaluate(() => Object.keys(D().spesePers || {}).length)).toBe(0); // niente si salva prima di "Importa"
     // il nome della spesa si può cambiare
     await page.locator('[data-bcnome="0"]').fill('Bar sotto casa');
-    await page.click('#bcImporta');
+    await page.click('#bcImporta').then(() => page.click('#bcFatto'));
     await expect(page.locator('#bcModal')).toBeHidden();
     const S = await page.evaluate(() => Object.values(D().spesePers).map(s => [s.data, s.cat, s.importo, s.nota, s.origine]).sort());
     expect(S).toEqual([['2026-11-01', 'bar', 4.5, 'Bar sotto casa', 'banca'], ['2026-11-02', 'online', 12.99, 'PAYPAL *STREAMING ESEMPIO', 'banca'], ['2026-11-10', 'casa', 300, 'Affitto', 'banca']]);
@@ -70,7 +70,7 @@ test.describe('24c.10 · D-147: movimenti della banca dal CSV', () => {
     const { page, errori } = await telefono(browser);
     const prima = await page.evaluate(() => contiMese('2026-11'));
     expect([prima.entrate, prima.fTot, prima.sp, prima.rimanenti]).toEqual([0, 40, 0, -40]);
-    await page.setInputFiles('#bcFile', file(CSV)); await page.click('#bcImporta');
+    await page.setInputFiles('#bcFile', file(CSV)); await page.click('#bcImporta').then(() => page.click('#bcFatto'));
     const dopo = await page.evaluate(() => contiMese('2026-11'));
     // 24c.11 (D-152): lo stipendio è arrivato il 10/11, quindi i movimenti dell'1-6/11 contano in ottobre (spese 17,49 e rimborso 150)
     expect([dopo.lav.v, dopo.prog, dopo.fTot, dopo.sp, dopo.rimanenti]).toEqual([1500, 0, 40, 300, 1160]);
@@ -85,7 +85,7 @@ test.describe('24c.10 · D-147: movimenti della banca dal CSV', () => {
 
   test('stesso file due volte: tutti “già importato” e spenti, niente si aggiunge', async ({ browser }) => {
     const { page, errori } = await telefono(browser);
-    await page.setInputFiles('#bcFile', file(CSV)); await page.click('#bcImporta');
+    await page.setInputFiles('#bcFile', file(CSV)); await page.click('#bcImporta').then(() => page.click('#bcFatto'));
     const n = await page.evaluate(() => JSON.stringify([D().spesePers, D().entrate, pagamenti()]));
     await page.setInputFiles('#bcFile', file(CSV));
     await expect(page.locator('#bcModal')).toBeVisible();
