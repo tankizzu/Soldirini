@@ -79,8 +79,8 @@ test.describe('24c.12', () => {
     await vedi('2026-10');
     await page.locator('#rieRim summary').click();
     expect(await page.locator('#rieRim .kv').evaluateAll(K => K.map(k => [...k.children].map(c => c.textContent.trim()).join(' '))))
-      .toEqual(['Rimasti dai mesi prima −30,00 €', 'Rimanenti del mese 50,00 €', 'Totale 20,00 €']);
-    await expect(page.locator('#rieRim p')).toHaveText('Da settembre 2026, come scelto in Impostazioni → Aspetto. Il numero grande resta solo del mese.');
+      .toEqual(['Rimasti dai mesi prima −30,00 €', 'Soldi rimanenti di ottobre 50,00 €', 'Totale 20,00 €']);
+    await expect(page.locator('#rieRim p')).toHaveText('Solo settembre 2026, come scelto in Impostazioni → Aspetto. Il numero grande in alto resta solo di ottobre.');
     await vedi('2026-09'); await expect(page.locator('#rieRim')).toHaveCount(0); // nel mese scelto
     await vedi('2026-08'); await expect(page.locator('#rieRim')).toHaveCount(0); // prima
     expect(await page.evaluate(() => [contiMese('2026-08').rimanenti, Object.keys(D().spesePers).length])).toEqual([100, 1]); // i dati restano
@@ -107,7 +107,7 @@ test.describe('24c.12', () => {
       stip('27/10/2026', 1500, 'NOVEMBRE 2026'),                                         // MB14: arrivato prima del mese
     ])));
     const R = await righe(page);
-    expect(R[0]).toEqual({ data: '02/11', scelta: 'no', scelte: ['no'], info: 'Carta: rimborso del 02/11 (in banca il 03/11). Rimborso sulla carta: non è una spesa.', avviso: null, on: false });
+    expect(R[0]).toEqual({ data: '02/11', scelta: 'no', scelte: ['no'], info: 'Carta: reso del 02/11 (in banca il 03/11). Soldi restituiti sulla carta: non è una spesa.', avviso: null, on: false });
     expect(R[1]).toMatchObject({ scelta: 'fx:' + id.stream, info: "Carta: acquisto del 02/11 (in banca il 04/11). Sembra l'uscita fissa «Streaming», che conta già nel mese.", on: true });
     expect(R[2]).toMatchObject({ scelta: 'fx:' + id.luce, info: "Addebito diretto: sembra l'uscita fissa «Luce», che conta già nel mese." });
     expect(R[3]).toMatchObject({ scelta: 'sp:casa', info: 'Addebito diretto: nessuna uscita fissa simile. Conta in ottobre.' }); // prima della pensione del 10/11 (D-152)
@@ -173,7 +173,7 @@ test.describe('24c.12', () => {
     // informativa (03, tornata 49 §5)
     const pr = await page.evaluate(async () => (await fetch('privacy.html')).text());
     // 24c.13 (D-165): il nome di chi manda il bonifico si salva solo per le entrate da confermare (v24c13.spec.js)
-    expect(pr).toContain('né i nomi di chi riceve un tuo bonifico. Per i bonifici ricevuti che l’app non sa riconoscere');
+    expect(pr).toContain('né i nomi di chi riceve un tuo bonifico.'); // 24c.14: testo definitivo di 03 (v24c14.spec.js)
     expect(pr).toContain('Se la causale di un tuo bonifico contiene un nome, puoi cambiarla prima di importare.');
     expect(pr).toContain('versione 24c.1');
     expect(errori).toEqual([]);

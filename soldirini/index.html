@@ -344,7 +344,7 @@ body.nascondi :is(.hero b,.hero .rim b,.kv b,details.fold>summary .sum,#daySum b
 .grid.swl{animation:swl .26s ease-out}.grid.swr{animation:swr .26s ease-out}
 @keyframes swl{from{opacity:.2;transform:translateX(40px)}to{opacity:1;transform:none}}@keyframes swr{from{opacity:.2;transform:translateX(-40px)}to{opacity:1;transform:none}}
 .ev.fx{opacity:.9}
-#fxModal,#obModal,#mvModal{z-index:60}
+#fxModal,#obModal,#mvModal,#xeModal{z-index:60} /* 24c.14: #xeModal anche sopra il giorno aperto */
 #tmModal{z-index:61}
 /* v24b: protezione dalla pulizia automatica (Impostazioni → Account) e finestra della vecchia copia */
 .prot{margin:8px 0 4px}.prot .kv{border:0;align-items:center}.prot p.sm{margin:2px 0 8px}
@@ -361,7 +361,8 @@ body.nascondi :is(.hero b,.hero .rim b,.kv b,details.fold>summary .sum,#daySum b
 .vcsumt{font-size:12.5px;font-weight:750;color:var(--mut);margin:12px 0 -4px}
 .vcriga{padding-top:8px;border-top:1px dashed var(--line)}.vcrt{font-size:14px}.vcrt small{display:block;color:var(--mut);font-size:12.5px;margin-top:2px}.vcriga .btn{min-height:44px;flex:none}
 .dcnote{display:flex;align-items:center;gap:12px;margin:10px 0}.dcnote span{flex:1;min-width:0}.dcnote .btn{flex:none;width:auto;margin:0}
-.xescelte{border:0;padding:0;margin:4px 0 8px}.xescelte legend{color:var(--mut);margin-bottom:2px}.xescelte .check{padding:6px 0}
+.xescelte{border:0;padding:0;margin:4px 0 8px}.xescelte legend{color:var(--mut);margin-bottom:2px}.xescelte .check{padding:6px 0;min-height:44px;align-items:flex-start}.xescelte .check span{display:flex;flex-direction:column;gap:2px}.xescelte .check small{font-size:13px}
+.xesub{display:flex;flex-direction:column;gap:2px;margin:0 0 6px}.xesub b{font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#xeTipi .chip,#evExTipi .chip{min-height:44px}#xeConta{display:block;margin-top:4px}
 .vcavv{background:color-mix(in srgb,var(--warn) 14%,var(--card));border:1px solid color-mix(in srgb,var(--warn) 45%,var(--card));border-radius:12px;padding:10px 12px;font-size:14px;margin:10px 0}
 /* 24.2 (D-085): riquadro del Riepilogo riducibile */
 .hero button.rim{display:flex;flex-direction:column;align-items:flex-start;position:relative;width:100%;min-height:44px;background:none;border:0;border-bottom:1px solid rgba(255,255,255,.14);color:inherit;font:inherit;text-align:left;padding:0 44px 10px 0;margin:0;cursor:pointer;border-radius:0}
@@ -400,6 +401,7 @@ body.nascondi .hero small.det{filter:blur(6px)}
 tr.trvai{cursor:pointer}tr.trvai:hover td,tr.trvai:focus-visible td{background:color-mix(in srgb,var(--mut) 10%,transparent)}tr.trvai:focus-visible{outline:2px solid var(--pri);outline-offset:-2px}
 .mesi .mrow{display:flex;align-items:center;gap:8px;width:100%;padding:8px 0;border:0;border-bottom:1px dashed var(--line);background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;min-height:44px}.mesi .mrow:last-child{border-bottom:0}.mesi .mrow .tx{flex:1;display:flex;flex-direction:column}.mesi .mrow small{color:var(--mut)}.mesi .mrow::after{content:"›";content:"›"/"";color:var(--mut);font-size:20px}
 .pgsez{margin:18px 2px 8px;font-size:15px}
+.spparte{scroll-margin-top:12px}.spvuoto{margin:0 2px 12px}
 /* v24c: copia di sicurezza (mockup 02-mockup-v24c-riprendi-copia) */
 #toast{white-space:pre-line}
 .cprow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:space-between;margin:6px 0 0;font-weight:650;font-size:14px}
@@ -571,21 +573,20 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
     </div>
   </section>
 
-  <section id="v-dfx" class="pagrie" hidden>
-    <button type="button" class="back indietro" data-goto="rie" aria-label="Indietro al Riepilogo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span>Indietro</span></button>
-    <div class="monthbar"><h2>Uscite fisse</h2></div>
-    <div class="per"><button class="ib pgPrev" aria-label="Periodo prima">‹</button><span class="pgper"></span><button class="ib pgNext" aria-label="Periodo dopo">›</button></div>
-    <div class="testa"></div>
-    <div class="cards" id="rieFix"></div>
-  </section>
-
+  <!-- 24c.14 (D-168): una sola pagina "Spese" con due parti, Uscite fisse e Spese giornaliere (prima v-dfx e v-dsp) -->
   <section id="v-dsp" class="pagrie" hidden>
     <button type="button" class="back indietro" data-goto="rie" aria-label="Indietro al Riepilogo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span>Indietro</span></button>
-    <div class="monthbar"><h2>Spese giornaliere</h2></div>
+    <div class="monthbar"><h2>Spese</h2></div>
     <div class="per"><button class="ib pgPrev" aria-label="Periodo prima">‹</button><span class="pgper"></span><button class="ib pgNext" aria-label="Periodo dopo">›</button></div>
     <div class="testa"></div>
+    <!-- le due parti sono le schede "💳 Uscite fisse" e "🛒 Spese giornaliere"; spFissi e spGiorn sono i punti di arrivo -->
+    <div class="spparte" id="spFissi"></div>
+    <div class="cards" id="rieFix"></div>
+    <p class="muted sm spvuoto" id="rieFixVuoto" hidden><span aria-hidden="true">💳</span> Nessuna uscita fissa in questo periodo. Le aggiungi da Nuova attività o da Impostazioni → Uscite fisse.</p>
+    <div class="spparte" id="spGiorn"></div>
     <div class="card bcimp"><h3><span aria-hidden="true">🏦</span> Movimenti della banca</h3><p class="muted sm">Scegli la lista movimenti della tua banca in CSV o Excel (per ora solo ING). Soldirini la legge solo sul telefono e non conserva il file.</p><button type="button" class="btn ghost" data-bcimp>🏦 Importa movimenti della banca</button><p class="muted sm">La lista si scarica dall'app o dal sito della banca, tra i movimenti del conto.</p><p class="sm bcerr" id="bcErr" role="alert" hidden></p></div>
     <div class="cards" id="rieSpese"></div>
+    <p class="muted sm spvuoto" id="rieSpeseVuoto" hidden><span aria-hidden="true">🛒</span> Nessuna spesa giornaliera in questo periodo.</p>
   </section>
 
   <section id="v-dlav" class="pagrie" hidden>
@@ -684,7 +685,7 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
           <p class="muted sm" id="festeCalNota">Le feste nazionali italiane, con 🎉. Il santo patrono si aggiunge nel lavoro, in “Feste locali”.</p>
           <!-- 24c.12 (D-157): mese da cui parte "Rimasti dai mesi prima" -->
           <label>Inizia i conti da<input type="month" id="contiDa" aria-describedby="contiDaNota"></label>
-          <p class="muted sm" id="contiDaNota">Nel Riepilogo, “Rimasti dai mesi prima” somma i mesi da qui in poi. I mesi prima restano nell’app ma non entrano nel totale. Vuoto: dal primo mese con dati.</p></div>
+          <p class="muted sm" id="contiDaNota">Vale solo per “Rimasti dai mesi prima” nel Riepilogo: somma i mesi da qui in poi. I dati dei mesi prima restano nell’app. Vuoto: dal primo mese con dati.</p></div>
         <div class="card"><h3>Google Calendar</h3><div id="gcalBody"></div></div>
         <div class="card"><h3>Promemoria</h3><div class="stack">
           <label class="check"><input type="checkbox" id="promem"> Avvisami delle attività da confermare</label>
@@ -753,13 +754,13 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
     </div></div></details>
     <details class="card fold sez" id="secSpese"><summary><span class="st">🛒 Spese giornaliere</span><span class="sum" id="secSpeseSum"></span></summary><div class="fbody" id="evSpP"></div></details>
     <!-- 24c.13 (D-074): entrata extra da qui, testi di 02 (mockup D-072, schermata 20); extra.js -->
-    <details class="card fold sez" id="secExtra"><summary><span class="st">💶 Entrata extra</span><span class="sum" id="secExtraSum"></span></summary><div class="fbody" id="evEx">
-      <p class="muted sm" style="margin-top:0">Soldi entrati una volta sola: una restituzione, un regalo, una vendita. Contano nei soldi rimanenti di questo mese.</p>
+    <details class="card fold sez" id="secExtra"><summary><span class="st">🪙 Entrata extra</span><span class="sum" id="secExtraSum"></span></summary><div class="fbody" id="evEx">
+      <p class="muted sm" style="margin-top:0">Soldi entrati una volta sola: una restituzione, un regalo, una vendita. Conta nei soldi rimanenti del mese di questo giorno.</p>
       <div class="tuchips" id="evExTipi"></div>
       <p class="sm warn" id="evExVendita" hidden>⚠ Se compri per rivendere o vendi in modo continuativo, questi soldi possono essere tassati: chiedi a un commercialista. L’app non li conta nelle tasse.</p>
       <div class="g2"><label>Importo €<input id="evExImp" inputmode="decimal" placeholder="0,00" autocomplete="off"></label>
-        <label>Nota<input id="evExNota" maxlength="60" placeholder="facoltativa" autocomplete="off"></label></div>
-      <p class="sm err" id="evExErr" role="alert" hidden></p><p class="muted sm">Non conta per le tasse. Per i compensi di un lavoro usa “Progetti”.</p></div></details>
+        <label>Nota (facoltativa)<input id="evExNota" maxlength="60" placeholder="es. parte dell’affitto" autocomplete="off"></label></div>
+      <p class="sm err" id="evExErr" role="alert" hidden></p><p class="muted sm">Non conta per le tasse. Per i compensi di un lavoro usa «Progetti».</p></div></details>
     <details class="card fold sez" id="secFix"><summary><span class="st">💳 Uscita fissa</span><span class="sum" id="secFixSum"></span></summary><div class="fbody" id="evFix">
       <p class="muted sm" style="margin-top:0">Conta nei soldi rimanenti di ogni mese, già dal primo giorno del mese.</p>
       <div class="tuchips" id="evFixCats"></div>
@@ -1018,23 +1019,24 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
 <!-- 24c.13 (D-165, D-074): scegli cos'è un'entrata da confermare / modifica un'entrata extra (extra.js) -->
 <div class="modal" id="xeModal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="xeTit">
   <div class="sheethead"><h2 id="xeTit">Entrata da confermare</h2><button class="x" id="xeClose" aria-label="Chiudi">×</button></div>
-  <p class="sm" id="xeSub" style="margin-top:0"></p>
+  <div id="xeSub" class="xesub"><b id="xeChi"></b><span class="muted sm" id="xeQuando"></span></div>
   <fieldset class="xescelte" id="xeScelte"><legend class="sm">Cos’è?</legend>
-    <label class="check"><input type="radio" name="xeS" value="extra"> Entrata extra (restituzione, regalo, vendita, altro)</label>
-    <label class="check"><input type="radio" name="xeS" value="prog"> Compenso o rimborso di un progetto</label>
-    <label class="check"><input type="radio" name="xeS" value="no"> Non è un’entrata</label></fieldset>
+    <!-- 24c.14: testi definitivi di 02 (tornata 53 §1.5) -->
+    <label class="check"><input type="radio" name="xeS" value="extra"><span><b>Entrata extra</b><small class="muted">Una restituzione, un regalo, una vendita o altro. Conta nei soldi rimanenti.</small></span></label>
+    <label class="check"><input type="radio" name="xeS" value="prog"><span><b>Compenso o rimborso di un progetto</b><small class="muted">Si segna «Entrati» sul mese del progetto.</small></span></label>
+    <label class="check"><input type="radio" name="xeS" value="no"><span><b>Non è un’entrata</b><small class="muted">Per esempio soldi spostati da un tuo conto.</small></span></label></fieldset>
   <div id="xePExtra" hidden>
     <div class="tuchips" id="xeTipi"></div>
     <p class="sm warn" id="xeVendita" hidden>⚠ Se compri per rivendere o vendi in modo continuativo, questi soldi possono essere tassati: chiedi a un commercialista. L’app non li conta nelle tasse.</p>
-    <div class="g2"><label>Giorno<input id="xeData" type="date"></label><label>Importo €<input id="xeImp" inputmode="decimal" autocomplete="off"></label>
-      <label class="s2">Nota<input id="xeNota" maxlength="60" placeholder="facoltativa" autocomplete="off"></label></div>
-    <p class="muted sm">Conta nei soldi rimanenti del mese di quel giorno. Non conta per le tasse.</p></div>
+    <div class="g2"><label>Giorno<input id="xeData" type="date"><small class="muted sm" id="xeConta" hidden></small></label><label>Importo €<input id="xeImp" inputmode="decimal" autocomplete="off"></label>
+      <label class="s2">Nota (facoltativa)<input id="xeNota" maxlength="60" placeholder="es. parte dell’affitto" autocomplete="off"></label></div>
+    <p class="muted sm">Non conta per le tasse. Per i compensi di un lavoro usa «Progetti».</p></div>
   <div id="xePProg" hidden>
-    <p class="muted sm" id="xePgVuoto" hidden>Nei progetti non ci sono mesi con attività da segnare: segna prima le attività del mese, poi torna qui.</p>
+    <p class="muted sm" id="xePgVuoto" hidden>Nessun progetto ha attività da collegare. Scegli «Entrata extra», oppure segna prima le attività in Progetti.</p>
     <div id="xePgCampi"><label>A cosa si riferisce<select id="xePg"></select></label>
       <div class="g2"><label>Quando sono entrati<input id="xePgData" type="date"></label><label>Importo €<input id="xePgImp" inputmode="decimal" autocomplete="off"></label></div>
-      <p class="sm warn" id="xePgGia" hidden></p></div></div>
-  <p class="muted sm" id="xePNo" hidden>Si toglie dall’elenco e non conta nei soldi. Se importi di nuovo la stessa lista, non torna.</p>
+      <p class="vcavv" id="xePgGia" hidden></p></div></div>
+  <p class="muted sm" id="xePNo" hidden>Si toglie dall’elenco e non conta nei soldi. Se importi di nuovo la stessa lista, non ricompare.</p>
   <p class="sm err" id="xeErr" role="alert" hidden></p>
   <div class="foot"><button class="btn danger" id="xeDel" hidden>Elimina</button><button class="btn ghost" id="xeAnn">Annulla</button><button class="btn" id="xeOk" disabled>Salva</button></div></div></div>
 <!-- 24c.10 (D-147): movimenti della banca da CSV (banca.js); 24c.11 (D-153) anche Excel -->

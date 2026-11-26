@@ -21,6 +21,10 @@ const gmA=d=>`${d.slice(8)}/${d.slice(5,7)}/${d.slice(0,4)}`;
 const testo=(s,n=60)=>typeof s==='string'?pulisciT(s).slice(0,n):'';
 const pulisciT=s=>window.Banca?Banca.pulisci(s):String(s).trim();
 const pl=(n,uno,tanti)=>`${n} ${n===1?uno:tanti}`;
+// 24c.14 (02, tornata 53 §2 punto 1): 🪙 per le entrate extra; 💶 vuol già dire "Incassato dai progetti" (§6 delle regole)
+const ICONA='🪙';
+const chiDi=x=>x.nome?`Da ${x.nome}`:x.fonte==='accredito'?'Accredito':'Bonifico ricevuto';
+const NOTA_TASSE='Non conta per le tasse. Per i compensi di un lavoro usa «Progetti».';
 const FUTURO='La data non può essere nel futuro: i soldi devono essere già arrivati.'; // D-078, testo di 02
 const VENDITA='⚠ Se compri per rivendere o vendi in modo continuativo, questi soldi possono essere tassati: chiedi a un commercialista. L’app non li conta nelle tasse.'; // 04, D-074
 
@@ -31,7 +35,7 @@ function extra(){const out=[];
   return out.sort((a,b)=>a.data<b.data?-1:a.data>b.data?1:0);}
 function daConf(){const out=[];
   for(const [id,x] of Object.entries(DC())){if(!x||typeof x!=='object'||x.deleted||!dOk(x.data)||!impOk(x.importo))continue;
-    out.push({id,data:x.data,importo:x.importo,nome:testo(x.nome),meseConto:x.meseConto});}
+    out.push({id,data:x.data,importo:x.importo,nome:testo(x.nome),fonte:x.fonte==='accredito'?'accredito':'bonifico',meseConto:x.meseConto});}
   return out.sort((a,b)=>a.data<b.data?-1:a.data>b.data?1:0);}
 
 // ---------- nei conti: "Entrati" del mese ----------
@@ -41,20 +45,36 @@ Entrate.indice=function(){const I=_indice();
   return I;};
 
 // ---------- pagina "Ancora da incassare": Entrate da confermare ed Entrate extra ----------
-function righeConf(L){return L.map(x=>{const tit=x.nome?`Da ${esc(x.nome)}`:'Bonifico ricevuto';
-  return `<div class="ir"><span class="tx"><b>${tit}</b><small>${gmA(x.data)} · dalla lista movimenti</small></span><b class="imp">${eur(x.importo)}</b>`+
-    `<button type="button" class="btn sm" data-dc="${esc(x.id)}" aria-label="Scegli cos’è l’entrata del ${gmA(x.data)} di ${eur(x.importo)}">Scegli</button></div>`;}).join('');}
+// 24c.14: testi definitivi di 02 (tornata 53 §1.3 e §1.6); importi in --ink senza "+" (le entrate da confermare non contano)
+function righeConf(L){return L.map(x=>`<div class="ir"><span class="tx"><b class="dcchi">${esc(chiDi(x))}</b><small>${gmA(x.data)} · dalla lista movimenti</small></span><b class="imp">${eur(x.importo)}</b>`+
+    `<button type="button" class="btn sm ghost" data-dc="${esc(x.id)}" aria-label="Scegli cos’è l’entrata di ${eur(x.importo)} del ${gmA(x.data)}">Scegli</button></div>`).join('');}
 function righeExtra(L){return L.map(x=>{const t=tipoDi(x.tipo);
-  return `<div class="ir"><span class="tx"><b><span aria-hidden="true">${t[1]}</span> ${t[2]}${x.nota?' · '+esc(x.nota):''}</b><small>${gmA(x.data)}${x.mese!==x.data.slice(0,7)?` · conta in ${esc(monthName(x.mese))}`:''}</small></span>`+
-    `<b class="imp">${eur(x.importo)}</b><button type="button" class="btn sm ghost" data-xe="${esc(x.id)}" aria-label="Modifica l’entrata extra del ${gmA(x.data)} di ${eur(x.importo)}">Modifica</button></div>`;}).join('');}
+  return `<div class="ir"><span class="tx"><b><span aria-hidden="true">${t[1]}</span> ${t[2]}</b><small>${gmA(x.data)}${x.nota?' · '+esc(x.nota):''}${x.mese!==x.data.slice(0,7)?` · conta in ${esc(MESI[+x.mese.slice(5)-1])}`:''}</small></span>`+
+    `<b class="imp">${eur(x.importo)}</b><button type="button" class="btn sm ghost" data-xe="${esc(x.id)}" aria-label="Modifica l’entrata extra di ${eur(x.importo)} del ${gmA(x.data)}">Modifica</button></div>`;}).join('');}
 function renderPagina(){const bc=$('rieConf'),bx=$('rieExtra');if(!bc||!bx)return;
   const C=daConf();
-  bc.innerHTML=C.length?`<section class="card inarr" id="dcCard" aria-labelledby="dcT"><h3 id="dcT">Entrate da confermare</h3>`+
-    `<p class="muted sm" style="margin:0 0 4px">Bonifici ricevuti che Soldirini non sa riconoscere. Non contano nei soldi rimanenti finché non scegli cos’è.</p>${righeConf(C)}</section>`:'';
+  bc.innerHTML=C.length?`<section class="card inarr" id="dcCard" aria-labelledby="dcT"><h3 id="dcT"><span aria-hidden="true">🏦</span> Entrate da confermare</h3>`+
+    `<p class="muted sm" style="margin:0 0 4px">Soldi arrivati sul conto che Soldirini non sa riconoscere. Non contano nei soldi rimanenti finché non scegli cosa sono.</p>${righeConf(C)}</section>`:'';
   const anno=rieMode==='anno',y=cur.slice(0,4);const X=extra().filter(e=>anno?e.mese.startsWith(y+'-'):e.mese===cur);
-  bx.innerHTML=X.length?`<section class="card inarr" aria-labelledby="xeT"><h3 id="xeT"><span aria-hidden="true">💶</span> Entrate extra ${anno?'del '+y:'di '+esc(monthName(cur))}</h3>`+
-    `${righeExtra(X)}<p class="muted sm" style="margin:6px 0 0">Non contano per le tasse.</p></section>`:'';}
+  const tot=r2(X.reduce((a,e)=>a+e.importo,0));
+  bx.innerHTML=X.length?`<section class="card inarr" aria-labelledby="xeT"><h3 id="xeT"><span aria-hidden="true">${ICONA}</span> Entrate extra ${anno?'del '+y:'di '+esc(monthName(cur))}</h3>`+
+    `${righeExtra(X)}${X.length>1?`<div class="kv big"><span>Totale</span><b>${eur(tot)}</b></div>`:''}<p class="muted sm" style="margin:6px 0 0">Non contano per le tasse.</p></section>`:'';
+  aggiornaRiquadro();}
 const _rr=renderRiepilogo;renderRiepilogo=function(){_rr.apply(this,arguments);renderPagina();};
+
+// ---------- 24c.14 (D-167 punto 2): entrate extra nel calendario e nel giorno aperto, nello stile delle spese ----------
+const delGiorno=d=>extra().filter(e=>e.data===d);
+const _renderCal13=renderCal;
+renderCal=function(){_renderCal13.apply(this,arguments);const per={};for(const e of extra())if(e.data.startsWith(cur))per[e.data]=r2((per[e.data]||0)+e.importo);
+  document.querySelectorAll('#grid [data-day]').forEach(b=>{const v=per[b.dataset.day],box=b.querySelector('.evs');
+    if(v&&box)box.insertAdjacentHTML('beforeend',`<span class="ev sp ex" style="--c:#8a8f98">${ICONA} +${nf(v,v%1?2:0)} €</span>`);});};
+const _apriGiorno13=apriGiorno;
+apriGiorno=function(d){_apriGiorno13.apply(this,arguments);
+  let box=$('dayExtra');if(!box){box=document.createElement('div');box.id='dayExtra';$('dayBox').appendChild(box);}
+  const L=delGiorno(d);const tot=r2(L.reduce((a,e)=>a+e.importo,0));
+  box.innerHTML=L.length?`<div class="tubox"><div class="tuh"><b><span aria-hidden="true">${ICONA}</span> Entrate extra</b><small class="muted">+ ${eur(tot)}</small></div>${L.map(e=>{const t=tipoDi(e.tipo);
+    return `<div class="sprow"><span aria-hidden="true">${t[1]}</span><span class="tx"><b>${t[2]}</b>${e.nota?`<small>${esc(e.nota)}</small>`:''}</span><b>+ ${eur(e.importo)}</b>`+
+      `<button type="button" class="btn sm ghost" data-xe="${esc(e.id)}" aria-label="Modifica l’entrata extra di ${eur(e.importo)} del ${gmA(e.data)}">Modifica</button></div>`;}).join('')}</div>`:'';};
 
 // ---------- finestra: scegli cos'è / modifica un'entrata extra ----------
 let F=null; // {modo:'dc'|'ex', id, voce, scelta, tipo}
@@ -64,25 +84,27 @@ function apri(modo,id){
   F={modo,id,voce:v,scelta:modo==='ex'?'extra':null,tipo:modo==='ex'?v.tipo:'restituzione'};
   $('xeTit').textContent=modo==='dc'?'Entrata da confermare':'Entrata extra';
   $('xeSub').hidden=modo!=='dc';$('xeScelte').hidden=modo!=='dc';
-  if(modo==='dc'){$('xeSub').textContent=`${v.nome?'Da '+v.nome:'Bonifico ricevuto'} · ${gmA(v.data)} · ${eur(v.importo)}`;
+  if(modo==='dc'){$('xeChi').textContent=chiDi(v);$('xeQuando').textContent=`${gmA(v.data)} · ${eur(v.importo)} · dalla lista movimenti`;
     for(const r of document.querySelectorAll('input[name="xeS"]'))r.checked=false;}
   $('xeData').value=v.data;$('xeData').max=today();$('xeImp').value=String(v.importo).replace('.',',');$('xeNota').value=modo==='ex'?v.nota:'';
   $('xePgData').value=v.data;$('xePgData').max=today();$('xePgImp').value=String(v.importo).replace('.',',');
   const P=pagabili();$('xePg').innerHTML=P.map(d=>`<option value="${esc(d.key)}">${esc(d.p.nome)} · ${d.t==='r'?'Rimborsi spese':'Compensi'} di ${esc(monthName(d.ym))} · ${eur(d.imp)}${d.pag?' · già entrati':''}</option>`).join('');
   $('xePgVuoto').hidden=!!P.length;$('xePgCampi').hidden=!P.length;
   $('xeDel').hidden=modo!=='ex';
-  aggiorna();$('xeModal').hidden=false;$('xeModal').querySelector('.sheet').scrollTop=0;document.body.classList.add('noscroll');}
+  $('xeErr').hidden=true;aggiorna();$('xeModal').hidden=false;$('xeModal').querySelector('.sheet').scrollTop=0;document.body.classList.add('noscroll');}
 function chiudi(){$('xeModal').hidden=true;F=null;if([...document.querySelectorAll('.modal')].every(m=>m.hidden))document.body.classList.remove('noscroll');}
 function chips(){$('xeTipi').innerHTML=TIPI.map(t=>`<button type="button" class="chip ${F.tipo===t[0]?'on':''}" data-xt="${t[0]}" aria-pressed="${F.tipo===t[0]}">${t[1]} ${t[2]}</button>`).join('');}
 function aggiorna(){if(!F)return;const s=F.scelta;
   $('xePExtra').hidden=s!=='extra';$('xePProg').hidden=s!=='prog';$('xePNo').hidden=s!=='no';
-  chips();$('xeVendita').hidden=F.tipo!=='vendita';
+  chips();$('xeVendita').hidden=F.tipo!=='vendita';contaIn();
   const k=$('xePg').value,d=pagabili().find(x=>x.key===k);
-  $('xePgGia').hidden=!(s==='prog'&&d&&d.pag);if(d&&d.pag)$('xePgGia').textContent=`Già segnati entrati il ${gmA(d.pag.data)}: li sostituisci con questi.`;
-  $('xeErr').hidden=true;
+  $('xePgGia').hidden=!(s==='prog'&&d&&d.pag);if(d&&d.pag)$('xePgGia').textContent=`⚠ Già segnati come entrati il ${gmA(d.pag.data)}. Salvando, li sostituisci con questi.`;
   const b=$('xeOk');b.disabled=!s||(s==='prog'&&!pagabili().length);
-  b.textContent=F.modo==='ex'?'Salva':s==='prog'?'Segna entrati':s==='no'?'Togli dall’elenco':s==='extra'?'Salva l’entrata extra':'Salva';
+  b.textContent=F.modo==='ex'?'Salva':s==='prog'?'Segna come entrati':s==='no'?'Togli dall’elenco':s==='extra'?'Salva l’entrata extra':'Salva';
   b.classList.toggle('danger',s==='no');}
+// "Conta in {mese}." sotto Giorno, quando il mese in cui conta è diverso da quello del giorno (§13 delle regole)
+function contaIn(){if(!F)return;const d=$('xeData').value,el=$('xeConta');if(!dOk(d)){el.hidden=true;return;}
+  const m=meseContoDi(d,mc(F.voce,d).meseConto);el.hidden=m===d.slice(0,7);if(!el.hidden)el.textContent=`Conta in ${MESI[+m.slice(5)-1]}.`;}
 function errore(t){$('xeErr').textContent=t;$('xeErr').hidden=false;return false;}
 // data e importo dei campi: {data, importo} oppure false (con l'errore scritto)
 function letti(idD,idI){const data=$(idD).value,imp=leggiNumero($(idI).value,true);
@@ -95,25 +117,37 @@ function salva(){if(!F)return;const v=F.voce,now=Date.now();let msg='';
   if(F.scelta==='extra'){const x=letti('xeData','xeImp');if(!x)return;const nota=testo($('xeNota').value);
     const id=F.modo==='ex'?F.id:uid();const prima=F.modo==='ex'?EX()[id]:null;
     EX()[id]={id,data:x.data,...mc(v,x.data),importo:x.importo,tipo:F.tipo,nota,...(prima&&prima.origine||F.modo==='dc'?{origine:'banca'}:{}),created:prima&&prima.created||now,updatedAt:now};
-    if(F.modo==='dc')togliConf(F.id,'extra');msg=F.modo==='ex'?'✓ Entrata extra salvata.':`✓ Entrata extra di ${eur(x.importo)}: conta in ${monthName(meseContoDi(x.data,EX()[id].meseConto))}.`;}
+    if(F.modo==='dc')togliConf(F.id,'extra');msg=F.modo==='ex'?'✓ Entrata extra salvata.':`✓ Entrata extra salvata: conta in ${MESI[+meseContoDi(x.data,EX()[id].meseConto).slice(5)-1]}.`;}
   else if(F.scelta==='prog'){const k=$('xePg').value,d=pagabili().find(x=>x.key===k);if(!d)return errore('Scegli a cosa si riferisce.');
     const x=letti('xePgData','xePgImp');if(!x)return;
     pagamenti()[k]={pagato:true,data:x.data,...mc(v,x.data),importo:x.importo,updatedAt:now};togliConf(F.id,'progetto');
-    msg=`✓ Segnati entrati: ${d.t==='r'?'rimborsi spese':'compensi'} di ${monthName(d.ym)} (${d.p.nome}).`;}
+    msg=`✓ ${d.t==='r'?'Rimborsi':'Compensi'} di ${MESI[+d.ym.slice(5)-1]} segnati come entrati.`;}
   else if(F.scelta==='no'){togliConf(F.id,'no');msg='✓ Tolta dall’elenco.';}
   else return;
-  chiudi();changed();render();toast(msg);}
-function elimina(){if(!F||F.modo!=='ex')return;const id=F.id;EX()[id]={id,deleted:true,updatedAt:Date.now()};chiudi();changed();render();toast('✓ Entrata extra eliminata.');}
+  chiudi();changed();render();giornoAperto();toast(msg);}
+// stessa conferma dell'eliminazione di una spesa giornaliera (02, tornata 53 §1.6); resta solo il segno (D-105, D-164)
+async function elimina(){if(!F||F.modo!=='ex')return;const id=F.id,v=F.voce;
+  if(!await conferma(`Eliminare l’entrata extra di ${eur(v.importo)}?`,'Elimina','danger'))return;
+  EX()[id]={id,deleted:true,updatedAt:Date.now()};chiudi();changed();render();giornoAperto();toast('✓ Entrata extra eliminata.');}
+// se il giorno è aperto (modifica dal giorno), si ridisegna come dopo l'eliminazione di una spesa
+function giornoAperto(){if(!$('dayModal').hidden)apriGiorno(selDay);}
 
 // ---------- dopo "Importa": riquadro "Nella lista ci sono N entrate da controllare" (banca.js) ----------
-function riquadro(n,dopo){document.querySelectorAll('.dcnote').forEach(e=>e.remove());if(!n||!dopo)return;
+// 24c.14: testi definitivi di 02 (tornata 53 §1.2); il numero è quello delle voci di questa lista ancora da scegliere
+let ultimiIds=[];
+function testoRiquadro(n){return n===1?'<b>Nella lista c’è 1 entrata da confermare.</b> Finché non scegli cos’è, non conta nei soldi.'
+  :`<b>Nella lista ci sono ${n} entrate da confermare.</b> Finché non scegli cosa sono, non contano nei soldi.`;}
+function riquadro(ids,dopo){document.querySelectorAll('.dcnote').forEach(e=>e.remove());ultimiIds=Array.isArray(ids)?ids:[];
+  const n=ultimiIds.filter(id=>daConf().some(x=>x.id===id)).length;if(!n||!dopo)return;
   const el=document.createElement('div');el.className='note dcnote';el.setAttribute('role','status');
-  el.innerHTML=`<span>Nella lista ci ${n===1?'è 1 entrata':`sono ${n} entrate`} da controllare.</span><button type="button" class="btn sm" data-dcvai>Controlla</button>`;
+  el.innerHTML=`<span>${testoRiquadro(n)}</span><button type="button" class="btn sm" data-dcvai aria-label="Controlla le entrate da confermare">Controlla</button>`;
   dopo.insertAdjacentElement('afterend',el);}
+function aggiornaRiquadro(){const el=document.querySelector('.dcnote');if(!el)return;
+  const n=ultimiIds.filter(id=>daConf().some(x=>x.id===id)).length;if(!n){el.remove();return;}el.querySelector('span').innerHTML=testoRiquadro(n);}
 function vai(){document.querySelectorAll('.dcnote').forEach(e=>e.remove());vaiA('dinc');
   const c=$('dcCard');if(c){c.scrollIntoView({block:'start'});c.querySelector('[data-dc]')?.focus({preventScroll:true});}}
 
-// ---------- 💶 Entrata extra in Nuova attività (come l'uscita fissa, soldi.js FissaEv) ----------
+// ---------- 🪙 Entrata extra in Nuova attività (come l'uscita fissa, soldi.js FissaEv) ----------
 let exTipo='restituzione',exData='';
 function exPrepara(dates,modifica){const s=$('secExtra');if(!s)return;const una=dates.length===1&&!modifica;s.hidden=!una;s.open=false;if(!una)return;
   exTipo='restituzione';exData=dates[0];$('evExImp').value='';$('evExNota').value='';$('evExErr').hidden=true;exChips();exSum();}
@@ -135,7 +169,7 @@ function bind(){
     const c=t.closest('[data-xt]');if(c&&F){F.tipo=c.dataset.xt;aggiorna();return;}
     const d=t.closest('[data-ext]');if(d){exTipo=d.dataset.ext;exChips();}});
   $('xeScelte').addEventListener('change',e=>{if(e.target.name==='xeS'&&F){F.scelta=e.target.value;aggiorna();}});
-  $('xePg').addEventListener('change',aggiorna);
+  $('xePg').addEventListener('change',aggiorna);$('xeData').addEventListener('input',contaIn);
   $('xeClose').onclick=chiudi;$('xeAnn').onclick=chiudi;$('xeOk').onclick=salva;$('xeDel').onclick=elimina;
   $('xeModal').addEventListener('click',e=>{if(e.target.id==='xeModal')chiudi();});
   $('evExImp').addEventListener('input',exSum);}

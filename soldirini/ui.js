@@ -3,11 +3,12 @@
 // Calendario a schermo pieno: tocco = riepilogo del giorno, doppio tocco = nuova attività,
 // pressione lunga = selezione di più giorni. Documenti e Tasse sono sottopagine di Riepilogo.
 
-const APP_VERSIONE='24c.13';
+const APP_VERSIONE='24c.14';
 const SUB={tas:'rie'}; // sottopagina -> scheda madre
 // 24b.1 (D-098): pagine di dettaglio del Riepilogo, una per casella del riquadro (Documenti è dentro "Rimborsi spese")
-const PAG_RIE={dfx:'Uscite fisse',dsp:'Spese giornaliere',dlav:'Lavoro dipendente',drim:'Rimborsi spese',drit:'Ritenuta d’acconto',dinc:'Ancora da incassare'};
-for(const k in PAG_RIE)SUB[k]='rie';
+// 24c.14 (D-168): "Uscite fisse" e "Spese giornaliere" sono una pagina sola, "Spese" (dsp); dfx resta come nome vecchio
+const PAG_RIE={dsp:'Spese',dlav:'Lavoro dipendente',drim:'Rimborsi spese',drit:'Ritenuta d’acconto',dinc:'Ancora da incassare'};
+for(const k in PAG_RIE)SUB[k]='rie';SUB.dfx='rie'; // 24c.14 (D-168): nome vecchio, porta alla parte "Uscite fisse" della pagina "Spese"
 const sheets=['dayModal','listModal','confModal'];
 function chiudiSheets(){for(const id of sheets)$(id).hidden=true;if($('evModal').hidden&&$('pjModal').hidden&&$('cuModal').hidden)document.body.classList.remove('noscroll');}
 function apriSheet(id){chiudiSheets();$(id).hidden=false;document.body.classList.add('noscroll');}
@@ -15,7 +16,8 @@ function apriSheet(id){chiudiSheets();$(id).hidden=false;document.body.classList
 // ---------- navigazione ----------
 function vaiA(t){
   if(t==='doc')t='drim';
-  const da=tab;tab=t;chiudiSheets();render();scrollTo(0,0);
+  const parte=t==='dfx'?'spFissi':null;if(t==='dfx')t='dsp'; // 24c.14 (D-168): la pagina vecchia porta alla sua parte
+  const da=tab;tab=t;chiudiSheets();render();scrollTo(0,0);if(parte)$(parte).scrollIntoView({block:'start'});
   if(SUB[t]&&!SUB[da])history.pushState({sub:t},'');
 }
 addEventListener('popstate',()=>{if(SUB[tab]){tab=SUB[tab];render();scrollTo(0,0);}});
@@ -24,7 +26,7 @@ const _render8=render;
 // 24b.1 (D-098, mockup 02 tornata 23 §2): testata scura delle pagine, con l'icona e lo stesso importo della casella toccata
 // v24c (02, tornata 24 §1): nella vista Anno dell'anno in corso tutte le testate dicono "…, fino a {mese}", come il riquadro
 const fino=f=>f?', fino a '+f:'';
-const TESTA={dfx:['💳',(m,a,y,f)=>a?`Uscite fisse ${y}${fino(f)}`:`Uscite fisse di ${m}`],dsp:['🛒',(m,a,y,f)=>a?`Spese giornaliere ${y}${fino(f)}`:`Spese giornaliere di ${m}`],
+const TESTA={dsp:['🛒',(m,a,y,f)=>a?`Spese ${y}${fino(f)}`:`Spese di ${m}`], // 24c.14 (D-168): uscite fisse + spese giornaliere
   dlav:['💼',(m,a,y,f)=>a?`Entrato da lavoro dipendente nel ${y}${fino(f)}`:`Entrato da lavoro dipendente a ${m}`],pen:['🏛️',(m,a,y,f)=>a?`Pensione ${y}${fino(f)}`:`Pensione di ${m}`],
   drim:['🧾',(m,a,y,f)=>a?`Rimborsi spese ${y}${fino(f)}`:`Rimborsi spese di ${m}`],drit:['📄',(m,a,y,f)=>a?`Ritenuta d’acconto ${y}${fino(f)}`:`Ritenuta d’acconto di ${m}`],
   dinc:['⏳',(m,a)=>a?'Ancora da incassare (tutto l’anno)':'Ancora da incassare'],
@@ -51,6 +53,7 @@ function spostaDoc(){const L=$('docList');if(!L)return;if(tab==='drim'&&L.parent
 window.apriSezione=(dentro,titolo)=>{requestAnimationFrame(()=>{const d=[...document.querySelectorAll(dentro+' details')].find(x=>x.querySelector('summary .st')?.textContent.startsWith(titolo));if(d){d.open=true;d.scrollIntoView({block:'start'});}});};
 render=function(){
   if(tab==='doc')tab='drim'; // nome vecchio della pagina Documenti
+  if(tab==='dfx'){tab='dsp';requestAnimationFrame(()=>$('spFissi')?.scrollIntoView({block:'start'}));} // 24c.14 (D-168): pagina vecchia "Uscite fisse" (anche dal posto salvato, D-130)
   _render8();
   if(tab!=='dinc')window.testaInc=false; // la testata di "Incassato dai progetti" vale solo finché si resta in quella pagina
   if(PAG_RIE[tab]||tab==='pen'){
@@ -61,6 +64,8 @@ render=function(){
     const inc=tab==='dinc'&&anno&&window.testaInc,t=TESTA[inc?'inc':tab],V=window.VALORI_RIE||{},ora=today().slice(0,7);
     const f=anno&&+y===+ora.slice(0,4)?MESI[(V.mesi||+ora.slice(5))-1]:'';
     const box=$('v-'+tab).querySelector('.testa');if(box&&t)box.innerHTML=`<span class="ic" aria-hidden="true">${t[0]}</span><div><small>${t[1](m,anno,y,f)}</small><b>${eur(V[inc?'inc':tab]||0)}</b></div>`;
+    // 24c.14 (D-168): pagina "Spese", frase se una delle due parti è vuota
+    if(tab==='dsp'){$('rieFixVuoto').hidden=!!$('rieFix').innerHTML.trim();$('rieSpeseVuoto').hidden=!!$('rieSpese').innerHTML.trim();}
   }
   // 02 (Decisione 2, consiglio): il pulsante Pensione resta solo per chi non ha né lavoro dipendente né profilo pensione
   const bp=document.querySelector('#v-rie .subnav [data-goto="pen"]');if(bp)bp.hidden=!!((typeof lavori==='function'&&lavori().length)||(window.Pensione&&Pensione.profilo()));

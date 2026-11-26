@@ -89,7 +89,8 @@ function dataExcel(v,base1904){if(typeof v==='number'){if(!(v>0&&v<200000))retur
 const TESTA_X=['DATA CONTABILE','DATA VALUTA','CAUSALE','DESCRIZIONE OPERAZIONE','IMPORTO IN EURO'];
 async function analizzaXlsx(buf){
   let z;try{z=await JSZip.loadAsync(buf);}catch(e){return {err:'banca'};}
-  const parte=async nome=>{const f=z.file(nome);return f?new TextDecoder().decode(await leggiFino(f,MAX_PARTE)):null;};
+  // 24c.14 (03, tornata 51 §1): una parte con <!DOCTYPE vale "rovinata" (i file Excel veri non lo usano: niente entità)
+  const parte=async nome=>{const f=z.file(nome);if(!f)return null;const t=new TextDecoder().decode(await leggiFino(f,MAX_PARTE));if(/<!DOCTYPE/i.test(t))throw new Error('rovinato');return t;};
   try{
     const wbT=await parte('xl/workbook.xml');if(!wbT)return {err:'banca'};const wb=xml(wbT);
     const base1904=figli(wb,'workbookPr').some(x=>/^(1|true)$/.test(x.getAttribute('date1904')||''));
@@ -158,7 +159,7 @@ function vociProgetti(ym){if(!window.Entrate)return [];
 
 // una proposta per ogni movimento: {nome, info, avviso, scelte:[{val,txt}], val, data, contaIn}
 // 24c.12: testi definitivi di 02 (tornata 49, tabella del mockup); "Non importare" al posto di "Ignora"
-function proponi(m){const c=m.caus.toLowerCase(),d=m.desc;const ym=m.dv.slice(0,7);let nome='',info='',avviso='',data=m.dv,val='no',contaIn=null;const scelte=[];
+function proponi(m){const c=m.caus.toLowerCase(),d=m.desc;const ym=m.dv.slice(0,7);let nome='',info='',avviso='',data=m.dv,val='no',contaIn=null,chi='',fonte='';const scelte=[];
   const spese=cat=>CATS.map(k=>({val:'sp:'+k[0],txt:`Spesa · ${k[1]} ${k[2]}`})).sort((a,b)=>(b.val==='sp:'+cat)-(a.val==='sp:'+cat));
   const ignora=(t='Non importare')=>({val:'no',txt:t});
   const daConf={val:'dc:',txt:'Entrata da confermare · scegli dopo cos’è'}; // 24c.13 (D-165)
@@ -169,7 +170,7 @@ function proponi(m){const c=m.caus.toLowerCase(),d=m.desc;const ym=m.dv.slice(0,
     const div=tra(d,/Div=([A-Z]{3})/);
     if(data.slice(0,7)!==m.dc.slice(0,7))contaIn=data.slice(0,7); // acquisto di un mese, in banca il mese dopo
     if(m.v>0){ // MB5 (04): reso o storno sulla carta: non è una spesa, e non c'è la scelta "Spesa"
-      info=`Carta: rimborso del ${gm(data)} (in banca il ${gm(m.dc)}). Rimborso sulla carta: non è una spesa.`;scelte.push(ignora());val='no';contaIn=null;}
+      info=`Carta: reso del ${gm(data)} (in banca il ${gm(m.dc)}). Soldi restituiti sulla carta: non è una spesa.`;scelte.push(ignora());val='no';contaIn=null;} // 24c.14: testo definitivo di 02
     else{
       info=`Carta: acquisto del ${gm(data)}${div&&div!=='EUR'?' in '+div:''} (in banca il ${gm(m.dc)}).`;
       const f=fissoSimile(data.slice(0,7),nome,m.v);const cat=catDaNome(nome); // MB6 (04): abbonamento pagato con la carta
@@ -193,14 +194,15 @@ function proponi(m){const c=m.caus.toLowerCase(),d=m.desc;const ym=m.dv.slice(0,
       if(!gia&&m.dv.slice(0,7)<ymC)avviso=`⚠ Data insolita: è prima di ${monthName(ymC)}, il mese ${v.nome==='pensione'?'della pensione':'dello stipendio'}. Se è giusta, importa pure.`;}
     else info='Nelle impostazioni non c’è un lavoro o una pensione da segnare.';}
   else if(c==='accredito bonifico'){
-    nome=tra(d,/Anagrafica Ordinante (.+?)(?: Note:|$)/)||'Bonifico';
+    // N1 di 03: il nome di chi manda viene solo da "Anagrafica Ordinante" fino a " Note:" (pulito e tagliato a 60 al salvataggio)
+    chi=tra(d,/Anagrafica Ordinante (.+?)(?: Note:|$)/);nome=chi||'Bonifico ricevuto';fonte='bonifico';
     const note=tra(d,/ Note: (.*)$/);
     const V=vociProgetti(ym);const rimb=/rimbors/i.test(note);
     const punti=x=>(x.imp!=null&&Math.abs(x.imp-m.v)<0.005?4:0)+(nomeComune(x.nome,nome)?2:0)+(rimb===(x.t==='r')?1:0);
     // 24c.13 (D-165): un bonifico ricevuto che non è un compenso o un rimborso riconosciuto va tra le "Entrate da confermare",
     // con data, importo e nome di chi lo manda: non conta finché l'utente non sceglie cos'è (Riepilogo → Ancora da incassare)
     V.sort((a,b)=>punti(b)-punti(a));scelte.push(...V,daConf,ignora());const best=V[0];val=best&&punti(best)>=2?best.val:'dc:';
-    info=val!=='dc:'?`Bonifico ricevuto: sembra ${best.t==='r'?'il rimborso':'il compenso'} di ${best.mese} del progetto «${best.nome}».`:'Bonifico ricevuto: va tra le «Entrate da confermare», dove scegli cos’è. Finché non scegli, non conta.';}
+    info=val!=='dc:'?`Bonifico ricevuto: sembra ${best.t==='r'?'il rimborso':'il compenso'} di ${best.mese} del progetto «${best.nome}».`:'Bonifico ricevuto: non sembra uno stipendio né un compenso. Va tra le «Entrate da confermare», dove scegli cos’è. Finché non scegli, non conta.';} // 24c.14: testo di 02
   else if(c==='bonifico in uscita'){
     const note=tra(d,/ Note: (.*)$/);nome=note||'Bonifico'; // 03, decisione 1: niente nomi delle persone, si propone la nota
     info=note?`Bonifico fatto, con la nota «${note}».`:'Bonifico fatto, senza nota.';
@@ -208,8 +210,8 @@ function proponi(m){const c=m.caus.toLowerCase(),d=m.desc;const ym=m.dv.slice(0,
     scelte.push(...fissi(),...spese(cat),ignora());val=f?'fx:'+f.id:'sp:'+cat;}
   else if(c==='giroconto'){nome='Giroconto';info='Giroconto: soldi spostati su un tuo conto, non è una spesa.';
     scelte.push(ignora('Non importare (soldi tuoi)'));if(m.v<0)scelte.push(...spese('altro'));val='no';}
-  else{nome=m.caus;info=m.caus;if(m.v<0){scelte.push(...spese('altro'),ignora());val='sp:altro';}else{scelte.push(daConf,ignora());val='dc:';}} // 24c.13 (D-165): entrata sconosciuta
-  return {nome:nome.slice(0,60),info,avviso,scelte,val,data,contaIn};}
+  else{nome=m.caus;info=m.caus;if(m.v<0){scelte.push(...spese('altro'),ignora());val='sp:altro';}else{scelte.push(daConf,ignora());val='dc:';fonte='accredito';info='Soldi arrivati sul conto, ma Soldirini non sa cosa sono. Vanno tra le «Entrate da confermare», dove scegli cos’è. Finché non scegli, non contano.';}} // 24c.13 (D-165): entrata sconosciuta; 24c.14 testo di 02
+  return {nome:nome.slice(0,60),chi:chi.slice(0,60),fonte,info,avviso,scelte,val,data,contaIn};}
 
 // 24c.11 (D-152): il mese parte dallo stipendio. Nella lista si cercano gli accrediti di stipendio o pensione (data valuta).
 // Ogni movimento conta nei soldi del mese dell'ultimo stipendio arrivato prima di lui o nello stesso giorno; quelli prima del primo
@@ -246,7 +248,7 @@ function errore(t){for(const e of document.querySelectorAll('.bcerr')){e.textCon
   if(!el||!el.classList.contains('bcerr'))el=$('bcErr');el.textContent=t;el.hidden=false;}
 async function apriFile(file){
   if(!file)return;
-  errore('');if(window.EntrateExtra)EntrateExtra.riquadro(0);
+  errore('');if(window.EntrateExtra)EntrateExtra.riquadro([]);
   if(file.size>MAX_BYTE){errore(ERRORI.grande);return;}
   let A;try{const buf=await file.arrayBuffer();const u=new Uint8Array(buf,0,Math.min(4,buf.byteLength));
     // 24c.11 (D-153): un file .xlsx è uno zip (comincia con "PK"); tutto il resto si legge come CSV
@@ -268,7 +270,8 @@ function riga(r,i){
     <small class="muted bcinfo">${r.gia?'<span class="bctag">Già importato</span> Questo movimento è già in Soldirini.':esc(r.info)+(contaIn(r)?`<span class="bcmese"> Conta in ${esc(nomeMese(contaIn(r),r.data))}.</span>`:'')}</small>
     ${!r.gia&&r.avviso?`<small class="bcinfo bcavv">${esc(r.avviso)}</small>`:''}
     ${r.gia?'':`<select data-bcs="${i}" aria-label="Cosa fare con il movimento del ${gm(r.data)}">${r.scelte.map(s=>`<option value="${esc(s.val)}" ${s.val===r.val?'selected':''}>${esc(s.txt)}</option>`).join('')}</select>
-    ${nomeVisibile?`<label class="bccampo"><span class="muted sm">Nome della spesa</span><input data-bcnome="${i}" value="${esc(r.nome)}" maxlength="60" autocomplete="off"></label>`:''}`}
+    ${nomeVisibile?`<label class="bccampo"><span class="muted sm">Nome della spesa</span><input data-bcnome="${i}" value="${esc(r.nome)}" maxlength="60" autocomplete="off"></label>`:''}
+    ${r.val==='dc:'&&r.fonte==='bonifico'?`<label class="bccampo"><span class="muted sm">Nome di chi manda (puoi cambiarlo o cancellarlo)</span><input data-bcchi="${i}" value="${esc(r.chi)}" maxlength="60" autocomplete="off"></label>`:''}`}
   </div>`;}
 function disegna(){const tutti=L.length&&L.every(r=>r.gia);
   $('bcList').innerHTML=(tutti?'<div class="note bcnote">Tutti i movimenti di questo file sono già in Soldirini: non c\'è niente di nuovo da importare.</div>':'')+L.map(riga).join('');
@@ -294,7 +297,8 @@ function importa(){if(!L)return;const now=Date.now();let n=0,k=0;const imp=IMP()
       else if(t==='en')EN()[x]={entrato:true,data:r.data,...mc,importo:r2(r.v),updatedAt:now};
       else if(t==='pg')pagamenti()[x]={pagato:true,data:r.data,...mc,importo:r2(r.v),updatedAt:now};
       // 24c.13 (D-165): data esatta del movimento (data valuta), importo, nome di chi manda (già pulito) e l'impronta della riga
-      else if(t==='dc'){const id=uid();DC()[id]={id,data:r.data,...mc,importo:r2(r.v),nome:pulisci(r.nome).slice(0,60),impronta:r.h,origine:'banca',created:now+k++,updatedAt:now};}
+      // 24c.14 (R1 di 03): id dall'impronta della riga, così lo stesso bonifico importato su due telefoni resta una voce sola
+      else if(t==='dc'){const id='dc'+r.h.slice(0,24);if(!DC()[id])DC()[id]={id,data:r.data,...mc,importo:r2(r.v),nome:pulisci(r.chi||'').slice(0,60),fonte:r.fonte==='accredito'?'accredito':'bonifico',impronta:r.h,origine:'banca',created:now+k++,updatedAt:now};}
       // 'fx': uscita fissa già contata nel mese: si collega e non si aggiunge niente
       n++;}
     // righe importate e righe da ignorare: la prossima volta sono "già importato"; una riga solo tolta dalla casella torna
@@ -303,7 +307,8 @@ function importa(){if(!L)return;const now=Date.now();let n=0,k=0;const imp=IMP()
   const T=contoTipi(S);const parti=[T.sp&&pl(T.sp,'spesa','spese'),T.ne&&(T.ne===1?'1 entrata segnata':`${T.ne} entrate segnate`),T.dc&&(T.dc===1?'1 entrata da confermare':`${T.dc} entrate da confermare`),T.fx&&(T.fx===1?'1 uscita fissa già contata':`${T.fx} uscite fisse già contate`)].filter(Boolean);
   const dopo=dove();chiudi();changed();render();toast(`✓ ${n===1?'Importato 1 movimento':`Importati ${n} movimenti`}: ${parti.join(', ')}.`);
   // 24c.13 (D-165): riquadro sotto il pulsante usato, con "Controlla" che porta all'elenco
-  if(window.EntrateExtra)EntrateExtra.riquadro(T.dc,dopo);}
+  // 24c.14: il riquadro conta le voci di questa lista ancora da scegliere (scende a ogni scelta, sparisce a 0)
+  if(window.EntrateExtra)EntrateExtra.riquadro(S.filter(r=>r.val==='dc:').map(r=>'dc'+r.h.slice(0,24)),dopo);}
 // posto sotto l'ultimo pulsante "Importa movimenti" toccato (lo stesso degli errori)
 function dove(){const btn=ultimo&&document.contains(ultimo)&&!ultimo.closest('[hidden]')?ultimo:null;
   const el=btn&&(btn.closest('.bcimp')?.querySelector('.bcerr')||btn.closest('.acts')?.nextElementSibling);
@@ -315,7 +320,7 @@ function bind(){
   $('bcList').addEventListener('change',e=>{const t=e.target;
     if(t.dataset.bcon!=null){const r=L[+t.dataset.bcon];r.on=t.checked;t.closest('.bcrow').classList.toggle('off',!r.on);aggiornaTot();return;}
     if(t.dataset.bcs!=null){const i=+t.dataset.bcs,r=L[i];r.val=t.value;r.on=r.val!=='no';disegna();return;}});
-  $('bcList').addEventListener('input',e=>{const t=e.target;if(t.dataset.bcnome!=null)L[+t.dataset.bcnome].nome=t.value;});
+  $('bcList').addEventListener('input',e=>{const t=e.target;if(t.dataset.bcnome!=null)L[+t.dataset.bcnome].nome=t.value;if(t.dataset.bcchi!=null)L[+t.dataset.bcchi].chi=t.value;});
   $('bcClose').onclick=chiudi;$('bcAnn').onclick=chiudi;$('bcImporta').onclick=importa;}
 bind();
 window.Banca={analizza,analizzaXlsx,leggiCsv,proponi,apriFile,pulisci};

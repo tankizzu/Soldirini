@@ -18,7 +18,7 @@ const contrasto = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((m, n) => n -
 const provaStile = (page, html, sel, props) => page.evaluate(([html, sel, props]) => { const w = document.createElement('div'); w.innerHTML = html; document.querySelector('main, body').append(w);
   const e = w.querySelector(sel); const st = getComputedStyle(e); const r = Object.fromEntries(props.map(k => [k, st[k]])); w.remove(); return r; }, [html, sel, props]);
 const colMix = (page, v, pct) => page.evaluate(([v, pct]) => { const e = document.createElement('i'); e.style.background = `color-mix(in srgb,var(${v}) ${pct}%,var(--card))`; document.body.append(e); const c = getComputedStyle(e).backgroundColor; e.remove(); return c; }, [v, pct]);
-const PAGINE = ['dfx', 'dsp', 'dlav', 'drim', 'drit', 'dinc', 'pen', 'ris', 'tas'];
+const PAGINE = ['dsp', 'dlav', 'drim', 'drit', 'dinc', 'pen', 'ris', 'tas'];
 const rgb = hex => { let h = hex.slice(1); if (h.length === 3) h = h.replace(/./g, c => c + c); const n = parseInt(h, 16); return `rgb(${n >> 16}, ${(n >> 8) & 255}, ${n & 255})`; };
 
 // un lavoro senza buste (stipendio di novembre "in arrivo", stima), un progetto con un compenso da incassare, una pensione
@@ -248,18 +248,18 @@ test.describe('24c.1 · ordine delle caselle del riquadro', () => {
       const s = uid(); D().spesePers = { [s]: { id: s, data: '2026-11-04', cat: 'bar', importo: '9', nota: '', created: 1, updatedAt: 1 } }; changed(); });
     await vai(page, 'rie'); await apri(page);
     const nomi = () => page.locator('#heroDet > * > small:first-child').allTextContents();
-    expect(await nomi()).toEqual(['Lavoro dipendente', 'Pensione', 'Ancora da incassare', 'Spese giornaliere', 'Uscite fisse']);
+    expect(await nomi()).toEqual(['Lavoro dipendente', 'Pensione', 'Ancora da incassare', 'Spese']); // 24c.14 (D-168): una sola casella "Spese"
     const larg = () => page.evaluate(() => [...document.querySelectorAll('#heroDet > *')].map(e => Math.round(e.getBoundingClientRect().width)));
-    let w = await larg(); expect(w[4]).toBeGreaterThan(w[0] * 1.8); expect(w.slice(0, 4).every(x => x === w[0])).toBe(true); // 5 caselle: l'ultima sola occupa la riga
+    let w = await larg(); expect(w.every(x => x === w[0])).toBe(true); // 4 caselle: due righe da due
     // vista Anno: "Incassato dai progetti" tra le entrate; la riga di dicembre resta in fondo
     await vai(page, 'rie', '2026-11'); await page.evaluate(() => { rieMode = 'anno'; render(); }); await apri(page);
-    const anno = await nomi(); expect(anno.indexOf('Spese giornaliere')).toBeGreaterThan(anno.indexOf('Ancora da incassare'));
-    expect(anno.slice(-3)).toEqual(['Spese giornaliere', 'Uscite fisse', 'Uscite fisse ancora da addebitare entro dicembre']);
+    const anno = await nomi(); expect(anno.indexOf('Spese')).toBeGreaterThan(anno.indexOf('Ancora da incassare'));
+    expect(anno.slice(-2)).toEqual(['Spese', 'Uscite fisse ancora da addebitare entro dicembre']);
     // senza entrate (V4): la frase al posto delle entrate, prima delle uscite
     await page.evaluate(() => { D().lavori = {}; D().pensione = {}; D().progetti = {}; D().eventi = {}; changed(); });
     await vai(page, 'rie'); await apri(page);
-    expect(await page.evaluate(() => [...document.querySelectorAll('#heroDet > *')].map(e => e.classList.contains('nient') ? 'frase' : e.querySelector('small').textContent))).toEqual(['frase', 'Spese giornaliere', 'Uscite fisse']);
-    w = await larg(); expect(w[1]).toBe(w[2]); expect(w[0]).toBeGreaterThan(w[1] * 1.8);
+    expect(await page.evaluate(() => [...document.querySelectorAll('#heroDet > *')].map(e => e.classList.contains('nient') ? 'frase' : e.querySelector('small').textContent))).toEqual(['frase', 'Spese']);
+    w = await larg(); expect(w[0]).toBe(w[1]); // frase e casella "Spese" sulla stessa riga
     expect(errori).toEqual([]);
   });
 });

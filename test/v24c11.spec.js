@@ -63,7 +63,7 @@ test.describe('24c.11', () => {
     await expect(sez.locator('summary')).toContainText('Rimasti dai mesi prima'); await expect(sez.locator('summary .sum')).toHaveText('70,00 €');
     await sez.locator('summary').click();
     expect(await sez.locator('.kv').evaluateAll(K => K.map(k => [...k.children].map(c => c.textContent.trim()).join(' '))))
-      .toEqual(['Rimasti dai mesi prima 70,00 €', 'Rimanenti del mese 50,00 €', 'Totale 120,00 €']);
+      .toEqual(['Rimasti dai mesi prima 70,00 €', 'Soldi rimanenti di ottobre 50,00 €', 'Totale 120,00 €']);
     await vedi('2026-09'); // un mese negativo: −30 + 100
     await expect(page.locator('#rieRim details .sum')).toHaveText('100,00 €');
     expect(await page.evaluate(() => rimastiPrima('2026-12'))).toBe(120); // novembre senza dati conta 0

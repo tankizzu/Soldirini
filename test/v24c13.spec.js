@@ -35,13 +35,13 @@ test.describe('24c.13', () => {
     const prima = await page.evaluate(() => contiMese('2026-11'));
     await importa(page);
     const R = await page.locator('#bcList .bcrow').evaluateAll(R => R.map(r => ({ v: r.querySelector('select').value, info: r.querySelector('.bcinfo').textContent.trim() })));
-    expect(R[1]).toEqual({ v: 'dc:', info: 'Bonifico ricevuto: va tra le «Entrate da confermare», dove scegli cos’è. Finché non scegli, non conta.' });
+    expect(R[1]).toEqual({ v: 'dc:', info: 'Bonifico ricevuto: non sembra uno stipendio né un compenso. Va tra le «Entrate da confermare», dove scegli cos’è. Finché non scegli, non conta.' });
     await expect(page.locator('#bcTipi')).toHaveText('1 spesa · 1 entrata da confermare');
     await page.click('#bcImporta');
     await expect(page.locator('#toast')).toContainText('1 spesa, 1 entrata da confermare');
     // riquadro sotto il pulsante usato
     const nota = page.locator('#v-dsp .dcnote');
-    await expect(nota).toHaveText(/Nella lista ci è 1 entrata da controllare\.\s*Controlla/);
+    await expect(nota).toHaveText(/Nella lista c’è 1 entrata da confermare\. Finché non scegli cos’è, non conta nei soldi\.\s*Controlla/);
     // salvata con la data valuta, l'importo, il nome già pulito e l'impronta; niente IBAN o codici
     const V = await page.evaluate(() => Object.values(D().daConfermare));
     expect(V.length).toBe(1);
@@ -73,7 +73,8 @@ test.describe('24c.13', () => {
     await page.evaluate(() => vaiA('dinc'));
     await page.locator('#dcCard [data-dc]').click();
     await expect(page.locator('#xeModal')).toBeVisible();
-    await expect(page.locator('#xeSub')).toHaveText('Da RESTITUZIONE ESEMPIO · 05/11/2026 · 50,00 €');
+    await expect(page.locator('#xeChi')).toHaveText('Da RESTITUZIONE ESEMPIO');
+    await expect(page.locator('#xeQuando')).toHaveText('05/11/2026 · 50,00 € · dalla lista movimenti');
     await expect(page.locator('#xeOk')).toBeDisabled();
     await page.locator('#xeScelte input[value="extra"]').check();
     await expect(page.locator('#xeData')).toHaveValue('2026-11-05');
@@ -104,7 +105,8 @@ test.describe('24c.13', () => {
     expect(ex[0]).toMatchObject({ data: '2026-11-05', importo: 50, tipo: 'restituzione', nota: 'Parte della cena', meseConto: '2026-11', origine: 'banca' });
     // pagina "Ancora da incassare": niente da confermare, l'entrata extra del mese; nel riquadro la casella "Entrate extra"
     await expect(page.locator('#dcCard')).toHaveCount(0);
-    await expect(page.locator('#rieExtra .ir .tx b')).toHaveText('↩️ Restituzione · Parte della cena');
+    await expect(page.locator('#rieExtra .ir .tx b')).toHaveText('↩️ Restituzione');
+    await expect(page.locator('#rieExtra .ir .tx small')).toHaveText('05/11/2026 · Parte della cena');
     await page.evaluate(() => { tab = 'rie'; render(); });
     await expect(page.locator('#heroDet [data-vai="dinc"]').first()).toContainText('Entrate extra50,00 €');
     // meseConto (D-152): un'entrata del 05/12 con lo stipendio di novembre arrivato il 10/12 conta in novembre
@@ -124,7 +126,7 @@ test.describe('24c.13', () => {
     const R = await page.locator('#bcList select').evaluateAll(S => S.map(s => s.value));
     expect(R).toEqual(['dc:', 'dc:']);
     await page.click('#bcImporta');
-    await expect(page.locator('#v-dsp .dcnote')).toHaveText(/Nella lista ci sono 2 entrate da controllare\./);
+    await expect(page.locator('#v-dsp .dcnote')).toHaveText(/Nella lista ci sono 2 entrate da confermare\./);
     const f0 = await fisco(page);
     const prima = await page.evaluate(() => contiMese('2026-11'));
     await page.evaluate(() => vaiA('dinc'));
@@ -132,7 +134,7 @@ test.describe('24c.13', () => {
     await page.locator('#dcCard [data-dc]').first().click();
     await page.locator('#xeScelte input[value="prog"]').check();
     await expect(page.locator('#xePg option')).toHaveCount(1);
-    await expect(page.locator('#xeOk')).toHaveText('Segna entrati');
+    await expect(page.locator('#xeOk')).toHaveText('Segna come entrati');
     await page.click('#xeOk');
     const pg = await page.evaluate(k => pagamenti()[k], k[0][0]);
     expect(pg).toMatchObject({ pagato: true, data: '2026-11-05', importo: 50, meseConto: '2026-11' });
@@ -189,6 +191,7 @@ test.describe('24c.13', () => {
     expect(await page.evaluate(() => contiMese('2026-11').ext)).toBe(75.5);
     await page.locator('#rieExtra [data-xe]').click();
     await page.click('#xeDel');
+    await page.locator('#dlgBtns .btn.danger').click(); // 24c.14: stessa conferma dell'eliminazione di una spesa
     expect(await page.evaluate(() => [contiMese('2026-11').ext, Object.values(D().entrateExtra)[0].deleted])).toEqual([0, true]);
     // dati rovinati arrivati da Drive: ignorati, nessun errore, niente nella pagina
     await page.evaluate(() => { D().entrateExtra.x1 = { data: '2026-11-31', importo: 5, updatedAt: 1 }; D().entrateExtra.x2 = { data: '2026-11-02', importo: '<img src=x onerror=alert(1)>', updatedAt: 1 };
@@ -196,7 +199,8 @@ test.describe('24c.13', () => {
       D().daConfermare.y1 = { data: '2026-11-02', importo: 7, nome: '<script>x</script>', updatedAt: 1 }; changed(); render(); });
     expect(await page.evaluate(() => contiMese('2026-11').ext)).toBe(4);
     expect(await page.locator('#v-dinc img, #v-dinc script, #v-dinc i').count()).toBe(0);
-    await expect(page.locator('#rieExtra .ir .tx b')).toHaveText('• Altro · <img src=x>');
+    await expect(page.locator('#rieExtra .ir .tx b')).toHaveText('• Altro');
+    await expect(page.locator('#rieExtra .ir .tx small')).toHaveText('02/11/2026 · <img src=x>');
     // niente nelle tasse
     await page.evaluate(() => { for (const k of Object.keys(D().entrateExtra)) delete D().entrateExtra[k]; changed(); });
     expect(await fisco(page)).toBe(f0);
@@ -226,9 +230,9 @@ test.describe('24c.13', () => {
   test('informativa 24c.13: nome di chi manda il bonifico solo per le entrate da confermare; entrate extra', async ({ browser }) => {
     const { page, errori } = await telefono(browser);
     const pr = await page.evaluate(async () => (await fetch('privacy.html')).text());
-    expect(pr).toContain('(versione 24c.13)');
-    expect(pr).toContain('salva anche il <b>nome di chi te li manda</b>, solo finché restano tra le «Entrate da confermare»: quando scegli cosa sono, il nome viene tolto.');
-    expect(pr).toContain('spese, entrate extra (restituzioni, regali, vendite),');
+    // 24c.14: il testo provvisorio è sostituito da quello definitivo di 03 (v24c14.spec.js)
+    expect(pr).toContain('il <b>nome di chi te li manda</b>');
+    expect(pr).toContain('entrate extra (restituzioni, regali, vendite');
     expect(errori).toEqual([]);
   });
 });

@@ -47,8 +47,8 @@ test.describe('24b.1 · Riepilogo a pagine (D-098)', () => {
       await expect(page.locator('nav .tabs button[data-tab="rie"], nav button[data-tab="rie"]').first()).toHaveClass(/on/); // la scheda Riepilogo resta accesa
       return page.locator('#v-' + id);
     };
-    // Uscite fisse: le righe di prima
-    let p = await vai('Uscite fisse', 'dfx');
+    // Uscite fisse: le righe di prima (24c.14, D-168: parte "Uscite fisse" della pagina "Spese")
+    let p = await vai(/^Spese/, 'dsp');
     await expect(p.locator('#rieFix .kv span').filter({ hasText: 'Affitto' })).toContainText('addebitata il 3');
     await page.goBack(); await expect(page.locator('#v-rie')).toBeVisible(); // tasto Indietro del telefono
     // Lavoro dipendente: la scheda del lavoro con la busta e "È entrato"
@@ -82,7 +82,7 @@ test.describe('24b.1 · Riepilogo a pagine (D-098)', () => {
   test('Spese giornaliere: pagina con le spese del mese; nella pagina si cambia mese come nel Riepilogo', async ({ browser }) => {
     const { page, errori } = await telefono(browser);
     await page.evaluate(DATI); await vaiRie(page, '2026-11');
-    await cella(page, 'Spese giornaliere').click();
+    await cella(page, /^Spese/).click(); // 24c.14 (D-168): parte "Spese giornaliere" della pagina "Spese"
     const p = page.locator('#v-dsp');
     await expect(p.locator('#rieSpese h3')).toHaveText('🛒 Spese giornaliere');
     await expect(p.locator('#rieSpese .kv.big b')).toHaveText('80,00 €');

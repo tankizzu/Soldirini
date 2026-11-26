@@ -986,7 +986,7 @@ function fasciaLsFermo(){const f=$('lsFascia');if(!f)return;let q=null;try{const
   f.innerHTML=`<b>⚠ Dati del telefono non raggiungibili</b><span>Soldirini mostra una copia ${q?'del '+q:'più vecchia'} e le modifiche che fai ora non restano su questo telefono. Chiudi del tutto Soldirini (anche dalle app recenti) e riaprila.</span>${DB.meta.account?'<span>Con Google Drive collegato, le modifiche vanno comunque su Drive.</span>':''}`;f.hidden=false;}
 window.dopoAvvioArchivio=()=>{
   // D-130: la pagina dei blocchi si riapre qui, quando tutti i file sono caricati; scheda, mese e vista sono già a posto (avvio in plus.js)
-  try{const p=window.postoIniziale;if(p&&p.sub&&typeof SUB!=='undefined'&&SUB[p.sub]===tab&&document.getElementById('v-'+p.sub)){
+  try{const p=window.postoIniziale;if(p&&p.sub&&typeof SUB!=='undefined'&&SUB[p.sub]===tab&&(document.getElementById('v-'+p.sub)||p.sub==='dfx')){ // 24c.14 (D-168): "dfx" porta alla parte Uscite fisse di "Spese"
     if(history.state&&history.state.sub===p.sub){tab=p.sub;render();}else vaiA(p.sub);}}catch(e){}
   postoPronto=true;salvaPosto();
   $('vcNo').onclick=chiudiVecchiaCopia;$('vcSi').onclick=riprendiVecchiaCopia;

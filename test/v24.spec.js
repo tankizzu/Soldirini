@@ -41,8 +41,8 @@ test.describe('v24 · finestra "È entrato" e "In arrivo"', () => {
     await expect(rim.locator('.det')).toHaveText('Entrate 1.800,00 € · Uscite 650,00 €');
     await rim.click();
     // 24c.1 (4b): prima le entrate, poi Spese giornaliere e Uscite fisse in fondo
-    await expect(page.locator('#heroDet > *').nth(-2)).toHaveText('Spese giornaliere80,00 €, apri la pagina');
-    await expect(page.locator('#heroDet > *').nth(-1)).toHaveText('Uscite fisse570,00 €, apri la pagina');
+    // 24c.14 (D-168): una sola casella "Spese" = uscite fisse 570 + spese giornaliere 80
+    await expect(page.locator('#heroDet > *').nth(-1)).toHaveText('Spese650,00 €, apri la pagina');
     await expect(page.locator('#rieTot .hero')).not.toContainText('Pagamenti fissi');
     await expect(page.locator('#rieFix summary .st')).toHaveText('💳 Uscite fisse');
     await expect(page.locator('#rieFix .kv span').filter({ hasText: 'Affitto' })).toContainText('addebitata il 3');

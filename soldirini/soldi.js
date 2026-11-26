@@ -20,6 +20,15 @@ window.fissiDel=ym=>fissi().filter(f=>attivoNel(f,ym)).map(f=>({f,data:giornoNel
 // v24 (D-066, E-11): le uscite fisse del mese contano tutte dal primo giorno del mese (fTot); fAdd resta solo per "addebitata".
 // D-067 (E-12): ogni mese è calcolato da solo, nessun saldo portato dai mesi prima.
 const fissiMese=ym=>{const F=fissiDel(ym);const t=today();return {F,fTot:r2(F.reduce((a,x)=>a+num(x.f.importo),0)),fAdd:r2(F.filter(x=>x.data<=t).reduce((a,x)=>a+num(x.f.importo),0))};};
+// 24c.14 (D-169): con "I soldi messi da parte si tolgono dai soldi del mese" (impost().salvaToglie === true) ogni "Metti da parte"
+// conta come uscita e ogni "Prelevo dai risparmi" come entrata, nel mese della sua data. Spenta o assente: tutto come prima.
+// Movimenti con data non valida o importo non numero sono ignorati (dati da Drive). Tasse, CU e soglie non usano contiMese.
+const salvaToglie=()=>impost().salvaToglie===true;
+function risMese(ym){let messo=0,preso=0;if(!salvaToglie())return {messo,preso};
+  for(const [k,m] of Object.entries(D().risparmi||{})){if(!k.startsWith('mv:')||!m||typeof m!=='object'||m.deleted||typeof m.data!=='string'||!m.data.startsWith(ym+'-')||!(window.Entrate&&Entrate.dataValida(m.data)))continue;
+    const v=leggiNumero(m.importo);if(v==null||!isFinite(v)||!v)continue;if(v>0)messo+=v;else preso-=v;}
+  return {messo:r2(messo),preso:r2(preso)};}
+const mesiRisparmi=()=>salvaToglie()?Object.entries(D().risparmi||{}).filter(([k,m])=>k.startsWith('mv:')&&m&&!m.deleted&&typeof m.data==='string'&&window.Entrate&&Entrate.dataValida(m.data)&&leggiNumero(m.importo)).map(([,m])=>m.data.slice(0,7)):[];
 function contiMese(ym,IDX){
   const I=(IDX||(window.Entrate?Entrate.indice():{}))[ym]||{lav:0,pen:0,prog:0}; // all'avvio entrate.js può non essere ancora caricato
   const {fAdd,fTot}=fissiMese(ym);
@@ -27,17 +36,18 @@ function contiMese(ym,IDX){
     .reduce((a,s)=>a+num(s.importo),0));
   const prog=r2(I.prog),lav={v:r2(I.lav),stima:false},pen={v:r2(I.pen),stima:false};
   const ext=r2(I.ext||0); // 24c.13 (D-074): entrate extra del mese (extra.js); mai nei conti fiscali
-  const entrate=r2(prog+lav.v+pen.v+ext);const usciti=r2(fTot+sp);
-  return {prog,lav,pen,ext,fAdd,fTot,fArrivo:r2(fTot-fAdd),sp,entrate,usciti,rimanenti:r2(entrate-usciti)};
+  const R=risMese(ym); // 24c.14 (D-169)
+  const entrate=r2(prog+lav.v+pen.v+ext+R.preso);const usciti=r2(fTot+sp+R.messo);
+  return {prog,lav,pen,ext,fAdd,fTot,fArrivo:r2(fTot-fAdd),sp,risMesso:R.messo,risPreso:R.preso,ris:r2(R.messo-R.preso),entrate,usciti,rimanenti:r2(entrate-usciti)};
 }
 // vista Anno (E-13 a): anno in corso fino al mese in corso; anni passati tutti i 12 mesi; anni futuri nessun mese.
 // fResto = uscite fisse dei mesi dopo quello in corso (riga "ancora da addebitare entro dicembre"), non contate.
-function contiAnno(y){const T={prog:0,lav:0,pen:0,ext:0,fAdd:0,fTot:0,sp:0,entrate:0,usciti:0,rimanenti:0,fResto:0,stima:false,penStima:false};
+function contiAnno(y){const T={prog:0,lav:0,pen:0,ext:0,risMesso:0,risPreso:0,ris:0,fAdd:0,fTot:0,sp:0,entrate:0,usciti:0,rimanenti:0,fResto:0,stima:false,penStima:false};
   const ora=today().slice(0,7),oy=+ora.slice(0,4);const ult=+y<oy?12:+y===oy?+ora.slice(5):0;T.mesi=ult;const I=window.Entrate?Entrate.indice():{};
-  for(let m=1;m<=ult;m++){const c=contiMese(`${y}-${pad(m)}`,I);for(const k of ['prog','ext','fAdd','fTot','sp','entrate','usciti','rimanenti'])T[k]+=c[k];T.lav+=c.lav.v;T.pen+=c.pen.v;}
+  for(let m=1;m<=ult;m++){const c=contiMese(`${y}-${pad(m)}`,I);for(const k of ['prog','ext','risMesso','risPreso','ris','fAdd','fTot','sp','entrate','usciti','rimanenti'])T[k]+=c[k];T.lav+=c.lav.v;T.pen+=c.pen.v;}
   if(+y===oy)for(let m=ult+1;m<=12;m++)T.fResto+=fissiMese(`${y}-${pad(m)}`).fTot;
   for(const k in T)if(typeof T[k]==='number')T[k]=r2(T[k]);return T;}
-window.contiMese=contiMese;window.contiAnno=contiAnno;
+window.contiMese=contiMese;window.contiAnno=contiAnno;window.salvaToglie=salvaToglie;
 // 24c.11 (D-151): soldi rimasti nei mesi prima, a catena. Primo mese con dati: il più vecchio tra spese (mese in cui contano),
 // entrate segnate e inizio delle uscite fisse. X = somma dei rimanenti (contiMese) di ogni mese da lì fino al mese prima di ym.
 const meseDopo=m=>{let y=+m.slice(0,4),n=+m.slice(5)+1;if(n>12){n=1;y++;}return `${y}-${pad(n)}`;};
@@ -45,15 +55,27 @@ function primoMeseConDati(){let p=null;const min=m=>{if(ymOk(m)&&(!p||m<p))p=m;}
   if(window.spesePersonali)for(const s of spesePersonali(()=>true))min(meseSpesa(s));
   if(window.Entrate)for(const m of Object.keys(Entrate.indice()))min(m);
   for(const f of fissi())min(f.dal);
+  for(const m of mesiRisparmi())min(m); // 24c.14 (D-169): con la scelta accesa anche i risparmi sono dati del mese
   return p;}
 // 24c.12 (D-157): "Inizia i conti da" (impost().contiDa): la somma parte da quel mese (o dal primo mese con dati, se è dopo);
 // nel mese scelto e prima la sezione non c'è. I mesi prima restano nell'app.
 const contiDa=()=>{const v=impost().contiDa;return ymOk(v)?v:null;};
 function inizioConti(){const p=primoMeseConDati(),d=contiDa();return d&&(!p||d>p)?d:p;}
-function rimastiPrima(ym){const p=inizioConti();if(!p||p>=ym)return null; // nessun mese prima da contare: la sezione non c'è
-  const I=window.Entrate?Entrate.indice():{};let x=0,m=p,n=0;
-  while(m<ym&&n++<1200){x+=contiMese(m,I).rimanenti;m=meseDopo(m);}
+// 24c.14 (P6 di 03): il giro parte al massimo 1.200 mesi prima del mese guardato e arriva sempre fino al mese prima.
+// Prima partiva dal primo mese con dati e si fermava dopo 1.200 mesi: con una data molto vecchia (es. "dal 1900-01")
+// sommava i mesi sbagliati. Nessuna soglia di data (la domanda 80 aspetta l'utente).
+const meseIndietro=(m,k)=>{const t=(+m.slice(0,4))*12+(+m.slice(5))-1-k;return `${Math.floor(t/12)}-${pad(t%12+1)}`;};
+const inizioGiro=ym=>{const p=inizioConti();if(!p||p>=ym)return null;const lim=meseIndietro(ym,1200);return p<lim?lim:p;};
+function rimastiPrima(ym){const p=inizioGiro(ym);if(!p)return null; // nessun mese prima da contare: la sezione non c'è
+  const I=window.Entrate?Entrate.indice():{};let x=0,m=p;
+  while(m<ym){x+=contiMese(m,I).rimanenti;m=meseDopo(m);}
   return r2(x);}
+// 24c.14: frase grigia della sezione, testi definitivi di 02 (tornata 51, righe 5-8)
+function fraseRimasti(ym){const S=inizioGiro(ym),E=mesePrima(ym),scelto=contiDa()&&contiDa()===inizioConti()&&S===inizioConti();
+  const mn=m=>esc(monthName(m)),solo=esc(MESI[+ym.slice(5)-1]);
+  const prima=S===E?(scelto?`Solo ${mn(E)}, come scelto in Impostazioni → Aspetto.`:`Solo ${mn(E)}, il primo mese con dati.`)
+    :`Somma dei mesi da ${mn(S)} a ${mn(E)}${scelto?', come scelto in Impostazioni → Aspetto':''}.`;
+  return `${prima} Il numero grande in alto resta solo di ${solo}.`;}
 window.rimastiPrima=rimastiPrima;
 
 // ---------- riepilogo: in alto i soldi rimanenti, poi lavoro dipendente, rimborsi, ritenuta, pagamenti fissi ----------
@@ -80,7 +102,10 @@ renderRiepilogo=function(){_renderRie18();
   const conVoce=tipo=>{if(!window.Entrate)return false;const fino=anno?(+y<+ora.slice(0,4)?y+'-12':ora):(cur<ora?cur:ora);
     return Entrate.voci(fino).some(v=>v.tipo===tipo&&(anno?v.ym.startsWith(y+'-'):v.ym===cur||(cur===ora&&!v.ent)));};
   // 24c.1 (richiesta dell'utente confermata il 19/11, punto 4b): prima le entrate, poi le uscite in fondo
-  const uscite=[C.sp?cella('Spese giornaliere',eur(C.sp),'','','dsp'):null,C.fTot?cella('Uscite fisse',eur(C.fTot),'','','dfx'):null].filter(Boolean);
+  // 24c.14 (D-168): una sola casella "Spese" = uscite fisse + spese giornaliere (lo stesso numero di "Uscite"); c'è se almeno una ha un valore
+  const uscite=[C.sp||C.fTot?cella('Spese',eur(r2(C.fTot+C.sp)),'','','dsp'):null,
+    // 24c.14 (D-169): "Messi da parte" (versati meno prelevati), solo con la scelta accesa e se nel periodo c'è qualcosa
+    C.risMesso||C.risPreso?cella('Messi da parte',eur(C.ris).replace(/^-/,'−'),'',C.risPreso?`prelevati ${eur(C.risPreso)}`:'','ris'):null].filter(Boolean);
   // 24c.1 (02, tornata 27 §3): casella a 0,00 € che c'è solo per una voce in arrivo → nota "stipendio/pensione in arrivo", senza importo
   const inArrivo=t=>!anno&&cur===ora&&!!window.Entrate&&Entrate.voci(ora).some(v=>v.tipo===t&&!v.ent);
   const entrate=[lavV||(lavori().length&&conVoce('lav'))?cella('Lavoro dipendente',eur(lavV),'',!lavV&&inArrivo('lav')?'stipendio in arrivo':'','dlav'):null,
@@ -103,12 +128,12 @@ renderRiepilogo=function(){_renderRie18();
   // 24c.11 (D-151): sezione "Rimasti dai mesi prima", solo nella vista Mese, sotto il riquadro e chiusa a ogni apertura (D-010).
   // Il numero grande resta solo del mese (D-067); qui si somma a catena quello che è rimasto nei mesi prima.
   if(!anno){const X=rimastiPrima(cur);if(X!=null){const s=v=>eur(v).replace(/^-/,'−'),T=r2(X+C.rimanenti);
-    hero.insertAdjacentHTML('afterend',`<div class="cards" id="rieRim"><div class="card rimprima" data-fid="rimasti" data-sum="${s(X)}"><h3>↪️ Rimasti dai mesi prima</h3>
-      <div class="kv"><span>Rimasti dai mesi prima</span><b>${s(X)}</b></div><div class="kv"><span>Rimanenti del mese</span><b>${s(C.rimanenti)}</b></div>
-      <div class="kv big"><span>Totale</span><b>${s(T)}</b></div><p class="muted sm">${contiDa()&&contiDa()===inizioConti()?`Da ${esc(monthName(contiDa()))}, come scelto in Impostazioni → Aspetto.`:`Dal primo mese con dati, ${esc(monthName(inizioConti()))}.`} Il numero grande resta solo del mese.</p></div></div>`);
+    hero.insertAdjacentHTML('afterend',`<div class="cards" id="rieRim"><div class="card rimprima" data-fid="rimasti" data-sum="${s(X)}"><h3><span aria-hidden="true">↪️</span> Rimasti dai mesi prima</h3>
+      <div class="kv"><span>Rimasti dai mesi prima</span><b>${s(X)}</b></div><div class="kv"><span>Soldi rimanenti di ${esc(MESI[+cur.slice(5)-1])}</span><b>${s(C.rimanenti)}</b></div>
+      <div class="kv big"><span>Totale</span><b>${s(T)}</b></div><p class="muted sm">${fraseRimasti(cur)}</p></div></div>`);
     foldify($('rieRim'),'rie');}}
   // 24b.1 (D-098, 02 §2): la testata di ogni pagina mostra lo stesso importo della sua casella
-  window.VALORI_RIE={dfx:C.fTot,dsp:C.sp,dlav:lavV,pen:penV,drim:tot.rimb,drit:tot.rit,dinc:daInc,inc:anno?r2(tot.netto+tot.rimb):0,mesi:C.mesi};
+  window.VALORI_RIE={dfx:C.fTot,dsp:r2(C.fTot+C.sp),fx:C.fTot,sp:C.sp,dlav:lavV,pen:penV,drim:tot.rimb,drit:tot.rit,dinc:daInc,inc:anno?r2(tot.netto+tot.rimb):0,mesi:C.mesi};
   // uscite fisse del mese (D-065: "Uscite fisse" ovunque; righe "addebitata il N" / "addebito il N")
   const box=$('rieFix'); // 24b.1 (D-098): nella pagina "Uscite fisse"
   const F=anno?[]:fissiDel(cur);

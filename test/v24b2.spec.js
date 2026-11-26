@@ -29,7 +29,7 @@ test.describe('24b.2 · riquadro (D-101)', () => {
     expect(await caselle(page)).toEqual([]);
     await expect(page.locator('#heroDet .nient')).toHaveText('🙁Mi dispiace che non hai entrate');
     await page.evaluate(() => { const id = uid(); D().fissi = { [id]: { id, nome: 'Affitto', cat: 'altro', importo: '450', giorno: '3', dal: '2026-10', al: '', rate: '', updatedAt: 1 } }; changed(); render(); });
-    expect(await caselle(page)).toEqual(['Uscite fisse']);
+    expect(await caselle(page)).toEqual(['Spese']); // 24c.14 (D-168)
     // le caselle-pulsante hanno il fondo del riquadro (nella 24b.1 avevano il fondo chiaro del navigatore: testo bianco su grigio)
     expect(await page.locator('#heroDet > button.hcel').first().evaluate(b => [getComputedStyle(b).backgroundColor, getComputedStyle(b).display, getComputedStyle(b).borderRadius])).toEqual(['rgba(255, 255, 255, 0.1)', 'flex', '11px']);
     await expect(page.locator('#heroDet .nient')).toHaveCount(1);

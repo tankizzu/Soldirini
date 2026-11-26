@@ -521,8 +521,7 @@ test.describe('v24c · testate della vista Anno (02, tornata 24 §1)', () => {
     await page.evaluate(() => { D().pagamenti = { 'p1|2026-10|o': { pagato: true, data: '2026-10-20', importo: 50, updatedAt: 1 } }; D().fissi = { f1: { id: 'f1', nome: 'Affitto', cat: 'altro', importo: '400', giorno: '1', dal: '2026-01', al: '', rate: '', updatedAt: 1 } }; changed(); });
     const testa = async t => { await page.evaluate(t => { cur = '2026-11'; rieMode = 'anno'; tab = 'rie'; render(); vaiA(t); }, t); return page.locator(`#v-${t} .testa small`).textContent(); };
     expect(await testa('drim')).toBe('Rimborsi spese 2026, fino a novembre');
-    expect(await testa('dsp')).toBe('Spese giornaliere 2026, fino a novembre');
-    expect(await testa('dfx')).toBe('Uscite fisse 2026, fino a novembre');
+    expect(await testa('dsp')).toBe('Spese 2026, fino a novembre'); // 24c.14 (D-168): una pagina sola
     expect(await testa('drit')).toBe('Ritenuta d’acconto 2026, fino a novembre');
     expect(await testa('dlav')).toBe('Entrato da lavoro dipendente nel 2026, fino a novembre');
     expect(await testa('dinc')).toBe('Ancora da incassare (tutto l’anno)');

@@ -6,7 +6,8 @@ const numP=v=>leggiNumeroPunto(v)??0; // 24c.6: campi type="number" (giorni, rat
 const RS=()=>D().risparmi||(D().risparmi={});
 const cfg=()=>RS().cfg&&!RS().cfg.deleted?RS().cfg:{perc:'20'};
 const obiettivi=()=>Object.entries(RS()).filter(([k,r])=>k.startsWith('ob:')&&!r.deleted).map(([k,r])=>Object.assign({id:k.slice(3)},r)).sort((a,b)=>(a.entro||'9').localeCompare(b.entro||'9'));
-const movimenti=()=>Object.entries(RS()).filter(([k,r])=>k.startsWith('mv:')&&!r.deleted).map(([k,r])=>Object.assign({id:k.slice(3)},r)).sort((a,b)=>b.data.localeCompare(a.data));
+// 24c.14 (D-169): movimenti rovinati (data assente o non valida, importo non numero) ignorati, anche qui
+const movimenti=()=>Object.entries(RS()).filter(([k,r])=>k.startsWith('mv:')&&r&&typeof r==='object'&&!r.deleted&&typeof r.data==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(r.data)&&leggiNumero(r.importo)!=null).map(([k,r])=>Object.assign({id:k.slice(3)},r)).sort((a,b)=>b.data.localeCompare(a.data));
 const totale=fn=>r2(movimenti().filter(fn||(()=>true)).reduce((a,m)=>a+num(m.importo),0));
 const mesiTra=(da,a)=>{const [y1,m1]=da.split('-').map(Number),[y2,m2]=a.split('-').map(Number);return (y2-y1)*12+(m2-m1);};
 const mesePrima=ym=>{const d=new Date(+ym.slice(0,4),+ym.slice(5)-2,1);return `${d.getFullYear()}-${pad(d.getMonth()+1)}`;};
@@ -25,7 +26,9 @@ function renderRisparmi(){
     <div class="kv"><span>Rimasti a ${esc(monthName(prec))}</span><b class="mnt">${eur(Cp.rimanenti)}</b></div>
     ${giaPrec?`<p class="sm">✓ Per ${esc(monthName(prec))} hai già messo da parte.</p>`:Cp.rimanenti>0?`<p class="sm">Ti propongo di mettere da parte il <b>${nf(perc)}%</b>: <b class="mnt">${eur(sugg)}</b>.</p><div class="acts"><button class="btn sm" id="rsSalv" data-v="${sugg}">Metti da parte ${eur(sugg)}</button><button class="btn ghost sm" id="rsSalvAltro">Un altro importo</button></div>`:`<p class="muted sm">A ${esc(monthName(prec))} non è avanzato niente da mettere da parte.</p>`}
     <div class="kv"><span>${esc(monthName(ym))}, finora</span><b class="mnt">${eur(Cc.rimanenti)}</b></div>
-    <label style="margin-top:8px">Percentuale da mettere da parte ogni mese<input id="rsPerc" type="number" inputmode="decimal" min="0" max="100" value="${esc(cfg().perc)}"></label></div>
+    <label style="margin-top:8px">Percentuale da mettere da parte ogni mese<input id="rsPerc" type="number" inputmode="decimal" min="0" max="100" value="${esc(cfg().perc)}"></label>
+    <label class="check" style="margin-top:10px"><input type="checkbox" id="rsTogli" aria-describedby="rsTogliNota" ${impost().salvaToglie===true?'checked':''}> I soldi messi da parte si tolgono dai soldi del mese</label>
+    <p class="muted sm" id="rsTogliNota">${impost().salvaToglie===true?'Accesa: «Metti da parte» conta come uscita e «Prelevo dai risparmi» come entrata, nel mese della loro data. Il salvadanaio usa la data di oggi. Le tasse non cambiano.':'Spenta: i risparmi non cambiano i soldi rimanenti.'}</p></div>
   <div class="card"><h3>🎯 Obiettivi</h3>${O.map(o=>{const s=totale(m=>m.ob===o.id);const t=num(o.target);const p=t?Math.min(100,Math.round(s/t*100)):0;
       const n=o.entro?Math.max(1,mesiTra(ym,o.entro)+1):0;const serve=t>s&&n?r2((t-s)/n):0;
       return `<div class="obp"><div class="kv"><span><b>${esc(o.nome)}</b>${o.entro?` <small class="muted">entro ${esc(monthName(o.entro))}</small>`:''}</span><b>${eur(s)} / ${eur(t)}</b></div><div class="bar"><span style="width:${p}%"></span></div>
@@ -60,11 +63,15 @@ async function eliminaMv(){if(!await conferma('Eliminare questo movimento?','Eli
 
 function bind(){
   $('risBody').addEventListener('click',e=>{const t=e.target;const prec=mesePrima(today().slice(0,7));
-    if(t.id==='rsSalv'){RS()['mv:'+uid()]={data:ultimoGiorno(prec),importo:t.dataset.v,ob:'',nota:'Salvadanaio di '+monthName(prec),salvadanaio:prec,updatedAt:Date.now()};changed();render();toast('Messo da parte!');return;}
-    if(t.id==='rsSalvAltro'){apriMv(null,{data:ultimoGiorno(prec),nota:'Salvadanaio di '+monthName(prec),salvadanaio:prec});return;}
+    // 24c.14 (D-169): con la scelta accesa il salvadanaio usa la data di oggi (i soldi si spostano adesso): il mese prima non cambia
+    const dataSalv=impost().salvaToglie===true?today():ultimoGiorno(prec);
+    if(t.id==='rsSalv'){RS()['mv:'+uid()]={data:dataSalv,importo:t.dataset.v,ob:'',nota:'Salvadanaio di '+monthName(prec),salvadanaio:prec,updatedAt:Date.now()};changed();render();toast('Messo da parte!');return;}
+    if(t.id==='rsSalvAltro'){apriMv(null,{data:dataSalv,nota:'Salvadanaio di '+monthName(prec),salvadanaio:prec});return;}
     if(t.id==='rsMv'){apriMv(null);return;}if(t.id==='rsOb'){apriOb(null);return;}
     if(t.dataset.obed){apriOb(t.dataset.obed);return;}if(t.dataset.mved){apriMv(t.dataset.mved);return;}});
-  $('risBody').addEventListener('change',e=>{if(e.target.id==='rsPerc'){RS().cfg={perc:String(Math.min(100,Math.max(0,numP(e.target.value)))),updatedAt:Date.now()};changed();render();}});
+  $('risBody').addEventListener('change',e=>{
+    if(e.target.id==='rsTogli'){const I=impost();if(e.target.checked)I.salvaToglie=true;else delete I.salvaToglie;I.updatedAt=Date.now();changed();render();return;} // 24c.14 (D-169)
+    if(e.target.id==='rsPerc'){RS().cfg={perc:String(Math.min(100,Math.max(0,numP(e.target.value)))),updatedAt:Date.now()};changed();render();}});
   $('obClose').onclick=()=>chiudi('obModal');$('obSave').onclick=salvaOb;$('obDel').onclick=eliminaOb;
   $('mvClose').onclick=()=>chiudi('mvModal');$('mvSave').onclick=salvaMv;$('mvDel').onclick=eliminaMv;
   $('mvTipo').addEventListener('click',e=>{const b=e.target.closest('[data-t]');if(b){mv.tipo=b.dataset.t;tipoMv();}});
