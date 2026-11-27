@@ -1,14 +1,14 @@
 // v24c (D-054, D-058, D-059, D-065, D-097): copia di sicurezza con password, ripresa, "Sostituisci tutto" con Drive.
 // Prove C1-C13 del piano di 01 e requisiti V1-V15 di 03 (tornata 22). Solo dati inventati. Orologio fisso al 18/11/2026.
 const { test, expect } = require('./helpers/prova');
-const { DriveFinto, nuovoDispositivo, conArchivio, accedi, accediEsistente, aspettaSync, sincronizza } = require('./helpers/app');
+const { DriveFinto, nuovoDispositivo, dopoAvvio, conArchivio, accedi, accediEsistente, aspettaSync, sincronizza } = require('./helpers/app');
 const fs = require('fs');
 
 const OGGI = '2026-11-18T10:00:00+01:00';
 const PW = 'Gatto-sul-tetto-7';
 const PDF = Buffer.from('%PDF-1.4\n% busta finta\n%%EOF\n');
 const telefono = (browser, o = {}) => nuovoDispositivo(browser, { ora: OGGI, ...o });
-const pronto = page => page.waitForFunction(() => window.Copia && window.Archivio && Archivio.avviata);
+const pronto = async page => { await page.waitForFunction(() => window.Copia && window.Archivio && Archivio.avviata); await dopoAvvio(page); }; // 24c.18: dopo la lettura a tempo di entrate.js
 
 // dati inventati: un progetto, tre attività, un lavoro con una busta in attesa di Drive (file PDF finto nel telefono)
 const DATI = async (page, extra = '') => page.evaluate(async (extra) => {

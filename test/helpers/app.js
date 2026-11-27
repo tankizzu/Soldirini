@@ -79,4 +79,14 @@ async function accediEsistente(page) {
   await aspettaSync(page);
 }
 
-module.exports = { BASE, DriveFinto, CalendarFinto, nuovoDispositivo, conArchivio, avviata, accedi, accediEsistente, aspettaSync, sincronizza, statoSync, testoSync };
+// 24c.18: aspetta che sia passata la lettura a tempo di entrate.js (setTimeout di 800 ms subito prima di window.Entrate):
+// crea da sola le raccolte vuote che mancano (entrate:{}, a volte buste:{}). Su GitHub Actions poteva partire dopo la
+// "fotografia" dei dati di una prova e far sembrare cambiati i dati (v24c17.spec.js:490 run 45900090003, v24c.spec.js:250).
+// Entrate si vede dopo il setTimeout: 850 ms dopo averlo visto il timer è già scaduto; il setTimeout(0) finale parte dopo di lui.
+async function dopoAvvio(page) {
+  await page.waitForFunction(() => window.Entrate);
+  const t = await page.evaluate(() => performance.now());
+  await page.waitForFunction(t => performance.now() >= t + 850, t, { polling: 50 });
+  await page.evaluate(() => new Promise(r => setTimeout(r, 0)));
+}
+module.exports = { BASE, dopoAvvio, DriveFinto, CalendarFinto, nuovoDispositivo, conArchivio, avviata, accedi, accediEsistente, aspettaSync, sincronizza, statoSync, testoSync };

@@ -5,8 +5,13 @@ const { DriveFinto, nuovoDispositivo, accedi, accediEsistente, sincronizza } = r
 const B = require('./helpers/banca-finta');
 const r2 = x => Math.round(x * 100) / 100;
 
-async function telefono(browser, ora = '2026-12-20T10:00:00+01:00') {
+async function telefono(browser, ora = '2026-12-20T10:00:00+01:00', { trattieni = false } = {}) {
   const d = await nuovoDispositivo(browser, { drive: new DriveFinto(), ora, telefono: true });
+  // 24c.18: trattieni = i timer da 800 ms dell'app (la lettura a tempo di entrate.js, forseChiedi) non partono da soli:
+  // la prova li fa partire quando vuole con window.__partiTimer(), come su una macchina lenta (GitHub Actions)
+  if (trattieni) { await d.page.context().addInitScript(() => { const st = window.setTimeout, fermi = []; window.setTimeout = (f, t, ...a) => t === 800 ? (fermi.push(() => f(...a)), 0) : st(f, t, ...a);
+      window.__partiTimer = () => { while (fermi.length) fermi.shift()(); }; });
+    await d.page.reload(); }
   await d.page.waitForFunction(() => window.Entrate && window.Stip15 && window.Archivio && Archivio.avviata);
   await d.page.evaluate(() => { DB.meta.skipWelcome = true; changed(); render(); });
   return d;
@@ -311,6 +316,14 @@ const datiEM = page => page.evaluate(() => {
   [['2026-07', '2026-08-10'], ['2026-08', '2026-09-10'], ['2026-09', '2026-10-10'], ['2026-10', '2026-11-10']].forEach(([m, d]) => { D().entrate[`lav|${l.id}|${m}`] = { entrato: true, data: d, importo: 1400, updatedAt: 1 }; });
   [['2026-08-12', 300], ['2026-09-12', 400], ['2026-10-12', 450], ['2026-11-12', 350]].forEach(([d, v], i) => { const id = 's' + i; D().spesePers[id] = { id, data: d, cat: 'spesa', importo: v, nota: 'Spesa inventata', created: i, updatedAt: 1 }; });
   changed(); render(); return l.id; });
+// 24c.18: chiavi dei dati diverse da `prima` (testo di JSON.stringify(D())), con il valore prima → dopo, così un fallimento si
+// capisce dal log. Una raccolta vuota che un lettore dell'app crea da sola (BUS() crea buste:{} quando la lettura a tempo di
+// entrate.js, 800 ms dopo l'avvio, passa dalle buste) non è un cambiamento dei dati: è la causa del fallimento su GitHub Actions
+// della run 45900090003 (riprodotto con trattieni:true). L'ordine delle chiavi in cima non conta; dentro ogni raccolta sì.
+const diversiDa = (page, prima) => page.evaluate(prima => { const a = JSON.parse(prima), b = D();
+  const vuota = x => x === undefined || (x !== null && typeof x === 'object' && !Array.isArray(x) && !Object.keys(x).length);
+  return [...new Set([...Object.keys(a), ...Object.keys(b)])].filter(k => !(vuota(a[k]) && vuota(b[k])) && JSON.stringify(a[k]) !== JSON.stringify(b[k]))
+    .map(k => `${k}: ${String(JSON.stringify(a[k])).slice(0, 400)} → ${String(JSON.stringify(b[k])).slice(0, 400)}`); }, prima);
 const rim = page => page.evaluate(() => ['2026-08', '2026-09', '2026-10', '2026-11', '2026-12'].map(m => [contiMese(m).rimanenti, rimastiPrima(m)]));
 const apriEM = async (page, ym) => { await page.evaluate(ym => { cur = ym; tab = 'pro'; render(); $('emApri').closest('details')?.setAttribute('open', ''); }, ym); await page.click('#emApri'); await expect(page.locator('#emModal')).toBeVisible(); };
 const riga = (page, c) => page.locator(`#emBody [data-em="${c}"]`);
@@ -348,10 +361,10 @@ test.describe('24c.17 · D-156 «Elimina i dati di un mese»', () => {
     // «‹ Cambia la scelta» torna al passo 1 con le caselle come erano; «Annulla» chiude senza cambiare niente
     await page.click('#emCambia'); await expect(riga(page, 'sp')).toBeChecked();
     await page.click('#emCont'); await page.click('#emAnn'); await expect(page.locator('#emModal')).toBeHidden();
-    expect(JSON.parse(await page.evaluate(() => JSON.stringify(D())))).toEqual(JSON.parse(prima));
+    expect(await diversiDa(page, prima)).toEqual([]);
     // anche con × e con il mese cambiato
     await apriEM(page, '2026-10'); await page.locator('#emMese').fill('2026-09'); await page.click('#emClose');
-    expect(await page.evaluate(() => JSON.stringify(D()))).toBe(prima);
+    expect(await diversiDa(page, prima)).toEqual([]);
     // EM1
     await apriEM(page, '2026-10'); await riga(page, 'sp').check(); await page.click('#emCont');
     await page.locator('#emSenza').check(); await expect(page.locator('#emVia')).toBeEnabled();
@@ -487,7 +500,7 @@ test.describe('24c.17 · D-156 «Elimina i dati di un mese»', () => {
     await page.locator('#emSenza').check(); await page.click('#emVia');
     await expect(page.locator('#emBody .err')).toHaveText('Soldirini non è riuscita a eliminare le voci, quindi non ha cambiato niente. Riprova.');
     await expect(page.locator('#emModal')).toBeVisible();
-    expect(await page.evaluate(() => JSON.stringify(D()))).toBe(prima);
+    expect(await diversiDa(page, prima)).toEqual([]);
     await page.evaluate(() => { D().entrate = { ...D().entrate }; });
     // copia salvata dalla finestra stessa (senza password): «✓ Copia salvata oggi.» e il pulsante rosso si accende
     await page.locator('#emSenza').uncheck(); await expect(page.locator('#emVia')).toBeDisabled();
@@ -518,6 +531,33 @@ test.describe('24c.17 · D-156 «Elimina i dati di un mese»', () => {
     // una nuova attività dello stesso mese e progetto è da incassare (il vecchio pagamento non torna valido)
     expect(await page.evaluate(pid => { D().eventi.e10 = { id: 'e10', pid, data: '2026-09-21', tipo: 'altro', titolo: '', ore: true, fasce: [], fisso: '50', rimborso: false, spese: [], created: 2, updatedAt: Date.now() }; changed();
       return [pagOk(pagamenti()[`${pid}|2026-09|o`]), meseIncasso(pid, '2026-09', 'o')]; }, ids.pid)).toEqual([false, '2026-09']);
+    expect(errori).toEqual([]);
+  });
+
+  test('24c.18 · il timer di entrate.js che parte durante «Elimina» (come su GitHub Actions) non fa sembrare cambiati i dati; il ripristino rimette ogni voce; una differenza vera si vede chiave per chiave', async ({ browser }) => {
+    const { page, errori } = await telefono(browser, undefined, { trattieni: true });
+    await page.evaluate(() => {
+      const l = Stip15.nuovoLavoro('fisso'); l.nome = 'Ditta Esempio'; l.dal = '2026-01-01'; D().lavori = { [l.id]: l };
+      D().spesePers = { s1: { id: 's1', data: '2026-11-12', cat: 'spesa', importo: 30, nota: 'Spesa inventata', origine: 'banca', impronta: 'a'.repeat(64), created: 1, updatedAt: 1 } };
+      D().bancaImpronte = { ['a'.repeat(64)]: { updatedAt: 1 } };
+      D().turni = { t1: { id: 't1', lid: l.id, data: '2026-11-04', tipo: null, da: '08:00', a: '12:00', pausa: '', ore: '', nota: 'nota', updatedAt: 1 } };
+      D().entrate = { [`lav|${l.id}|2026-10`]: { entrato: true, data: '2026-11-09', importo: 1400, updatedAt: 1 } };
+      delete D().buste; changed(); render(); });
+    await apriEM(page, '2026-11'); await page.click('#emTutto'); await page.click('#emCont');
+    const prima = await page.evaluate(() => JSON.stringify(D()));
+    expect(JSON.parse(prima).buste).toBeUndefined();
+    // il timer parte adesso, tra la fotografia dei dati e il controllo: crea solo buste:{}
+    await page.evaluate(() => window.__partiTimer());
+    expect(await page.evaluate(() => D().buste)).toEqual({});
+    // spese, impronta e turni si scrivono prima delle entrate bloccate: il ripristino deve rimetterli tutti
+    await page.evaluate(() => Object.freeze(D().entrate));
+    await page.locator('#emSenza').check(); await page.click('#emVia');
+    await expect(page.locator('#emBody .err')).toHaveText('Soldirini non è riuscita a eliminare le voci, quindi non ha cambiato niente. Riprova.');
+    expect(await diversiDa(page, prima)).toEqual([]);
+    expect(await page.evaluate(() => [D().spesePers.s1.importo, D().bancaImpronte['a'.repeat(64)], D().turni.t1.nota])).toEqual([30, { updatedAt: 1 }, 'nota']);
+    // una differenza vera si vede: chiave, prima e dopo
+    await page.evaluate(() => { D().turni.t1.nota = 'cambiata'; });
+    expect(await diversiDa(page, prima)).toEqual([expect.stringMatching(/^turni: .*"nota":"nota".* → .*"nota":"cambiata"/)]);
     expect(errori).toEqual([]);
   });
 });
