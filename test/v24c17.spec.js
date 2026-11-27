@@ -38,6 +38,7 @@ test.describe('24c.17 · D-176 salvadanaio senza quota', () => {
     await base(page);
     const f0 = await fisco(page), c0 = await conti(page);
     await page.evaluate(() => vaiA('ris'));
+    await page.locator('#risBody summary', { hasText: 'Metti da parte o preleva' }).click(); // 24c.19 (D-183): sezioni chiuse all'apertura
     // niente percentuale, niente quota, niente pulsanti legati alla quota
     for (const s of ['#rsPerc', '#rsSalv', '#rsSalvAltro']) await expect(page.locator(s)).toHaveCount(0);
     await expect(page.locator('#v-ris')).not.toContainText('Percentuale');
@@ -75,6 +76,7 @@ test.describe('24c.17 · D-176 salvadanaio senza quota', () => {
     expect(await fisco(page)).toBe(f0);
     // spenta di nuovo: tutto come prima
     await page.evaluate(() => vaiA('ris'));
+    await page.locator('#risBody summary', { hasText: 'Metti da parte o preleva' }).click(); // 24c.19 (D-183): sezioni chiuse all'apertura
     await page.locator('#rsTogli').uncheck();
     expect(await conti(page)).toEqual(c0);
     expect(await fisco(page)).toBe(f0);
@@ -90,6 +92,7 @@ test.describe('24c.17 · D-176 salvadanaio senza quota', () => {
       'mv:s2': { data: '2026-11-28', importo: '60', ob: '', nota: '', salvadanaio: '2026-11', updatedAt: 7 } };
     await page.evaluate(v => { D().risparmi = JSON.parse(JSON.stringify(v)); changed(); vaiA('ris'); }, vecchi);
     await expect(page.locator('#v-ris')).toBeVisible();
+    await page.locator('#risBody summary', { hasText: 'Metti da parte o preleva' }).click(); // 24c.19 (D-183): sezioni chiuse all'apertura
     for (const s of ['#rsPerc', '#rsSalv', '#rsSalvAltro']) await expect(page.locator(s)).toHaveCount(0);
     // accesa: ogni movimento conta nel mese della sua data (il 18/12 a dicembre, il 28/11 a novembre), niente "dal giorno 1"
     await page.locator('#rsTogli').check();

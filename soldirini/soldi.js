@@ -114,8 +114,18 @@ renderRiepilogo=function(){_renderRie18();
     C.risMesso||C.risPreso?cella(risT,risV,'',risN,'ris',`${risT} ${perL}: ${risV}${risN?', '+risN:''}. Apri i risparmi.`):null].filter(Boolean);
   // 24c.1 (02, tornata 27 §3): casella a 0,00 € che c'è solo per una voce in arrivo → nota "stipendio/pensione in arrivo", senza importo
   const inArrivo=t=>!anno&&cur===ora&&!!window.Entrate&&Entrate.voci(ora).some(v=>v.tipo===t&&!v.ent);
-  const entrate=[lavV||(lavori().length&&conVoce('lav'))?cella('Lavoro dipendente',eur(lavV),'',!lavV&&inArrivo('lav')?'stipendio in arrivo':'','dlav'):null,
-    penV||conVoce('pen')?cella('Pensione',eur(penV),'',!penV&&inArrivo('pen')?'pensione in arrivo':'','pen'):null,
+  // 24c.19 (D-185): mesi dopo quello di oggi (il mese mostrato, o quelli dell'anno mostrato) con turni o una stima: la casella c'è,
+  // con la stima e la nota "stipendio previsto"/"pensione prevista". Solo da vedere: non entra nei soldi rimanenti né in Entrate
+  // (D-009, D-071), che restano a 0 finché lo stipendio non è segnato entrato. Le caselle che c'erano già non cambiano.
+  const futuri=!window.Entrate?[]:anno?Array.from({length:12},(_,i)=>`${y}-${pad(i+1)}`).filter(m=>m>ora):cur>ora?[cur]:[];
+  const previsto=t=>{if(!futuri.length)return null;
+    const V=t==='lav'?Entrate.voci(futuri[futuri.length-1]).filter(v=>v.tipo==='lav'&&futuri.includes(v.ym)):futuri.map(m=>Entrate.voce('pen|'+m)).filter(v=>v&&v.pr&&v.pr.fonte);
+    return V.length?r2(V.reduce((a,v)=>a+(v.pr.imp??v.pr.lordo??0),0)):null;};
+  const lavP=lavV||(lavori().length&&conVoce('lav'))?null:previsto('lav'),penP=penV||conVoce('pen')?null:previsto('pen');
+  const entrate=[lavV||(lavori().length&&conVoce('lav'))?cella('Lavoro dipendente',eur(lavV),'',!lavV&&inArrivo('lav')?'stipendio in arrivo':'','dlav'):
+      lavP!=null?cella('Lavoro dipendente',eur(lavP),'','stipendio previsto','dlav'):null,
+    penV||conVoce('pen')?cella('Pensione',eur(penV),'',!penV&&inArrivo('pen')?'pensione in arrivo':'','pen'):
+      penP!=null?cella('Pensione',eur(penP),'','pensione prevista','pen'):null,
     anno&&r2(tot.netto+tot.rimb)?cella('Incassato dai progetti',eur(r2(tot.netto+tot.rimb)),'','','dinc'):null, // 02 (Decisione 3): "Mese per mese (incassi)"
     // 24c.13 (D-074): entrate extra del periodo; (D-165) "Ancora da incassare" c'è anche con sole entrate da confermare, con il loro numero
     C.ext?cella('Entrate extra',eur(C.ext),'','','dinc'):null,

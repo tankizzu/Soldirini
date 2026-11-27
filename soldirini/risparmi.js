@@ -32,6 +32,9 @@ function renderRisparmi(){
   <div class="card"><h3>📈 Andamento ${y}</h3><div class="rbars">${mesi.map((v,i)=>`<div class="rbar" title="${esc(MESI[i])}: ${eur(v)}"><span class="${v<0?'neg':''}" style="height:${Math.round(Math.abs(v)/mx*100)}%"></span><small>${MESI[i].slice(0,1).toUpperCase()}</small></div>`).join('')}</div>
     <div class="kv big"><span>Messi da parte nel ${y}</span><b>${eur(r2(mesi.reduce((a,v)=>a+v,0)))}</b></div></div>
   <div class="card"><h3>Movimenti</h3>${movimenti().slice(0,15).map(m=>{const o=m.ob&&RS()['ob:'+m.ob];return `<div class="fxr"><span>${num(m.importo)<0?'↘':'↗'}</span><span class="tx"><b>${eur(num(m.importo))}</b><small>${parseYmd(m.data).toLocaleDateString('it-IT')}${o&&!o.deleted?' · '+esc(o.nome):''}${m.nota?' · '+esc(m.nota):''}</small></span><button class="btn ghost sm" data-mved="${esc(m.id)}">Modifica</button></div>`;}).join('')||'<p class="muted sm">Ancora nessun movimento.</p>'}</div>`;
+  // 24c.19 (D-183): ogni sezione si riduce come nel resto dell'app (plus.js foldify): chiuse a ogni apertura della pagina (D-010),
+  // restano aperte mentre si resta qui (salvataggi, «I soldi messi da parte si tolgono…»); il riquadro in alto resta sempre visibile
+  foldify($('risBody'),'ris');
 }
 const _render18r=render;
 render=function(){_render18r();if(tab==='ris')renderRisparmi();};

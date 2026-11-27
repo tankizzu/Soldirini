@@ -278,6 +278,7 @@ test.describe('24c.14', () => {
     expect(await conti()).toBe(c0);
     // la pagina Risparmi si apre anche con i dati rovinati
     await page.evaluate(() => { vaiA('ris'); });
+    await page.locator('#risBody summary', { hasText: 'Metti da parte o preleva' }).click(); // 24c.19 (D-183): sezioni chiuse all'apertura
     await expect(page.locator('#rsTogli')).not.toBeChecked();
     await expect(page.locator('#rsTogliNota')).toHaveText('Esempio: il 2 dicembre metti da parte 100 €. Accesa, i soldi rimanenti di dicembre scendono di 100 €; se il 15 prelevi 30 €, risalgono di 30 €. Spenta, i risparmi restano un conto a parte. Le tasse non cambiano mai.');
     // accesa dalla pagina Risparmi
@@ -304,6 +305,7 @@ test.describe('24c.14', () => {
     // 24c.17 (D-176): niente salvadanaio a percentuale; i movimenti a mano contano con la loro data
     await page.evaluate(() => { D().risparmi = { 'mv:a': { data: '2026-12-02', importo: '100', ob: '', nota: '', updatedAt: 1 } }; changed(); vaiA('ris'); });
     await expect(page.locator('#rsSalv')).toHaveCount(0);
+    await page.locator('#risBody summary', { hasText: 'Metti da parte o preleva' }).click(); // 24c.19 (D-183): sezioni chiuse all'apertura
     // spenta di nuovo: si torna come prima e la voce sparisce dalle impostazioni
     await page.locator('#rsTogli').uncheck();
     expect(await page.evaluate(() => 'salvaToglie' in impost())).toBe(false);
