@@ -17,7 +17,8 @@ const TESTO = new Set([
   'pf-cognome', 'pf-nome', 'pf-natoA', 'pf-residenza', 'pf-via', 'pf-cf', 'pf-modello', 'pf-targa',
   'evTitolo', 'evNewLuogoN', 'spNota', 'evNote', 'evFixNome', 'pjNome', 'pjR-origine', 'pjR-squadra', 'pjR-occasione', 'pjR-mansione',
   'pjR-tariffaData', 'pjA-riga1', 'pjA-nomeBig', 'pjA-nome', 'pjA-via', 'pjA-citta', 'pjA-cf', 'lvNome', 'lvLocali', 'lvContratto', 'tuNota',
-  'fpNome', 'cd-altreNota', 'ftNome', 'fxNome', 'fxNota', 'obNome', 'mvNota', 'cuComm', 'cuCaus', 'wTit',
+  'fpNome', 'cd-altreNota', 'ftNome', 'fxNome', 'fxNota', 'obNome', 'mvNota', 'scNome', // 24c.20 (D-180): nome della scelta propria
+  'cuComm', 'cuCaus', 'wTit',
   'data-li=nome', 'data-pf=nome', 'data-lk=nota', 'data-tm=nome', 'tnNome', 'spPNota', 'data-x=altroDesc', 'data-x=tariffaData',
   'data-k=icona', 'data-k=nome', 'data-k=sigla',
   'evExNota', 'xeNota', // 24c.13 (D-074): nota dell'entrata extra

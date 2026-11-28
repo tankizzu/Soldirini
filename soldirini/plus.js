@@ -45,6 +45,7 @@ async function fotoJpeg(file,max=1000,q=0.62){
   const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);g.drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(url);return c.toDataURL('image/jpeg',q);
 }
 function renderSpese(){
+  if($('spFotoNota'))$('spFotoNota').hidden=!DB.meta.account; // 24c.20 (D-190 punto 4)
   const L=md.e.spese||[];
   $('evSpese').innerHTML=L.map((x,i)=>`<div class="spesa">${x.foto?`<img src="${imgOk(x.foto)}" alt="scontrino" data-zoom="${i}">`:'<span class="nofoto">📄</span>'}<span><b>${esc(SPESE[x.tipo]||x.tipo)}${x.nota?' · '+esc(x.nota):''}</b><small>${eur(x.importo)}</small></span><button type="button" class="x" data-srm="${i}" aria-label="Togli">×</button></div>`).join('');
   $('evSpeseTot').textContent=L.length?`Totale spese: ${eur(L.reduce((a,x)=>a+(+x.importo||0),0))}`:'';

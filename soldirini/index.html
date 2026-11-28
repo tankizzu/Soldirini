@@ -327,9 +327,9 @@ input.manca,input.nonvale{border-color:var(--err)}
 .ic{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:9px;margin-right:10px;font-size:16px;flex:none;background:color-mix(in srgb,var(--ic) 22%,var(--card));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ic) 35%,transparent)}
 #v-pro details.fold>summary .st{display:inline-flex;align-items:center}
 #ftModal{z-index:60}.ftriga{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;margin:0 0 6px;padding:6px 8px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:inherit;text-align:left;min-height:44px}.ftriga img{max-width:100%;height:32px;object-fit:contain;object-position:left;background:#fff;border-radius:4px}.ftriga small{color:var(--mut);font-size:12px}.ftg{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px dashed var(--line)}.ftg.dub{background:color-mix(in srgb,#e8590c 10%,transparent);border-radius:8px;padding-left:6px}
-.ftd{width:64px;flex:none;font-weight:700;font-size:14px}.ftc{display:flex;flex-wrap:wrap;gap:4px}.ftc .chip{min-width:38px;padding:4px 8px}
-/* 24c.16: turni da foto, cerchio scelto pieno con l'anello, non scelto spento (solo il bordo tenue e l'icona grigia). Valori provvisori per 02 */
-.ftc .chip:not(.on){background:transparent;border-color:color-mix(in srgb,var(--c,var(--pri)) 35%,var(--line))}.ftc .chip:not(.on) .ic{filter:grayscale(1);opacity:.45}
+.ftd{width:64px;flex:none;font-weight:700;font-size:14px}.ftc{display:flex;flex-wrap:wrap;gap:8px}.ftc .chip{min-width:44px;min-height:44px;padding:4px 8px} /* 24c.20 (02, tornata 59 §1.3): tocco 44 px, 8 px tra i cerchi */
+/* 24c.16: turni da foto, cerchio scelto pieno con l'anello. 24c.20 (02, tornata 59 §1.2 e regole §16): non scelto = vuoto, bordo 1,5 px tratteggiato --mut, icona al 60% */
+.ftc .chip:not(.on){background:transparent;border:1.5px dashed var(--mut)}.ftc .chip:not(.on) .ic{filter:grayscale(1);opacity:.6}
 .ftc .chip.on{background:color-mix(in srgb,var(--c,var(--pri)) 42%,var(--card));border-color:var(--c,var(--pri));box-shadow:0 0 0 2px color-mix(in srgb,var(--c,var(--pri)) 55%,transparent)}
 .lettoTesto{white-space:pre-wrap;font-size:11px;max-height:200px;overflow:auto}
 /* v18 */
@@ -381,7 +381,7 @@ body.nascondi :is(.hero b,.hero .rim b,.kv b,details.fold>summary .sum,#daySum b
 .emck .n{padding-top:10px;font-variant-numeric:tabular-nums}.emck{font-size:15px;color:var(--ink)}.emck.zero{opacity:.6;cursor:default}.emck.eminc{padding-left:20px}
 .emfisse{margin-top:10px}.emvuoto{margin:18px 0 6px}.emfoot .emriep{font-size:13px;color:var(--mut);margin:0 0 8px}.emfoot .emriep b{color:var(--ink)}
 .emfoot .pls{display:flex;gap:8px;width:100%}.emfoot .pls .btn{flex:1}.emfoot .pls .btn.danger{flex:1.6}.emfoot{flex-direction:column;align-items:stretch}.emindietro{text-align:center;margin-top:4px}.emindietro .btn.link{min-height:44px}
-#emBody .vcavv{font-size:13.5px}.emimp{margin:6px 0 0}.emok{color:var(--ok);margin:12px 0 0}
+#emBody .vcavv{font-size:13.5px}#emBody .vcavv .emriga{display:block;margin-top:4px} /* 24c.20: righe dell'avviso (02, tornata 60 §2) */.emimp{margin:6px 0 0}.emok{color:var(--ok);margin:12px 0 0}
 .empdf{border:0;padding:0;margin:14px 0 0}.empdf legend{font-weight:650;padding:0}.empdf .radio{display:flex;gap:10px;align-items:flex-start;min-height:44px;padding:8px 0;margin:0}.empdf .radio input{width:22px;height:22px;flex:none;margin:1px 0 0;accent-color:var(--pri)}.empdf small{display:block;font-size:13px}
 .emcopia{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--gold);border-radius:var(--r);padding:10px 12px;font-size:13.5px;margin-top:12px}.emcopia .btn{width:100%;margin-top:8px}.emcopia .check{margin:8px 0 0;font-size:14px;font-weight:400;min-height:44px}
 .dcnote{display:flex;align-items:center;gap:12px;margin:10px 0}.dcnote span{flex:1;min-width:0}.dcnote .btn{flex:none;width:auto;margin:0}
@@ -542,7 +542,16 @@ nav.tabs button.on{color:color-mix(in srgb,var(--sez) var(--tabmix),var(--ink))}
 .ir .tx,.enst .tx{flex:1;display:flex;flex-direction:column;font-size:14px;min-width:0}.ir .tx small,.enst .tx small{color:var(--mut)}.ir small.w{color:var(--warn);font-weight:700}
 .enst{display:flex;align-items:center;gap:8px;width:100%;padding:8px 0;margin-top:6px;border-top:1px dashed var(--line);background:none;border-left:0;border-right:0;border-bottom:0;color:var(--ink);font:inherit;text-align:left;min-height:44px}
 button.enst{cursor:pointer}.enst b{white-space:nowrap}.enst.ok .tx{color:var(--ok)}
-#enData.bad{border-color:var(--err)}.sm.err{color:var(--err);font-weight:650}.sm.warn{color:var(--warn)}
+#enData.bad{border-color:var(--err)}.sm.err{color:var(--err);font-weight:650}
+/* 24c.20 (D-180): finestra delle scelte proprie; icone come i cerchi del §16 (scelto = pieno e continuo, non scelto = vuoto e tratteggiato) */
+#scModal{z-index:65}.sclbl{font-weight:650;font-size:14px;margin:12px 0 6px}
+.scico{display:grid;grid-template-columns:repeat(6,44px);gap:8px;justify-content:start}
+.scic{width:44px;height:44px;border-radius:50%;border:1.5px dashed var(--mut);background:transparent;color:var(--ink);font-size:20px;display:grid;place-items:center;cursor:pointer;padding:0}
+.scic[aria-pressed=false]>span{opacity:.6}.scic[aria-pressed=true]{border:1.5px solid var(--pri);background:color-mix(in srgb,var(--pri) 18%,var(--card));box-shadow:0 0 0 2px color-mix(in srgb,var(--pri) 45%,transparent)}
+input.bad{border-color:var(--err)}
+/* 24c.20 (02, tornata 59 §2.1-§2.3): salvadanaio, due pulsanti a metà; importi dei movimenti senza segno né colore */
+#risBody .rsdue{display:grid;grid-template-columns:1fr 1fr;gap:8px}#risBody .rsdue .btn{white-space:normal}#risBody .rsimp{font-variant-numeric:tabular-nums;margin-left:auto;padding:0 8px}.scazioni{margin-top:4px;flex-basis:100%;width:100%}
+.sm.warn{color:var(--warn)}
 /* v23: tocchi minimi 44 × 44 px */
 nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
 .ib,.x,.eye{min-width:44px;min-height:44px}
@@ -556,7 +565,7 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
   <h1>Soldirini</h1>
   <span id="acc"></span>
   <button id="occhio" class="ib eye" aria-label="Nascondi gli importi" aria-pressed="false"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path class="sbarra" d="M3 3l18 18"/></svg></button>
-  <button id="sync" class="chip sync">…</button>
+  <button id="sync" class="chip sync" aria-label="Google Drive: controllo lo stato">…</button>
 </header>
 <div class="fascia" id="lsFascia" role="alert" hidden></div>
 <nav class="tabs">
@@ -610,7 +619,7 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
     <div class="spparte" id="spGiorn"></div>
     <div class="cards" id="rieSpese"></div>
     <p class="muted sm spvuoto" id="rieSpeseVuoto" hidden>Nessuna spesa giornaliera in questo periodo.</p>
-    <div class="card bcimp"><h3><span aria-hidden="true">🏦</span> Movimenti della banca</h3><p class="muted sm">Scegli la lista movimenti della tua banca in CSV o Excel (per ora solo ING). Soldirini la legge solo sul telefono e ne tiene una copia solo se scegli «Archivia su Drive».</p><button type="button" class="btn ghost" data-bcimp>🏦 Importa movimenti della banca</button><p class="muted sm">La lista si scarica dall'app o dal sito della banca, tra i movimenti del conto.</p><p class="sm bcerr" id="bcErr" role="alert" hidden></p></div>
+    <div class="card bcimp"><h3><span aria-hidden="true">🏦</span> Movimenti della banca</h3><p class="muted sm">Scegli la lista movimenti della tua banca in CSV o Excel (per ora solo ING). Soldirini legge il file solo sul telefono. Ne tiene una copia solo se, alla fine, scegli «Archivia su Drive».</p><button type="button" class="btn ghost" data-bcimp>🏦 Importa movimenti della banca</button><p class="muted sm">La lista si scarica dall'app o dal sito della banca, tra i movimenti del conto.</p><p class="sm bcerr" id="bcErr" role="alert" hidden></p></div>
   </section>
 
   <section id="v-dlav" class="pagrie" hidden>
@@ -686,7 +695,7 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
         <details class="card fold" id="foldProj"><summary><span class="st">Progetti</span><span class="sum" id="foldProjSum"></span></summary><div class="fbody">
           <div id="projList"></div><div class="acts"><button class="btn sm" id="projNew">+ Nuovo progetto</button></div></div></details>
         <details class="card fold" id="foldFix"><summary><span class="st">Uscite fisse</span><span class="sum" id="foldFixSum"></span></summary><div class="fbody">
-          <p class="muted sm" style="margin-top:0">Mutuo, rate, abbonamenti (Netflix, Disney+…): contano nei soldi rimanenti di ogni mese, già dal primo giorno del mese.</p>
+          <p class="muted sm" style="margin-top:0">Mutuo, rate, abbonamenti, bollette: contano nei soldi rimanenti di ogni mese, già dal primo giorno del mese.</p>
           <div id="fixList"></div><div class="acts"><button class="btn sm" id="fixNew">+ Nuova uscita fissa</button></div></div></details>
       </div>
       <div class="stack">
@@ -703,6 +712,14 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
         </details>
         <details class="subfold" id="accFirma"><summary>✍️ La tua firma</summary><p class="muted sm">Firma qui con il dito: la metto sulle ricevute PDF.</p><canvas id="firmaCanvas" class="firma"></canvas>
           <div class="acts"><button class="btn ghost sm" id="firmaClr">Cancella</button><button class="btn sm" id="firmaSave">Salva firma</button><button class="btn ghost sm" id="firmaRm">Togli firma salvata</button></div><div id="firmaPrev" class="firmaprev"></div></details>
+        <!-- 24c.20 (D-182, D-190 punto 2): Google Calendar e Promemoria dentro Account, due sezioni separate (02, tornata 63 A2) -->
+        <details class="subfold" id="accCal"><summary>📅 Google Calendar</summary><div id="gcalBody"></div></details>
+        <details class="subfold" id="accProm"><summary>🔔 Promemoria</summary><p class="muted sm" style="margin-top:0">I promemoria funzionano anche con Google Calendar spento.</p>
+          <div class="stack">
+            <label class="check"><input type="checkbox" id="promem"> Avvisami delle attività da confermare</label>
+            <div class="g2"><label>Alle ore<select id="oraProm"><option value="17:00">17:00</option><option value="17:30">17:30</option><option value="18:00">18:00</option><option value="18:30">18:30</option><option value="19:00">19:00</option><option value="19:30">19:30</option><option value="20:00">20:00</option><option value="20:30">20:30</option><option value="21:00">21:00</option><option value="21:30">21:30</option><option value="22:00">22:00</option><option value="22:30">22:30</option><option value="23:00">23:00</option><option value="23:30">23:30</option></select></label><div style="align-self:end"><button class="btn ghost sm" id="icsBtn">Aggiungi al calendario del telefono</button></div></div>
+            <p class="muted sm" style="margin:0">Questo avviso arriva solo se apri Soldirini dopo l’orario scelto (o, ad app installata, quando Chrome decide di controllare: di solito una volta al giorno, non a un’ora precisa). Per avvisi puntuali ad app chiusa attiva <b>Google Calendar</b> qui sopra e scegli “Avvisami prima di ogni attività”.</p></div>
+        </details>
         </div>
         <div class="card"><h3>Aspetto</h3><label>Tema<select id="tema"><option value="auto">Come il telefono</option><option value="light">Chiaro</option><option value="dark">Scuro</option></select></label>
           <label class="check"><input type="checkbox" id="festeCal" aria-describedby="festeCalNota"> Mostra le feste nel calendario</label>
@@ -710,18 +727,15 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
           <!-- 24c.12 (D-157): mese da cui parte "Rimasti dai mesi prima" -->
           <label>Inizia i conti da<input type="month" id="contiDa" aria-describedby="contiDaNota"></label>
           <p class="muted sm" id="contiDaNota">Vale solo per “Rimasti dai mesi prima” nel Riepilogo: somma i mesi da qui in poi. I dati dei mesi prima restano nell’app. Vuoto: dal primo mese con dati.</p></div>
-        <div class="card"><h3>Google Calendar</h3><div id="gcalBody"></div></div>
-        <div class="card"><h3>Promemoria</h3><div class="stack">
-          <label class="check"><input type="checkbox" id="promem"> Avvisami delle attività da confermare</label>
-          <div class="g2"><label>Alle ore<select id="oraProm"><option value="17:00">17:00</option><option value="17:30">17:30</option><option value="18:00">18:00</option><option value="18:30">18:30</option><option value="19:00">19:00</option><option value="19:30">19:30</option><option value="20:00">20:00</option><option value="20:30">20:30</option><option value="21:00">21:00</option><option value="21:30">21:30</option><option value="22:00">22:00</option><option value="22:30">22:30</option><option value="23:00">23:00</option><option value="23:30">23:30</option></select></label><div style="align-self:end"><button class="btn ghost sm" id="icsBtn">Aggiungi al calendario del telefono</button></div></div>
-          <p class="muted sm" style="margin:0">Questo avviso arriva solo se apri Soldirini dopo l’orario scelto (o, ad app installata, quando Chrome decide di controllare: di solito una volta al giorno, non a un’ora precisa). Per avvisi puntuali ad app chiusa attiva <b>Google Calendar</b> qui sopra e scegli “Avvisami prima di ogni attività”.</p></div></div>
         <div class="card"><h3>Blocco dell’app</h3><div id="sicBox"></div></div>
-        <div class="card"><h3>Cestino</h3><p class="muted sm" style="margin-top:0">Le attività e i progetti eliminati restano qui 30 giorni.</p><div id="cestBox"></div></div>
-        <div class="card"><h3>Storico modifiche</h3><div id="storBox" class="storbox"></div></div>
-        <div class="card"><h3>Copia di sicurezza</h3><div id="cpBox"></div>
-          <!-- 24c.17 (D-156): in fondo alla scheda delle copie (02, tornata 52 schermo A1); eliminamese.js -->
-          <div class="emsep"><button type="button" class="btn danger" id="emApri">Elimina i dati di un mese…</button>
-            <p class="muted sm">Per togliere tutto quello che hai segnato in un mese, per esempio un mese importato per errore. Le uscite fisse restano.</p></div></div>
+        <!-- 24c.20 (D-182, D-190 punto 1): Copia di sicurezza, Cestino e Storico in una sezione sola (02, tornate 62-63 A3) -->
+        <div class="card" id="datiCard"><h3>Dati e copie di sicurezza</h3><p class="muted sm" style="margin-top:0">Copie di sicurezza, cestino e storico delle modifiche.</p>
+          <details class="subfold" id="datCopia"><summary>🛟 Copia di sicurezza</summary><div id="cpBox"></div>
+            <!-- 24c.17 (D-156): in fondo alla copia, dopo la riga tratteggiata (02, tornata 52 schermo A1); eliminamese.js -->
+            <div class="emsep"><button type="button" class="btn danger" id="emApri">Elimina i dati di un mese…</button>
+              <p class="muted sm">Per togliere tutto quello che hai segnato in un mese, per esempio un mese importato per errore. Le uscite fisse restano.</p></div></details>
+          <details class="subfold" id="datCest"><summary>🗑️ Cestino</summary><p class="muted sm" style="margin-top:0">Le attività e i progetti eliminati restano qui 30 giorni.</p><div id="cestBox"></div></details>
+          <details class="subfold" id="datStor"><summary>🕘 Storico modifiche</summary><div id="storBox" class="storbox"></div></details></div>
       </div>
     </div>
   </section>
@@ -762,7 +776,9 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
 
     <div class="spsub"><label>Spese con scontrino</label><div id="evSpese" class="stack"></div>
       <div class="sub"><div class="g2"><label>Tipo<select id="spTipo"><option value="parcheggio">Parcheggio</option><option value="pedaggio">Pedaggio</option><option value="pasto">Pasto</option><option value="pernottamento">Pernottamento</option><option value="altro">Altro</option></select></label><label>Importo €<input id="spImp" inputmode="decimal"></label><label class="s2">Nota<input id="spNota" placeholder="facoltativa"></label></div>
-      <div class="row"><label class="btn ghost sm filebtn"><span id="spFotoLab">📷 Foto scontrino</span><input type="file" id="spFoto" accept="image/*" capture="environment" hidden></label><button type="button" class="btn sm" id="spAdd">+ Aggiungi spesa</button></div></div>
+      <div class="row"><label class="btn ghost sm filebtn"><span id="spFotoLab">📷 Foto scontrino</span><input type="file" id="spFoto" accept="image/*" capture="environment" hidden></label><button type="button" class="btn sm" id="spAdd">+ Aggiungi spesa</button></div>
+      <!-- 24c.20 (D-190 punto 4, 02 tornata 63 E1): solo con l'accesso a Google (senza accesso niente frase, D-137) -->
+      <p class="muted sm" id="spFotoNota" style="margin-top:0" hidden>La foto va nella cartella del progetto su Drive, per la nota spese.</p></div>
       <div class="calc" id="evSpeseTot"></div></div>
       </div>
     </div>
@@ -794,7 +810,7 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
     <details class="card fold sez" id="secFix"><summary><span class="st">💳 Uscita fissa</span><span class="sum" id="secFixSum"></span></summary><div class="fbody" id="evFix">
       <p class="muted sm" style="margin-top:0">Conta nei soldi rimanenti di ogni mese, già dal primo giorno del mese.</p>
       <div class="tuchips" id="evFixCats"></div>
-      <div class="g2"><label class="s2">Nome<input id="evFixNome" placeholder="es. Netflix, Affitto, Rata auto"></label>
+      <div class="g2"><label class="s2">Nome<input id="evFixNome" placeholder="es. Bolletta della luce"></label>
         <label>Importo €<input id="evFixImp" inputmode="decimal" placeholder="0,00"></label><label>Giorno di addebito<input id="evFixGiorno" type="number" inputmode="numeric" min="1" max="31" placeholder="1–31"></label>
         <label>Dal mese<input id="evFixDal" type="month"></label><label>Durata<select id="evFixDur"><option value="">senza fine</option><option value="rate">numero di rate</option><option value="al">fino al mese</option></select></label>
         <label id="evFixRateL" hidden>Rate<input id="evFixRate" type="number" inputmode="numeric" min="1"></label><label id="evFixAlL" hidden>Fino al mese<input id="evFixAl" type="month"></label></div>
@@ -990,7 +1006,7 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
     <li>Quello che copia viene salvato nel tuo account Google e lo vedi solo tu, a meno che tu non condivida il calendario. Non scrivere nelle note cose che non vuoi su Google Calendar.</li>
     <li>I giorni di malattia compaiono come “Assenza”. Puoi cambiarlo in Impostazioni.</li>
     <li>Google ti chiederà di confermare il permesso con una sua schermata.</li></ul>
-  <h3 class="bpgr">Puoi tornare indietro quando vuoi</h3><p>Impostazioni → Google Calendar → Disattiva: scegli se tenere o eliminare i calendari. Puoi anche togliere il permesso da <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">myaccount.google.com/permissions</a>.</p>
+  <h3 class="bpgr">Puoi tornare indietro quando vuoi</h3><p>Impostazioni → Account → Google Calendar → Disattiva: scegli se tenere o eliminare i calendari. Puoi anche togliere il permesso da <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">myaccount.google.com/permissions</a>.</p>
   <p><a href="privacy.html" class="lnkw">Leggi l’informativa privacy</a></p>
   <p class="warn sm" id="gcNoAcc" hidden>Per usare Google Calendar devi prima accedere con Google.</p>
   <div class="foot"><button type="button" class="btn ghost" id="gcNo">Non ora</button><button type="button" class="btn" id="gcSi">Attiva</button></div></div></div>
@@ -1016,7 +1032,7 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
 <div class="modal" id="fxModal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="fxTit">
   <div class="sheethead"><h2 id="fxTit">Uscita fissa</h2><button class="x" id="fxClose" aria-label="Chiudi">×</button></div>
   <div class="tuchips" id="fxCats"></div>
-  <div class="g2"><label class="s2">Nome<input id="fxNome" placeholder="es. Netflix, Mutuo casa, Rata auto"></label>
+  <div class="g2"><label class="s2">Nome<input id="fxNome" placeholder="es. Bolletta della luce"></label>
     <label>Importo €<input id="fxImp" inputmode="decimal" placeholder="0,00"></label><label>Giorno di addebito<input id="fxGiorno" type="number" inputmode="numeric" min="1" max="31" placeholder="1–31"></label>
     <label>Dal mese<input id="fxDal" type="month"></label><label>Durata<select id="fxDur"><option value="">senza fine</option><option value="rate">numero di rate</option><option value="al">fino al mese</option></select></label>
     <label id="fxRateL" hidden>Rate<input id="fxRate" type="number" inputmode="numeric" min="1"></label><label id="fxAlL" hidden>Fino al mese<input id="fxAl" type="month"></label>
@@ -1035,10 +1051,13 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
   <div class="g2"><label class="s2">Nome<input id="obNome" placeholder="es. Vacanze, Fondo emergenze, Auto"></label><label>Quanto €<input id="obTarget" inputmode="decimal"></label><label>Entro<input id="obEntro" type="month"></label></div>
   <div class="foot"><button class="btn ghost" id="obDel">Elimina</button><button class="btn" id="obSave">Salva</button></div></div></div>
 <div class="modal" id="mvModal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mvTit">
-  <div class="sheethead"><h2 id="mvTit">Metti da parte</h2><button class="x" id="mvClose" aria-label="Chiudi">×</button></div>
-  <div class="seg" id="mvTipo"><button data-t="in" class="on">Metto da parte</button><button data-t="out">Prelevo</button></div>
-  <div class="g2" style="margin-top:10px"><label>Importo €<input id="mvImp" inputmode="decimal"></label><label>Data<input id="mvData" type="date"></label><label class="s2">Obiettivo<select id="mvOb"></select></label><label class="s2">Nota<input id="mvNota"></label></div>
-  <div class="foot"><button class="btn ghost" id="mvDel">Elimina</button><button class="btn" id="mvSave">Salva</button></div></div></div>
+  <!-- 24c.20: testi definitivi di 02 (tornata 59 §2.2) -->
+  <div class="sheethead"><h2 id="mvTit">Ho messo da parte</h2><button class="x" id="mvClose" aria-label="Chiudi">×</button></div>
+  <div class="seg" id="mvTipo"><button data-t="in" class="on">Ho messo da parte</button><button data-t="out">Ho prelevato</button></div>
+  <div class="g2" style="margin-top:10px"><div><label>Importo (€)<input id="mvImp" inputmode="decimal" placeholder="es. 50,00" autocomplete="off" aria-describedby="mvImpErr"></label><p class="sm err" id="mvImpErr" role="alert" hidden></p></div>
+    <div><label>Giorno<input id="mvData" type="date" aria-describedby="mvDataErr mvConta"></label><p class="sm err" id="mvDataErr" role="alert" hidden></p><p class="muted sm" id="mvConta" style="margin:4px 0 0" hidden></p></div>
+    <label class="s2" id="mvObL">Obiettivo (facoltativo)<select id="mvOb"></select></label><label class="s2">Nota<input id="mvNota"></label></div>
+  <div class="foot"><button class="btn danger" id="mvDel">Elimina</button><button class="btn ghost" id="mvAnn">Annulla</button><button class="btn" id="mvSave">Segna come messi da parte</button></div></div></div>
 <div class="modal" id="enModal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="enTit">
   <div class="sheethead"><h2 id="enTit">Entrato</h2><button class="x" id="enClose" aria-label="Chiudi">×</button></div>
   <p class="muted sm" id="enSub" style="margin-top:0"></p>
@@ -1055,6 +1074,18 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
     <label class="s2">Nota<input id="spmNota" maxlength="60" placeholder="es. regalo, pranzo" autocomplete="off"></label></div>
   <p class="sm err" id="spmErr" role="alert" hidden></p>
   <div class="foot"><button type="button" class="btn danger" id="spmDel">Elimina</button><button type="button" class="btn ghost" id="spmAnnulla">Annulla</button><button type="button" class="btn" id="spmOk">Salva</button></div>
+</div></div>
+<!-- 24c.20 (D-180): «Nuova scelta» / «Modifica scelta» per le spese giornaliere e le uscite fisse (02, tornata 62 §2.2, mockup B2-B4); scelte.js -->
+<div class="modal" id="scModal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="scTit">
+  <div class="sheethead"><h2 id="scTit">Nuova scelta</h2><button class="x" id="scClose" aria-label="Chiudi">×</button></div>
+  <p class="muted sm" id="scFrase" style="margin-top:0"></p>
+  <div class="note" id="scMax" hidden><b>Hai già 12 scelte tue.</b><br>Togline una per aggiungerne un’altra.</div>
+  <label>Nome<input id="scNome" autocomplete="off" aria-describedby="scNomeErr"></label><p class="sm err" id="scNomeErr" role="alert" hidden></p>
+  <p class="sclbl" id="scIcoL">Icona</p><div class="scico" id="scIco" role="group" aria-labelledby="scIcoL"></div>
+  <div class="g2"><div><label>Importo di solito, € (facoltativo)<input id="scImp" inputmode="decimal" autocomplete="off" aria-describedby="scImpErr"></label><p class="sm err" id="scImpErr" role="alert" hidden></p></div>
+    <div id="scGiornoL"><label>Giorno di addebito di solito (facoltativo)<input id="scGiorno" inputmode="numeric" autocomplete="off" aria-describedby="scGiornoErr"></label><p class="sm err" id="scGiornoErr" role="alert" hidden></p></div></div>
+  <p class="muted sm">Se li scrivi, compaiono già pronti quando scegli questa voce.</p>
+  <div class="foot"><button type="button" class="btn ghost" id="scAnn">Annulla</button><button type="button" class="btn" id="scSave">Salva la scelta</button></div>
 </div></div>
 <div class="modal" id="xeModal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="xeTit">
   <div class="sheethead"><h2 id="xeTit">Entrata da confermare</h2><button class="x" id="xeClose" aria-label="Chiudi">×</button></div>
@@ -1129,7 +1160,7 @@ nav.tabs button,.btn,.btn.sm,.chip,.pchip,.fchip,.prow{min-height:44px}
   <p class="vcavv" id="vcAvv"></p>
   <p class="muted sm" id="vcDrive" hidden>Con Google Drive collegato, dopo la ripresa la sincronizzazione aggiunge le modifiche salvate su Drive.</p>
   <div class="foot"><button class="btn ghost" id="vcNo">Non ora</button><button class="btn" id="vcSi">Riprendi</button></div>
-  <p class="muted sm" id="vcNota">Con «Non ora» la domanda torna al prossimo avvio. Puoi riprendere la copia anche da Impostazioni → Account.</p></div></div>
+  <p class="muted sm" id="vcNota">Con «Non ora» la domanda torna al prossimo avvio. Puoi riprendere la copia anche da Impostazioni → Dati e copie di sicurezza → Copia di sicurezza.</p></div></div>
 <!-- v24c: copia di sicurezza (schermate 12, 13, 21a-21c, 22, 23 di 02); il contenuto lo scrive copia.js -->
 <!-- 24c.17 (D-156, D-164): «Elimina i dati di un mese», passi 1 e 2 (02, tornata 52 schermi A2-A5); eliminamese.js -->
 <div class="modal" id="emModal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="emTit">

@@ -10,7 +10,23 @@ const dataSpesa=d=>typeof d==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(d);
 const speseDel=fn=>Object.values(SP()).filter(s=>s&&typeof s==='object'&&!s.deleted&&dataSpesa(s.data)&&fn(s)).sort((a,b)=>(a.data+a.created).localeCompare(b.data+b.created));
 // 24c.11 (D-150): "Online" al posto di "Online / Amazon"; stesso codice e stessa icona. Un solo elenco, usato anche da banca.js
 const CATS=window.CATS_SPESE=[['online','📦','Online'],['negozio','🛍️','Negozio'],['spesa','🛒','Supermercato'],['bar','☕','Bar e ristoranti'],['amici','🍻','Amici e uscite'],['trasporti','🚗','Trasporti e benzina'],['casa','🏠','Casa e bollette'],['altro','•','Altro']];
-const catDi=k=>CATS.find(c=>c[0]===k)||CATS[CATS.length-1];
+// 24c.20 (D-180): le scelte proprie ('sc:<id>') vengono da scelte.js; x = la voce, con la copia di nome e icona come riserva
+const catDi=(k,x)=>(window.Scelte&&Scelte.cat(k,x))||CATS.find(c=>c[0]===k)||CATS[CATS.length-1];
+const CAT_ALTRO=CATS[CATS.length-1],CATS_PRONTE=CATS.slice(0,-1);
+// chip delle spese giornaliere: scelte pronte, poi le proprie, poi «Altro» sempre ultima; sotto «Modifica» e «Togli» (02 §2.1-§2.3)
+const chipsSpese=(sel,attr)=>[...CATS_PRONTE.map(c=>`<button type="button" class="chip ${sel===c[0]?'on':''}" data-${attr}="${c[0]}" aria-pressed="${sel===c[0]}">${c[1]} ${esc(c[2])}</button>`),
+  window.Scelte?Scelte.chips('spese',sel,attr):'',`<button type="button" class="chip ${sel==='altro'?'on':''}" data-${attr}="altro" aria-pressed="${sel==='altro'}">${CAT_ALTRO[1]} ${esc(CAT_ALTRO[2])}</button>`,
+  window.Scelte?Scelte.azioni('spese',sel):''].join('');
+// tocco su un chip: m = {set(cat), imp (id del campo importo), ridisegna}
+function toccaSpesa(b,attr,m){const scmod=b.closest('[data-scmod]'),sctogli=b.closest('[data-sctogli]');
+  if(scmod){Scelte.apri('spese',scmod.dataset.scmod,()=>m.ridisegna());return;}
+  if(sctogli){Scelte.togli(sctogli.dataset.sctogli,()=>{m.set('');m.ridisegna();});return;}
+  const k=b.dataset[attr];m.set(k);const sc=k.startsWith('sc:')&&window.Scelte?Scelte.prendi(k.slice(3)):null;
+  if(sc&&sc.importo&&$(m.imp)&&!$(m.imp).value.trim())$(m.imp).value=(Math.round(+sc.importo*100)/100).toFixed(2).replace('.',',');
+  m.ridisegna();
+  if(k==='altro'&&window.Scelte)Scelte.apri('spese',null,id=>{const c=document.createElement('button');c.dataset[attr]='sc:'+id;toccaSpesa(c,attr,m);});}
+// copia di nome e icona nella voce salvata (si toglie se la categoria non è più una scelta propria)
+const conCopiaSp=(o,cat)=>{const c=window.Scelte?Scelte.copia(cat):{};if(c.catNome)Object.assign(o,c);else{delete o.catNome;delete o.catIco;}return o;};
 const num=v=>leggiNumero(v)??0; // 24c.6 (P2): importi scritti a mano all'italiana (numeri.js)
 const numP=v=>leggiNumeroPunto(v)??0; // 24c.6: campi type="number" (giorni, rate, mesi, percentuale): punto decimale, come prima
 // v23 (D-010): le sezioni non ricordano più se erano aperte; tolgo le vecchie memorie dal telefono
@@ -45,7 +61,9 @@ window.meseSpesa=s=>{if(s.origine==='banca'&&s.meseConto===undefined){const m=s.
 // ================= apertura della finestra =================
 const _openEv16=openEv;
 openEv=function(dates,e,tieni){
-  if(!tieni){S={lav:null,sp:[],cat:S.cat||'online'};pick=false;modTurno=null;delete $('evTurniBox').dataset.toccato;}
+  // 24c.20 (D-180): una scelta propria tolta nel frattempo non resta selezionata
+  const catOk=k=>!!k&&(!k.startsWith('sc:')||!!(window.Scelte&&Scelte.elenco('spese').some(c=>'sc:'+c.id===k)));
+  if(!tieni){S={lav:null,sp:[],cat:catOk(S.cat)?S.cat:'online'};pick=false;modTurno=null;delete $('evTurniBox').dataset.toccato;}
   if(!progetti().length&&!e){
     if(typeof chiudiSheets==='function')chiudiSheets();
     md={dates,id:null,ev:null,pid:null,noProj:true,e:{}};
@@ -101,7 +119,7 @@ function vociGia(d){
     out.push({k:'ex',em:'🪙',t1:esc(t[2]),t2:`<span class="am ok">+${eur(x.importo)}</span>${x.nota?' · '+esc(x.nota):''}`,att:`data-xe="${esc(x.id)}"`,
       lab:`Modifica l’entrata extra di ${eur(x.importo)} del ${d.slice(8)}/${d.slice(5,7)}/${d.slice(0,4)}`});}
   // spese giornaliere (anche quelle importate dalla banca)
-  for(const x of speseDel(s=>s.data===d)){const c=catDi(x.cat),nome=x.nota||c[2];
+  for(const x of speseDel(s=>s.data===d)){const c=catDi(x.cat,x),nome=x.nota||c[2];
     out.push({k:'sp',em:'🛒',t1:esc(nome),t2:`<span class="am">−${eur(num(x.importo))}</span>${x.nota?' · '+esc(c[2]):''}`,att:`data-giasp="${esc(x.id)}"`,
       lab:`Modifica la spesa ${nome} di ${eur(num(x.importo))}`});}
   return out;
@@ -141,7 +159,7 @@ function apriSpesa(id){const s=SP()[id];if(!s||s.deleted)return;spEd={id,cat:s.c
   $('spmData').value=s.data;$('spmData').max=today();$('spmImp').value=String(num(s.importo)).replace('.',',');$('spmNota').value=s.nota||'';
   $('spmErr').hidden=true;spmChips();$('spModal').hidden=false;$('spModal').querySelector('.sheet').scrollTop=0;document.body.classList.add('noscroll');}
 function chiudiSpesa(){$('spModal').hidden=true;spEd=null;if([...document.querySelectorAll('.modal')].every(m=>m.hidden))document.body.classList.remove('noscroll');}
-function spmChips(){$('spmCats').innerHTML=CATS.map(c=>`<button type="button" class="chip ${spEd.cat===c[0]?'on':''}" data-spmc="${c[0]}" aria-pressed="${spEd.cat===c[0]}">${c[1]} ${esc(c[2])}</button>`).join('');}
+function spmChips(){$('spmCats').innerHTML=chipsSpese(spEd.cat,'spmc');}
 function spmErrore(t){$('spmErr').textContent=t;$('spmErr').hidden=false;}
 function dopoSpesa(msg){chiudiSpesa();changed();render();if(!$('dayModal').hidden)apriGiorno(selDay);toast(msg);}
 function salvaSpesa(){if(!spEd)return;const s=SP()[spEd.id];if(!s)return chiudiSpesa();
@@ -149,7 +167,7 @@ function salvaSpesa(){if(!spEd)return;const s=SP()[spEd.id];if(!s)return chiudiS
   if(!dataSpesa(data))return spmErrore('Scrivi la data.');if(data>today())return spmErrore('La data non può essere nel futuro.');
   if(!(imp>0))return spmErrore('Scrivi l’importo.');
   // il mese in cui conta (D-152, importate dalla banca) resta solo se il giorno non cambia
-  const nuova=Object.assign({},s,{data,cat:spEd.cat,importo:Math.round(imp*100)/100,nota:$('spmNota').value.trim().slice(0,60),updatedAt:Date.now()});
+  const nuova=conCopiaSp(Object.assign({},s,{data,cat:spEd.cat||'altro',importo:Math.round(imp*100)/100,nota:$('spmNota').value.trim().slice(0,60),updatedAt:Date.now()}),spEd.cat||'altro');
   if(data!==s.data)delete nuova.meseConto;
   SP()[spEd.id]=nuova;dopoSpesa('✓ Spesa salvata.');}
 // stessa conferma e stesso segno dell'eliminazione dal giorno aperto
@@ -185,13 +203,13 @@ function letturaLav(){const st=S.lav;if(!st)return;document.querySelectorAll('#e
 function renderSp(){
   const tot=S.sp.reduce((a,x)=>a+x.importo,0);
   $('evSpP').innerHTML=`<p class="muted sm" style="margin-top:0">Le tue spese personali (non rimborsate): servono per vedere quanto spendi e quanto risparmi.</p>`+
-    S.sp.map((x,i)=>{const c=catDi(x.cat);return `<div class="sprow"><span>${c[1]}</span><span class="tx"><b>${esc(c[2])}</b>${x.nota?`<small>${esc(x.nota)}</small>`:''}</span><b>${eur(x.importo)}</b><button type="button" class="x" data-sprm="${i}" aria-label="Togli">×</button></div>`;}).join('')+
-    `<div class="spcats">${CATS.map(c=>`<button type="button" class="chip ${S.cat===c[0]?'on':''}" data-spc="${c[0]}">${c[1]} ${esc(c[2])}</button>`).join('')}</div>
+    S.sp.map((x,i)=>{const c=catDi(x.cat,x);return `<div class="sprow"><span>${c[1]}</span><span class="tx"><b>${esc(c[2])}</b>${x.nota?`<small>${esc(x.nota)}</small>`:''}</span><b>${eur(x.importo)}</b><button type="button" class="x" data-sprm="${i}" aria-label="Togli">×</button></div>`;}).join('')+
+    `<div class="spcats" id="spPCats">${chipsSpese(S.cat,'spc')}</div>
     <div class="g2"><label>Importo €<input id="spPImp" inputmode="decimal" placeholder="0,00"></label><label>Nota<input id="spPNota" placeholder="es. regalo, pranzo"></label></div>
     <div class="acts"><button type="button" class="btn ghost sm" id="spPAdd">+ Aggiungi spesa</button>${tot?`<span class="muted sm" style="align-self:center">Totale ${eur(tot)}</span>`:''}</div>
     <div class="acts"><button type="button" class="btn ghost sm" data-bcimp>🏦 Importa movimenti della banca</button></div><p class="sm bcerr" role="alert" hidden></p>`; // 24c.10 (D-147): banca.js
 }
-function aggiungiSp(){const v=num($('spPImp').value);if(!(v>0))return false;S.sp.push({cat:S.cat,importo:Math.round(v*100)/100,nota:$('spPNota').value.trim()});renderSp();aggiornaSum();return true;}
+function aggiungiSp(){const v=num($('spPImp').value);if(!(v>0))return false;const cat=S.cat||'altro';S.sp.push(conCopiaSp({cat,importo:Math.round(v*100)/100,nota:$('spPNota').value.trim()},cat));renderSp();aggiornaSum();return true;}
 
 function aggiornaSum(){
   const st=S.lav;const l=st&&lav0(st.lid);const t=l&&st.tipo?C.tipoDi(l,st.tipo):null;
@@ -280,7 +298,7 @@ apriGiorno=function(d){_apriGiorno16(d);renderSpeseGiorno(d);};
 function renderSpeseGiorno(d){
   let box=$('daySpese');if(!box){box=document.createElement('div');box.id='daySpese';$('dayBox').appendChild(box);}
   const L=speseDel(s=>s.data===d);const tot=L.reduce((a,s)=>a+num(s.importo),0);
-  box.innerHTML=L.length?`<div class="tubox"><div class="tuh"><b>🛒 Spese giornaliere</b><small class="muted">${eur(tot)}</small></div>${L.map(s=>{const c=catDi(s.cat);return `<div class="sprow"><span>${c[1]}</span><span class="tx"><b>${esc(c[2])}</b>${s.nota?`<small>${esc(s.nota)}</small>`:''}</span><b>${eur(num(s.importo))}</b><button type="button" class="x" data-spdel="${esc(s.id)}" aria-label="Elimina spesa">×</button></div>`;}).join('')}</div>`:'';
+  box.innerHTML=L.length?`<div class="tubox"><div class="tuh"><b>🛒 Spese giornaliere</b><small class="muted">${eur(tot)}</small></div>${L.map(s=>{const c=catDi(s.cat,s);return `<div class="sprow"><span>${c[1]}</span><span class="tx"><b>${esc(c[2])}</b>${s.nota?`<small>${esc(s.nota)}</small>`:''}</span><b>${eur(num(s.importo))}</b><button type="button" class="x" data-spdel="${esc(s.id)}" aria-label="Elimina spesa">×</button></div>`;}).join('')}</div>`:'';
   if(tot){const ds=$('daySum');if(ds&&!ds.querySelector('[data-sptot]'))ds.insertAdjacentHTML('beforeend',`<span data-sptot><b>${eur(r2(tot))}</b> spesi</span>`);}
 }
 const _renderCal16=renderCal;
@@ -289,17 +307,18 @@ renderCal=function(){_renderCal16();const per={};for(const s of speseDel(s=>s.da
 const _renderRie16=renderRiepilogo;
 renderRiepilogo=function(){_renderRie16();$('rieSpese').innerHTML='';
   const y=cur.slice(0,4);const anno=rieMode==='anno';const L=speseDel(s=>anno?meseSpesa(s).startsWith(y):meseSpesa(s)===cur);if(!L.length)return; // 24c.11 (D-152): il mese in cui conta
-  const tot=L.reduce((a,s)=>a+num(s.importo),0);const per={};for(const s of L)per[s.cat]=(per[s.cat]||0)+num(s.importo);
-  const righe=Object.entries(per).sort((a,b)=>b[1]-a[1]).map(([k,v])=>{const c=catDi(k);return `<div class="kv"><span>${c[1]} ${esc(c[2])}</span><b>${eur(r2(v))}</b></div>`;}).join('');
+  const tot=L.reduce((a,s)=>a+num(s.importo),0);const per={},voce={};for(const s of L){per[s.cat]=(per[s.cat]||0)+num(s.importo);voce[s.cat]=voce[s.cat]||s;}
+  const righe=Object.entries(per).sort((a,b)=>b[1]-a[1]).map(([k,v])=>{const c=catDi(k,voce[k]);return `<div class="kv"><span>${c[1]} ${esc(c[2])}</span><b>${eur(r2(v))}</b></div>`;}).join('');
   let mesi='';if(anno){const pm={};for(const s of L){const m=meseSpesa(s);pm[m]=(pm[m]||0)+num(s.importo);}mesi='<p class="muted sm">Per mese</p>'+Object.keys(pm).sort().map(m=>`<div class="kv"><span>${esc(monthName(m))}</span><b>${eur(r2(pm[m]))}</b></div>`).join('');}
   const h=`<div class="card"><h3>🛒 Spese giornaliere${anno?' '+y:''}</h3>${righe}<div class="kv big"><span>Totale</span><b>${eur(r2(tot))}</b></div>${mesi}</div>`;
   $('rieSpese').insertAdjacentHTML('beforeend',h);}; // 24b.1 (D-098): nella pagina "Spese giornaliere" (mese e anno)
 
 // ================= impostazioni: icone colorate per ogni sezione (v17) =================
 // 24b.1 (D-098 punti 6-7): icone anche per Pensione (simbolo e colore della pagina Pensione, mockup 02 della v22) e per Uscite fisse (mockup 02 della tornata 23)
-const ICONE=[[/^lavoro dipendente/i,'💼','#1c7ed6'],[/^pensione/i,'🏛️','#5d6b7a'],[/^uscite fisse/i,'💳','#495057'],[/^progetti/i,'📁','#e8590c'],[/^google calendar/i,'📅','#2f9e44'],
-  [/^account/i,'👤','#0ca678'],[/^i tuoi dati/i,'🪪','#7048e8'],[/^la tua firma/i,'✍️','#c2255c'],[/^aspetto/i,'🎨','#f59f00'],[/^promemoria/i,'🔔','#e8590c'],[/^blocco/i,'🔒','#495057'],
-  [/^cestino/i,'🗑️','#c92a2a'],[/^storico/i,'🕘','#1098ad'],[/^copia di sicurezza/i,'💾','#1c7ed6']];
+const ICONE=[[/^lavoro dipendente/i,'💼','#1c7ed6'],[/^pensione/i,'🏛️','#5d6b7a'],[/^uscite fisse/i,'💳','#495057'],[/^progetti/i,'📁','#e8590c'],
+  [/^account/i,'👤','#0ca678'],[/^aspetto/i,'🎨','#f59f00'],[/^blocco/i,'🔒','#495057'],
+  // 24c.20 (D-182, D-190): Google Calendar e Promemoria sono dentro Account, Cestino, Storico e Copia dentro «Dati e copie di sicurezza» (le loro icone sono nel titolo)
+  [/^dati e copie/i,'💾','#1c7ed6']];
 function icone(){document.querySelectorAll('#v-pro details.fold>summary>.st').forEach(st=>{if(st.querySelector('.ic'))return;const t=st.textContent.trim();const m=ICONE.find(x=>x[0].test(t));
   if(m)st.insertAdjacentHTML('afterbegin',`<span class="ic" style="--ic:${m[2]}" aria-hidden="true">${m[1]}</span>`);});}
 
@@ -325,7 +344,7 @@ function bind16(){
     const b=e.target.closest('[data-lt]');if(!b)return;letturaLav();const v=b.dataset.lt||null;S.lav.tipo=S.lav.tipo===v?undefined:v;renderLav();aggiornaSum();});
   $('evLav').addEventListener('change',e=>{if(e.target.id==='evLavSel'){S.lav={lid:e.target.value,tipo:undefined,da:'',a:'',pausa:'',ore:'',nota:''};renderLav();aggiornaSum();}});
   $('evLav').addEventListener('input',e=>{if(e.target.dataset.lk)S.lav[e.target.dataset.lk]=e.target.value.trim();});
-  $('evSpP').addEventListener('click',e=>{const c=e.target.closest('[data-spc]');if(c){S.cat=c.dataset.spc;document.querySelectorAll('#evSpP [data-spc]').forEach(x=>x.classList.toggle('on',x===c));return;}
+  $('evSpP').addEventListener('click',e=>{const c=e.target.closest('#spPCats [data-spc],#spPCats [data-scmod],#spPCats [data-sctogli]');if(c){toccaSpesa(c,'spc',{set:k=>{S.cat=k;},imp:'spPImp',ridisegna:()=>{if($('spPCats'))$('spPCats').innerHTML=chipsSpese(S.cat,'spc');}});return;}
     const r=e.target.closest('[data-sprm]');if(r){S.sp.splice(+r.dataset.sprm,1);renderSp();aggiornaSum();return;}
     if(e.target.id==='spPAdd'&&!aggiungiSp())toast('Scrivi l’importo.','err');});
   $('evSpP').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='spPImp'){e.preventDefault();aggiungiSp();}});
@@ -348,7 +367,7 @@ function bind16(){
   $('evRipDur').onchange=mostraDurata;
   // 24c.15 (D-171)
   $('evGia').addEventListener('click',giaClick);
-  $('spmCats').addEventListener('click',e=>{const c=e.target.closest('[data-spmc]');if(c&&spEd){spEd.cat=c.dataset.spmc;spmChips();}});
+  $('spmCats').addEventListener('click',e=>{const c=e.target.closest('[data-spmc],[data-scmod],[data-sctogli]');if(c&&spEd)toccaSpesa(c,'spmc',{set:k=>{if(spEd)spEd.cat=k;},imp:'spmImp',ridisegna:()=>{if(spEd)spmChips();}});});
   $('spmClose').onclick=chiudiSpesa;$('spmAnnulla').onclick=chiudiSpesa;$('spmOk').onclick=salvaSpesa;$('spmDel').onclick=eliminaSpesa;
   $('spModal').addEventListener('click',e=>{if(e.target.id==='spModal')chiudiSpesa();});
   $('dayBox').addEventListener('click',async e=>{const b=e.target.closest('[data-spdel]');if(!b)return;const s=SP()[b.dataset.spdel];if(!s)return;

@@ -142,7 +142,10 @@ function riquadro(ids,dopo){document.querySelectorAll('.dcnote').forEach(e=>e.re
   const el=document.createElement('div');el.className='note dcnote';el.setAttribute('role','status');
   el.innerHTML=`<span>${testoRiquadro(n)}</span><button type="button" class="btn sm" data-dcvai aria-label="Controlla le entrate da confermare">Controlla</button>`;
   dopo.insertAdjacentElement('afterend',el);}
-function aggiornaRiquadro(){const el=document.querySelector('.dcnote');if(!el)return;
+// 24c.20: il riquadro da aggiornare è quello sotto il pulsante usato, mai quello dentro la finestra della banca (#bcModal, banca.js riqConf):
+// prima un render() qualunque (per esempio la sincronizzazione dopo «Archivia su Drive») trovava quello della finestra e lo toglieva,
+// insieme al suo «Controlla» (prova v24c17 instabile, 2 volte su 15 anche sulla 24c.19)
+function aggiornaRiquadro(){const el=[...document.querySelectorAll('.dcnote')].find(e=>!e.closest('#bcModal'));if(!el)return;
   const n=ultimiIds.filter(id=>daConf().some(x=>x.id===id)).length;if(!n){el.remove();return;}el.querySelector('span').innerHTML=testoRiquadro(n);}
 function vai(){document.querySelectorAll('.dcnote').forEach(e=>e.remove());vaiA('dinc');
   const c=$('dcCard');if(c){c.scrollIntoView({block:'start'});c.querySelector('[data-dc]')?.focus({preventScroll:true});}}

@@ -607,7 +607,8 @@ function renderSync(){
   else if(pendingCount()){txt=pendingCount()+' da inviare';cls='warn';}
   else {txt='Sincronizzato';cls='ok';}
   c.textContent=txt;c.className='chip sync '+cls;
-  if(cls==='pausa')c.setAttribute('aria-label','Drive in pausa: tocca per rispondere alla domanda sui dati sostituiti');else c.removeAttribute('aria-label');c.title=lastErr||(inAttesa()?'Riprovo da solo tra qualche minuto: '+Object.values(codaAttesa).map(a=>a.err).join(' · '):'')||(DB.meta.lastSync?'Ultima sincronizzazione: '+new Date(DB.meta.lastSync).toLocaleString('it-IT'):'');
+  // 24c.20 (03, 5a del 26/11): il lettore di schermo sente sempre lo stato, anche prima del primo disegno (nel file c'è solo «…»)
+  c.setAttribute('aria-label',cls==='pausa'?'Drive in pausa: tocca per rispondere alla domanda sui dati sostituiti':'Google Drive: '+txt);c.title=lastErr||(inAttesa()?'Riprovo da solo tra qualche minuto: '+Object.values(codaAttesa).map(a=>a.err).join(' · '):'')||(DB.meta.lastSync?'Ultima sincronizzazione: '+new Date(DB.meta.lastSync).toLocaleString('it-IT'):'');
 }
 function render(){
   renderSync();

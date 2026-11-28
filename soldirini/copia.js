@@ -13,11 +13,11 @@
   const enc = new TextEncoder(), dec = new TextDecoder();
   const VIETATI = new Set(['__proto__', 'constructor', 'prototype']);
   // parti conosciute di DB.data (V6): le altre si scartano
-  const RACCOLTE = ['pagamenti', 'progetti', 'eventi', 'mesi', 'files', 'cu', 'lavori', 'turni', 'buste', 'cedolini', 'spesePers', 'risparmi', 'fondi', 'fissi', 'entrate', 'gcal', 'bancaImpronte', 'entrateExtra', 'daConfermare']; // 24c.12 (P1 di 03): impronte dei movimenti della banca; 24c.13 (D-074, D-165)
+  const RACCOLTE = ['pagamenti', 'progetti', 'eventi', 'mesi', 'files', 'cu', 'lavori', 'turni', 'buste', 'cedolini', 'spesePers', 'risparmi', 'fondi', 'fissi', 'entrate', 'gcal', 'bancaImpronte', 'entrateExtra', 'daConfermare', 'scelte']; // 24c.20 (D-180): scelte proprie; 24c.12 (P1 di 03): impronte dei movimenti della banca; 24c.13 (D-074, D-165)
   const OGGETTI = ['impost', 'profilo', 'root', 'pensione'];
   // raccolte in cui chi legge salta già le voci "deleted": qui una voce tolta da "Sostituisci tutto" resta come cancellata
   // (domanda 1 di 03, consiglio). Pagamenti, entrate, mesi e file di Drive non hanno questo segno: lì la voce si toglie e basta.
-  const CON_CANCELLATE = ['eventi', 'progetti', 'lavori', 'turni', 'buste', 'cedolini', 'fissi', 'spesePers', 'cu', 'fondi', 'risparmi', 'bancaImpronte', 'entrateExtra', 'daConfermare'];
+  const CON_CANCELLATE = ['eventi', 'progetti', 'lavori', 'turni', 'buste', 'cedolini', 'fissi', 'spesePers', 'cu', 'fondi', 'risparmi', 'bancaImpronte', 'entrateExtra', 'daConfermare', 'scelte'];
   const TIPI = { 'application/pdf': [0x25, 0x50, 0x44, 0x46], 'image/jpeg': [0xff, 0xd8, 0xff], 'image/png': [0x89, 0x50, 0x4e, 0x47] };
   // testi di 02 (report tornata 14 e 22, mockup 02-mockup-v24c-riprendi-copia e 02-mockup-v24-d054)
   const MSG = {
@@ -305,7 +305,7 @@
       <button type="button" class="cpopt on" role="radio" aria-checked="true" data-pw="1"><b>🔒 Sì, con password <span class="tag">Consigliato</span></b><span class="pro">Il file è protetto anche se finisce in mani sbagliate.</span><span class="con">Se dimentichi la password, la copia non si apre più. Nessuno può recuperarla, nemmeno l’autore dell’app.</span></button>
       <button type="button" class="cpopt" role="radio" aria-checked="false" data-pw="0"><b>🔓 No, senza password</b><span class="con">Chi apre il file vede tutti i tuoi dati.</span></button></div>
       <div class="foot"><button class="btn" data-cp="continua">Continua</button></div>
-      <p class="muted sm">Con "Sì" la password ti viene chiesta ogni volta che salvi una copia: Soldirini non la conserva. Puoi cambiare la scelta in Impostazioni → Copia di sicurezza.</p>`, true);
+      <p class="muted sm">Con "Sì" la password ti viene chiesta ogni volta che salvi una copia: Soldirini non la conserva. Puoi cambiare la scelta in Impostazioni → Dati e copie di sicurezza → Copia di sicurezza.</p>`, true);
   }
   // 13 · password (prima volta) o "Password per questa copia"
   function chiediPassword() {
@@ -385,7 +385,7 @@
     if (primaLaPausa(MSG.primaSost)) return;
     passo = 'conferma'; const a = conteggi(D()), b = conteggi(aperta.dati);
     mostra('Sostituire tutti i dati di questo telefono?', `<p style="margin-top:0">Ora ci sono <b>${nAtt(a.att)}</b>${a.dal ? ` (dal ${dItc(a.dal)} al ${dItc(a.al)})` : ''}. Dopo ci saranno solo quelle della copia: <b>${nAtt(b.att)}</b>${b.al ? ` (fino al ${dItc(b.al)})` : ''}.</p>
-      <p>I dati di adesso restano da parte e puoi rimetterli da Impostazioni → Copia di sicurezza.</p>
+      <p>I dati di adesso restano da parte e puoi rimetterli da Impostazioni → Dati e copie di sicurezza → Copia di sicurezza.</p>
       ${conDrive() ? '<p><b>Con Google Drive:</b> anche i dati su Drive vengono sostituiti. Prima Soldirini salva i dati di adesso nella cartella "Copie di sicurezza" di Drive.</p>' + avvisoAltri : ''}
       <p class="err" id="cpErr" role="alert" hidden></p>
       <div class="foot"><button class="btn ghost" data-cp="annulla">Annulla</button><button class="btn danger" data-cp="sostituisci">Sostituisci tutto</button></div>`, false);
@@ -408,7 +408,7 @@
   function domandaPausa(forza, motivo) {
     const P = DB.meta.drivePausa; if (!P || (!forza && chiestoPausa) || occupato) return; chiestoPausa = true; passo = 'pausa';
     mostra('I dati sono stati sostituiti su un altro dispositivo', `${motivo ? `<p class="cpinvio cima" id="cpMotivo">${esc(motivo)}</p>` : ''}<p style="margin-top:0">${P.il ? `Il ${dItc(P.il)}, su` : 'Su'} un altro telefono o tablet, i dati di Soldirini sono stati sostituiti con una copia di sicurezza.</p>
-      <p>Per avere gli stessi dati anche qui, Soldirini prende quelli di Google Drive. I dati di questo telefono restano da parte: puoi rimetterli da Impostazioni → Copia di sicurezza.</p>
+      <p>Per avere gli stessi dati anche qui, Soldirini prende quelli di Google Drive. I dati di questo telefono restano da parte: puoi rimetterli da Impostazioni → Dati e copie di sicurezza → Copia di sicurezza.</p>
       <p class="err" id="cpErr" role="alert" hidden></p>
       <div class="foot"><button class="btn ghost" data-cp="annulla">Non ora</button><button class="btn" data-cp="prendi">Prendi i dati di Drive</button></div>
       <p class="muted sm">Con "Non ora" questo telefono non si sincronizza con Drive: la domanda torna toccando "Drive in pausa" o al prossimo avvio.</p>`, false);
@@ -426,7 +426,7 @@
       if (Archivio.modo === 'idb') await Archivio.nuovaEpoca(); else persist();
     } catch (e) { fine(btn); errore(errMsg(e)); return; }
     occupato = false; chiudi(); render(); scheduleSync(0);
-    toast('✓ Dati presi da Google Drive. Quelli di prima sono in Impostazioni → Copia di sicurezza.', '', 6000);
+    toast('✓ Dati presi da Google Drive. Quelli di prima sono in Impostazioni → Dati e copie di sicurezza → Copia di sicurezza.', '', 6000);
   }
 
   async function azione(b) {
@@ -469,7 +469,7 @@
     if (a === 'prendi') { prendiDrive(b); return; }
   }
 
-  // ---------- Impostazioni → Copia di sicurezza (schermata 14) ----------
+  // ---------- Impostazioni → Dati e copie di sicurezza → Copia di sicurezza (schermata 14; 24c.20, D-182) ----------
   async function renderBox() {
     const box = $('cpBox'); if (!box) return; const c = C(), pw = c.password !== false;
     box.innerHTML = `<p class="muted sm" style="margin-top:0">${c.ultima ? `Ultima copia: ${dItc(c.ultima)} · ${c.protetta ? 'con password' : 'senza password'}` : 'Nessuna copia salvata finora.'}</p>

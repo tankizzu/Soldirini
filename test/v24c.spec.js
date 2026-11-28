@@ -99,7 +99,7 @@ test.describe('v24c · formato e cifratura (C1-C5, V1-V5)', () => {
 
   test('C4, C5, V4: dalle Impostazioni, password facile o diversa → errori; con password la copia si scarica e la password non resta da nessuna parte', async ({ browser }) => {
     const { page, errori } = await telefono(browser); await pronto(page); await DATI(page);
-    await page.evaluate(() => { tab = 'pro'; render(); $('cpBox').closest('details').open = true; });
+    await page.evaluate(() => { tab = 'pro'; render(); (e => { for (let d = e && e.closest('details'); d; d = d.parentElement.closest('details')) d.open = true; })($('cpBox')); });
     await expect(page.locator('#cpBox')).toContainText('Nessuna copia salvata finora.');
     await page.evaluate(() => document.querySelector('#cpBox [data-cp=salva]').click());
     await expect(page.locator('#cpTit')).toHaveText('Proteggere la copia con una password?');
@@ -194,7 +194,7 @@ test.describe('v24c · dati in arrivo non fidati (C9, C10, V6-V8)', () => {
     expect(mensile.data).toBe('2026-11-01'); expect(Object.keys(mensile.dati.progetti)).toEqual(['p1']);
     expect((await apriCopia(page, Buffer.from(JSON.stringify({ v: 2, x: 1 })), null, 'a.json')).errore).toBe('rovinato');
     // dall'interfaccia: copia di una versione precedente
-    await page.evaluate(() => { tab = 'pro'; render(); $('cpBox').closest('details').open = true; document.querySelector('#cpBox [data-cp=riprendi]').click(); });
+    await page.evaluate(() => { tab = 'pro'; render(); (e => { for (let d = e && e.closest('details'); d; d = d.parentElement.closest('details')) d.open = true; })($('cpBox')); document.querySelector('#cpBox [data-cp=riprendi]').click(); });
     await page.setInputFiles('#cpFile', { name: 'soldirini-backup-2026-10-05.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(d)) });
     await expect(page.locator('#cpBody .cpsum')).toContainText('Copia di una versione precedente');
     await expect(page.locator('#cpBody .cpsum')).toContainText('3 · dal 05/10/2026 al 10/11/2026');
@@ -208,7 +208,7 @@ test.describe('v24c · Unisci, Sostituisci, Rimetti sul telefono (C6, C7, V9, V1
     const copia = await creaCopia(A.page, PW);
     const { page, errori } = await telefono(browser); await pronto(page);
     await page.evaluate(() => { const ora = Date.now(); D().progetti.p9 = { ...nuovoProgetto(), id: 'p9', nome: 'Mio', updatedAt: ora }; D().eventi.z1 = { id: 'z1', pid: 'p9', data: '2026-11-15', tipo: 'altro', titolo: '', ore: true, fasce: [], fisso: '10', rimborso: false, spese: [], created: 1, updatedAt: ora }; changed(); });
-    await page.evaluate(() => { tab = 'pro'; render(); $('cpBox').closest('details').open = true; document.querySelector('#cpBox [data-cp=riprendi]').click(); });
+    await page.evaluate(() => { tab = 'pro'; render(); (e => { for (let d = e && e.closest('details'); d; d = d.parentElement.closest('details')) d.open = true; })($('cpBox')); document.querySelector('#cpBox [data-cp=riprendi]').click(); });
     await page.setInputFiles('#cpFile', { name: 'soldirini-copia-2026-11-18.soldirini', mimeType: 'application/octet-stream', buffer: copia });
     await expect(page.locator('#cpPw')).toBeVisible();
     await page.fill('#cpPwIn', 'sbagliata-123'); await page.click('[data-cp=apri]');
@@ -233,7 +233,7 @@ test.describe('v24c · Unisci, Sostituisci, Rimetti sul telefono (C6, C7, V9, V1
     const copia = await creaCopia(A.page, null);
     const { page, errori } = await telefono(browser); await pronto(page);
     await page.evaluate(() => { const ora = Date.now(); D().progetti.p9 = { ...nuovoProgetto(), id: 'p9', nome: 'Mio', updatedAt: ora }; D().eventi.z1 = { id: 'z1', pid: 'p9', data: '2026-11-15', tipo: 'altro', titolo: '', ore: true, fasce: [], fisso: '10', rimborso: false, spese: [], created: 1, updatedAt: ora }; changed(); });
-    await page.evaluate(() => { tab = 'pro'; render(); $('cpBox').closest('details').open = true; });
+    await page.evaluate(() => { tab = 'pro'; render(); (e => { for (let d = e && e.closest('details'); d; d = d.parentElement.closest('details')) d.open = true; })($('cpBox')); });
     await page.evaluate(() => Archivio.salvato());
     const prima = await page.evaluate(() => canon(D()));
     await page.evaluate(() => document.querySelector('#cpBox [data-cp=riprendi]').click());
@@ -255,7 +255,7 @@ test.describe('v24c · Unisci, Sostituisci, Rimetti sul telefono (C6, C7, V9, V1
     await page.reload(); await pronto(page);
     expect(await page.evaluate(() => Object.keys(D().eventi).filter(k => !D().eventi[k].deleted).length)).toBe(3);
     // Rimetti (22): scambio
-    await page.evaluate(() => { tab = 'pro'; render(); $('cpBox').closest('details').open = true; });
+    await page.evaluate(() => { tab = 'pro'; render(); (e => { for (let d = e && e.closest('details'); d; d = d.parentElement.closest('details')) d.open = true; })($('cpBox')); });
     await page.click('#cpBox [data-cp=rimetti]');
     await expect(page.locator('#cpTit')).toHaveText('Rimettere i dati messi da parte?');
     await expect(page.locator('#cpBody')).toContainText('Ora ci sono 3 attività (fino al 10/11/2026). Dopo tornano i dati messi da parte il 18/11/2026: 1 attività (fino al 15/11/2026).');
@@ -352,7 +352,7 @@ test.describe('v24c · Sostituisci tutto con Google Drive (C8, V11-V14)', () => 
     // tocco su "Drive in pausa" → di nuovo la domanda → Prendi i dati di Drive
     await B.page.click('#sync');
     await B.page.click('[data-cp=prendi]');
-    await expect(B.page.locator('#toast')).toHaveText('✓ Dati presi da Google Drive. Quelli di prima sono in Impostazioni → Copia di sicurezza.');
+    await expect(B.page.locator('#toast')).toHaveText('✓ Dati presi da Google Drive. Quelli di prima sono in Impostazioni → Dati e copie di sicurezza → Copia di sicurezza.'); // 24c.20 (D-182)
     await aspettaSync(B.page);
     expect(await B.page.evaluate(() => Object.keys(D().eventi).filter(k => !D().eventi[k].deleted).sort())).toEqual(['e1', 'e2', 'e3']);
     expect(Object.keys(JSON.parse((await recIdb(B.page, 'da-parte')).testo).eventi)).toContain('b2');

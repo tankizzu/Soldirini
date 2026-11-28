@@ -72,7 +72,7 @@ test.describe('24c.1 · 2.A di 03: "Drive in pausa" e sostituzioni', () => {
     await page.evaluate(() => { DB.meta.drivePausa = { gen: 1, il: '2026-11-18' }; DB.meta.sostituzione = { copiata: true, rev: 'x' }; persist(); Copia.domandaPausa(true); });
     await expect(page.locator('#cpMotivo')).toHaveCount(0); expect(await page.locator('#cpModal [role=dialog]').getAttribute('aria-describedby')).toBeNull(); // senza motivo, niente riga
     await page.click('[data-cp=prendi]');
-    await expect(page.locator('#toast')).toHaveText('✓ Dati presi da Google Drive. Quelli di prima sono in Impostazioni → Copia di sicurezza.');
+    await expect(page.locator('#toast')).toHaveText('✓ Dati presi da Google Drive. Quelli di prima sono in Impostazioni → Dati e copie di sicurezza → Copia di sicurezza.'); // 24c.20 (D-182)
     await aspettaSync(page);
     expect(await page.evaluate(() => [DB.meta.sostituzione || null, DB.meta.drivePausa || null])).toEqual([null, null]);
     expect(drive.fileDati()[0].appProperties.soldirini_gen).toBe(gen0);

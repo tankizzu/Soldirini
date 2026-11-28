@@ -6,7 +6,28 @@ const numP=v=>leggiNumeroPunto(v)??0; // 24c.6: campi type="number" (giorni, rat
 const FX=()=>D().fissi||(D().fissi={});
 const fissi=()=>Object.values(FX()).filter(f=>!f.deleted).sort((a,b)=>(+a.giorno||0)-(+b.giorno||0)||a.nome.localeCompare(b.nome));
 const FCAT=[['netflix','🎬','Netflix'],['disney','✨','Disney+'],['mutuo','🏠','Mutuo'],['rata','💳','Rata'],['abbonamento','📱','Abbonamento'],['utenze','💡','Utenze'],['altro','•','Altro']];
-const fcat=k=>FCAT.find(c=>c[0]===k)||FCAT[FCAT.length-1];
+// 24c.20 (D-180): Netflix e Disney+ non sono più tra le scelte pronte (le crea l'utente con «Altro»); restano in FCAT solo perché
+// le uscite già salvate con 'netflix'/'disney' si vedano ancora con il loro nome e la loro icona (D-117, niente riscritto).
+const FCAT_PRONTE=FCAT.filter(c=>!['netflix','disney','altro'].includes(c[0])),FCAT_ALTRO=FCAT[FCAT.length-1];
+window.FCAT_PRONTE=[...FCAT_PRONTE,FCAT_ALTRO]; // per il controllo dei nomi doppi in scelte.js
+// categoria di un'uscita: le scelte proprie ('sc:<id>') da scelte.js, con la copia salvata nella voce come riserva
+const fcat=(k,x)=>(window.Scelte&&Scelte.cat(k,x))||FCAT.find(c=>c[0]===k)||FCAT_ALTRO;
+// chip: scelte pronte, poi le scelte proprie, poi «Altro» sempre ultima; sotto, «Modifica» e «Togli» se è scelta una propria (02 §2.1-§2.3)
+const chipsFissi=(sel,attr)=>[...FCAT_PRONTE.map(c=>`<button type="button" class="chip ${sel===c[0]?'on':''}" data-${attr}="${c[0]}" aria-pressed="${sel===c[0]}">${c[1]} ${c[2]}</button>`),
+  window.Scelte?Scelte.chips('fissi',sel,attr):'',`<button type="button" class="chip ${sel==='altro'?'on':''}" data-${attr}="altro" aria-pressed="${sel==='altro'}">${FCAT_ALTRO[1]} ${FCAT_ALTRO[2]}</button>`,
+  window.Scelte?Scelte.azioni('fissi',sel):''].join('');
+// copia di nome e icona della scelta propria nella voce salvata (si toglie se la categoria non è più una scelta propria)
+const conCopia=(o,cat)=>{const c=window.Scelte?Scelte.copia(cat):{};if(c.catNome)Object.assign(o,c);else{delete o.catNome;delete o.catIco;}return o;};
+// tocco su un chip delle uscite fisse: m = {cat, set(cat), nome, imp, giorno, ridisegna} del modulo (impostazioni o Nuova attività)
+function toccaFisso(b,attr,m){const scmod=b.closest('[data-scmod]'),sctogli=b.closest('[data-sctogli]');
+  if(scmod){Scelte.apri('fissi',scmod.dataset.scmod,()=>{m.ridisegna();});return;}
+  if(sctogli){Scelte.togli(sctogli.dataset.sctogli,()=>{m.set('');m.ridisegna();});return;}
+  const k=b.dataset[attr];const prima=fcat(m.cat())[2];m.set(k);
+  const sc=k.startsWith('sc:')&&window.Scelte?Scelte.prendi(k.slice(3)):null;
+  const n=$(m.nome);if(!n.value.trim()||n.value===prima)n.value=sc?sc.nome.trim():'';
+  if(sc){if(sc.importo&&!$(m.imp).value.trim())$(m.imp).value=(Math.round(+sc.importo*100)/100).toFixed(2).replace('.',',');if(sc.giorno&&!$(m.giorno).value.trim())$(m.giorno).value=sc.giorno;}
+  m.ridisegna();
+  if(k==='altro'&&window.Scelte)Scelte.apri('fissi',null,id=>{const c=document.createElement('button');c.dataset[attr]='sc:'+id;toccaFisso(c,attr,m);});}
 const addMese=(ym,n)=>{const d=new Date(+ym.slice(0,4),+ym.slice(5)-1+n,1);return `${d.getFullYear()}-${pad(d.getMonth()+1)}`;};
 // 24.1: "dal" e "al" arrivano anche da Drive: valgono solo se sono AAAA-MM validi (altrimenti come se mancassero)
 const ymOk=v=>typeof v==='string'&&/^\d{4}-(0[1-9]|1[0-2])$/.test(v);
@@ -157,24 +178,24 @@ renderRiepilogo=function(){_renderRie18();
   const t=today();
   box.innerHTML=anno?`<div class="card" data-fid="fissi" data-sum="− ${eur(C.fTot)}"><h3>💳 Uscite fisse ${y}</h3>${Array.from({length:12},(_,i)=>{const ym=`${y}-${pad(i+1)}`;const v=fissiMese(ym).fTot;
         return v?`<div class="kv"><span>${esc(monthName(ym))}${i+1>C.mesi?' <small class="muted">· non ancora contato</small>':''}</span><b>${eur(v)}</b></div>`:'';}).join('')}<div class="kv big"><span>${C.mesi===12?'Totale':C.mesi?'Totale fino a '+MESI[C.mesi-1]:'Totale'}</span><b>${eur(C.fTot)}</b></div></div>`
-    :`<div class="card" data-fid="fissi" data-sum="− ${eur(C.fTot)}"><h3>💳 Uscite fisse</h3>${F.map(x=>{const c=fcat(x.f.cat);const ok=x.data<=t;return `<div class="kv"><span>${c[1]} ${esc(x.f.nome)} <small class="muted">· ${ok?'addebitata':'addebito'} il ${+x.data.slice(8)}</small></span><b>${eur(num(x.f.importo))}</b></div>`;}).join('')}<div class="kv big"><span>Totale del mese</span><b>${eur(C.fTot)}</b></div></div>`;
+    :`<div class="card" data-fid="fissi" data-sum="− ${eur(C.fTot)}"><h3>💳 Uscite fisse</h3>${F.map(x=>{const c=fcat(x.f.cat,x.f);const ok=x.data<=t;return `<div class="kv"><span>${c[1]} ${esc(x.f.nome)} <small class="muted">· ${ok?'addebitata':'addebito'} il ${+x.data.slice(8)}</small></span><b>${eur(num(x.f.importo))}</b></div>`;}).join('')}<div class="kv big"><span>Totale del mese</span><b>${eur(C.fTot)}</b></div></div>`;
   foldify(box,'fissi');
 };
 
 // ---------- pagamenti fissi: impostazioni ----------
 function renderFissi(){const L=fissi();$('foldFixSum').textContent=L.length?eur(r2(L.filter(f=>attivoNel(f,today().slice(0,7))).reduce((a,f)=>a+num(f.importo),0)))+'/mese':'';
-  $('fixList').innerHTML=L.map(f=>{const c=fcat(f.cat);const fine=fineFisso(f);return `<button class="card prow fxr" data-fx="${esc(f.id)}"><span>${c[1]}</span><span class="tx"><b>${esc(f.nome)}</b><small>${eur(num(f.importo))} il giorno ${+f.giorno||1}${fine?' · fino a '+esc(monthName(fine)):''}</small></span><span class="chev">›</span></button>`;}).join('')||'<p class="muted sm">Nessun pagamento fisso.</p>';}
+  $('fixList').innerHTML=L.map(f=>{const c=fcat(f.cat,f);const fine=fineFisso(f);return `<button class="card prow fxr" data-fx="${esc(f.id)}"><span>${c[1]}</span><span class="tx"><b>${esc(f.nome)}</b><small>${eur(num(f.importo))} il giorno ${+f.giorno||1}${fine?' · fino a '+esc(monthName(fine)):''}</small></span><span class="chev">›</span></button>`;}).join('')||'<p class="muted sm">Nessun pagamento fisso.</p>';}
 let fx=null;
-function apriFisso(f){fx=f?clone(f):{id:uid(),cat:'netflix',nome:'',importo:'',giorno:'',dal:today().slice(0,7),al:'',rate:'',nota:''};const isNew=!f;
+function apriFisso(f){fx=f?clone(f):{id:uid(),cat:'',nome:'',importo:'',giorno:'',dal:today().slice(0,7),al:'',rate:'',nota:''};const isNew=!f;
   $('fxTit').textContent=isNew?'Nuova uscita fissa':'Uscita fissa';$('fxDel').hidden=isNew;
   $('fxNome').value=fx.nome;$('fxImp').value=fx.importo;$('fxGiorno').value=fx.giorno;$('fxDal').value=fx.dal;$('fxRate').value=fx.rate;$('fxAl').value=fx.al;$('fxNota').value=fx.nota||'';
   $('fxDur').value=fx.rate?'rate':fx.al?'al':'';durata();catChips();riquadroFine(isNew?null:f);$('fxModal').hidden=false;document.body.classList.add('noscroll');}
-function catChips(){$('fxCats').innerHTML=FCAT.map(c=>`<button type="button" class="chip ${fx.cat===c[0]?'on':''}" data-fxc="${c[0]}">${c[1]} ${c[2]}</button>`).join('');}
+function catChips(){$('fxCats').innerHTML=chipsFissi(fx.cat,'fxc');}
 function durata(){const d=$('fxDur').value;$('fxRateL').hidden=d!=='rate';$('fxAlL').hidden=d!=='al';}
 function chiudiFisso(){$('fxModal').hidden=true;document.body.classList.remove('noscroll');}
 function salvaFisso(){const nome=$('fxNome').value.trim()||fcat(fx.cat)[2];const imp=num($('fxImp').value);const g=Math.round(numP($('fxGiorno').value));
   if(!(imp>0)){toast('Scrivi l’importo.','err');return;}if(!(g>=1&&g<=31)){toast('Scrivi il giorno di addebito (1–31).','err');return;}
-  const d=$('fxDur').value;Object.assign(fx,{nome,importo:String(r2(imp)),giorno:String(g),dal:$('fxDal').value||today().slice(0,7),rate:d==='rate'?String(Math.round(numP($('fxRate').value))||''):'',al:d==='al'?$('fxAl').value:'',nota:$('fxNota').value.trim(),deleted:false,updatedAt:Date.now()});
+  const d=$('fxDur').value;fx.cat=fx.cat||'altro';conCopia(fx,fx.cat);Object.assign(fx,{nome,importo:String(r2(imp)),giorno:String(g),dal:$('fxDal').value||today().slice(0,7),rate:d==='rate'?String(Math.round(numP($('fxRate').value))||''):'',al:d==='al'?$('fxAl').value:'',nota:$('fxNota').value.trim(),deleted:false,updatedAt:Date.now()});
   FX()[fx.id]=fx;changed();chiudiFisso();render();toast('Uscita fissa salvata.');}
 // 24.1 (D-073, D-076; regola D-072; testi di 02): "Termina" con l'ultimo giorno scelto (passato, oggi o futuro; di base oggi).
 // Se l'addebito del mese di quel giorno cade entro quel giorno (29-31: giorno vero del mese, giornoNel), quel mese conta ancora (al = quel mese);
@@ -212,7 +233,7 @@ const salvaNascosti=()=>{try{localStorage.setItem('soldirini-nascosti',JSON.stri
 let popAperto=false;
 const _renderCal18=renderCal;
 renderCal=function(){_renderCal18();
-  for(const x of fissiDel(cur)){if(nascosti.has('fx'))break;const b=document.querySelector(`#grid [data-day="${CSS.escape(x.data)}"] .evs`);if(b)b.insertAdjacentHTML('beforeend',`<span class="ev fx" style="--c:#868e96">${fcat(x.f.cat)[1]} ${esc(x.f.nome)}</span>`);}
+  for(const x of fissiDel(cur)){if(nascosti.has('fx'))break;const b=document.querySelector(`#grid [data-day="${CSS.escape(x.data)}"] .evs`);if(b)b.insertAdjacentHTML('beforeend',`<span class="ev fx" style="--c:#868e96">${fcat(x.f.cat,x.f)[1]} ${esc(x.f.nome)}</span>`);}
   // tolgo dalla griglia i calendari nascosti
   if(nascosti.has('sp'))document.querySelectorAll('#grid .ev.sp').forEach(e=>e.remove());
   for(const l of lavori())if(nascosti.has('l:'+l.id))document.querySelectorAll('#grid .ev.tu').forEach(e=>{if(e.dataset.lid===l.id)e.remove();});
@@ -272,7 +293,8 @@ function bind18(){
     if(t.dataset.cv){t.checked?nascosti.delete(t.dataset.cv):nascosti.add(t.dataset.cv);salvaNascosti();render();}});
   document.addEventListener('click',e=>{if(popAperto&&!e.target.closest('#filtri')){popAperto=false;filtriPop();}});
   $('fixNew').onclick=()=>apriFisso(null);$('fixList').addEventListener('click',e=>{const b=e.target.closest('[data-fx]');if(b)apriFisso(FX()[b.dataset.fx]);});
-  $('fxCats').addEventListener('click',e=>{const b=e.target.closest('[data-fxc]');if(!b)return;const prima=fcat(fx.cat)[2];fx.cat=b.dataset.fxc;if(!$('fxNome').value.trim()||$('fxNome').value===prima)$('fxNome').value=['netflix','disney'].includes(fx.cat)?fcat(fx.cat)[2]:'';catChips();});
+  $('fxCats').addEventListener('click',e=>{const b=e.target.closest('[data-fxc],[data-scmod],[data-sctogli]');if(!b||!fx)return;
+    toccaFisso(b,'fxc',{cat:()=>fx.cat,set:k=>{fx.cat=k;},nome:'fxNome',imp:'fxImp',giorno:'fxGiorno',ridisegna:catChips});});
   $('fxDur').onchange=durata;$('fxClose').onclick=chiudiFisso;$('fxSave').onclick=salvaFisso;$('fxDel').onclick=eliminaFisso;$('fxFine').onclick=terminaFisso;
   $('tmData').addEventListener('input',terminaControlla);$('tmAnn').onclick=chiudiTermina;$('tmClose').onclick=chiudiTermina;$('tmOk').onclick=salvaTermina;
   $('tmModal').addEventListener('click',e=>{if(e.target.id==='tmModal')chiudiTermina();});
@@ -281,11 +303,11 @@ function bind18(){
 bind18();render();
 window.Soldi18={contiMese,contiAnno,fissi,apriFisso,backupMensile};
 // ---------- v24 (D-060): uscita fissa da "Nuova attività" ----------
-let efCat='netflix';
+let efCat='';
 function efPrepara(dates,modifica){const s=$('secFix');if(!s)return;const una=dates.length===1&&!modifica;s.hidden=!una;s.open=false;if(!una)return;
-  efCat='netflix';$('evFixNome').value='';$('evFixImp').value='';$('evFixGiorno').value=String(+dates[0].slice(8));$('evFixDal').value=dates[0].slice(0,7);
+  efCat='';$('evFixNome').value='';$('evFixImp').value='';$('evFixGiorno').value=String(+dates[0].slice(8));$('evFixDal').value=dates[0].slice(0,7);
   $('evFixDur').value='';$('evFixRate').value='';$('evFixAl').value='';$('evFixErr').hidden=true;efDurata();efChips();efSum();}
-function efChips(){$('evFixCats').innerHTML=FCAT.map(c=>`<button type="button" class="chip ${efCat===c[0]?'on':''}" data-efc="${c[0]}">${c[1]} ${c[2]}</button>`).join('');}
+function efChips(){$('evFixCats').innerHTML=chipsFissi(efCat,'efc');}
 function efDurata(){const d=$('evFixDur').value;$('evFixRateL').hidden=d!=='rate';$('evFixAlL').hidden=d!=='al';}
 function efSum(){const imp=num($('evFixImp').value),g=Math.round(numP($('evFixGiorno').value));$('secFixSum').textContent=imp>0?`${eur(imp)}${g>=1&&g<=31?' · il '+g:''}`:'';
   $('evFixCorto').hidden=!(g>=29&&g<=31);}
@@ -294,11 +316,11 @@ const efCompilata=()=>!$('secFix').hidden&&(num($('evFixImp').value)>0||!!$('evF
 function efErrore(t){$('evFixErr').textContent=t;$('evFixErr').hidden=false;$('secFix').open=true;return false;}
 function efValida(){$('evFixErr').hidden=true;const imp=num($('evFixImp').value),g=Math.round(numP($('evFixGiorno').value));
   if(!(imp>0))return efErrore('Scrivi l’importo.');if(!(g>=1&&g<=31))return efErrore('Scrivi il giorno di addebito (1–31).');return true;}
-function efSalva(){const d=$('evFixDur').value;const f={id:uid(),cat:efCat,nome:$('evFixNome').value.trim()||fcat(efCat)[2],importo:String(r2(num($('evFixImp').value))),giorno:String(Math.round(numP($('evFixGiorno').value))),
+function efSalva(){const d=$('evFixDur').value;const cat=efCat||'altro';const f={id:uid(),cat,nome:$('evFixNome').value.trim()||fcat(cat)[2],importo:String(r2(num($('evFixImp').value))),giorno:String(Math.round(numP($('evFixGiorno').value))),
   dal:$('evFixDal').value||today().slice(0,7),rate:d==='rate'?String(Math.round(numP($('evFixRate').value))||''):'',al:d==='al'?$('evFixAl').value:'',nota:'',deleted:false,updatedAt:Date.now()};
-  FX()[f.id]=f;return f;}
+  conCopia(f,cat);FX()[f.id]=f;return f;}
 window.FissaEv={prepara:efPrepara,compilata:efCompilata,valida:efValida,salva:efSalva};
-document.addEventListener('click',e=>{const b=e.target.closest('[data-efc]');if(b){efCat=b.dataset.efc;efChips();}});
+document.addEventListener('click',e=>{const b=e.target.closest('#evFixCats [data-efc],#evFixCats [data-scmod],#evFixCats [data-sctogli]');if(b)toccaFisso(b,'efc',{cat:()=>efCat,set:k=>{efCat=k;},nome:'evFixNome',imp:'evFixImp',giorno:'evFixGiorno',ridisegna:()=>{efChips();efSum();}});});
 document.addEventListener('input',e=>{if(e.target.closest&&e.target.closest('#evFix'))efSum();});
 document.addEventListener('change',e=>{if(e.target.id==='evFixDur')efDurata();});
 

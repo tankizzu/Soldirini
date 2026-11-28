@@ -277,7 +277,7 @@ test.describe('v24b · Esci, versioni vecchie e vecchia copia (R3)', () => {
     await expect(m.locator('#vcAvv')).toHaveText('Mancherà quello che hai inserito o cambiato dopo il 03/11/2026, e potrebbero tornare voci che avevi cancellato dopo quella data.');
     await expect(m.locator('#vcDrive')).toBeHidden(); // senza Drive collegato
     await expect(m.locator('#vcSumT')).toBeHidden();
-    await expect(m.locator('#vcNota')).toHaveText('Con «Non ora» la domanda torna al prossimo avvio. Puoi riprendere la copia anche da Impostazioni → Account.'); // 02, tornata 20 §5
+    await expect(m.locator('#vcNota')).toHaveText('Con «Non ora» la domanda torna al prossimo avvio. Puoi riprendere la copia anche da Impostazioni → Dati e copie di sicurezza → Copia di sicurezza.'); // 02, tornata 20 §5; 24c.20 (D-182, 03): percorso nuovo
     await expect(m.locator('#vcNo')).toHaveText('Non ora'); await expect(m.locator('#vcSi')).toHaveText('Riprendi');
     await m.click({ position: { x: 10, y: 10 } }); await expect(m).toBeVisible(); // B non si chiude toccando fuori
     await m.locator('#vcNo').click();

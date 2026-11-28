@@ -160,8 +160,9 @@ test.describe('B · contrasti e tocchi', () => {
 test.describe('C · Google Calendar', () => {
   // in Impostazioni il riquadro "Google Calendar" è una sezione che parte chiusa (v23, D-010): la apro come farebbe l'utente
   async function apriCardGcal(page) {
-    const aperta = await page.evaluate(() => document.querySelector('#gcalBody').closest('details')?.open ?? true);
-    if (!aperta) await page.locator('details:has(#gcalBody) > summary').click();
+    // 24c.20 (D-182): Google Calendar è una sezione dentro Account: si aprono le due, una dopo l'altra
+    for (const sel of ['details.fold:has(#gcalBody)', '#accCal'])
+      if (await page.locator(sel).getAttribute('open') === null) await page.locator(sel + ' > summary').click();
   }
   async function apriConsenso(page) {
     await page.click('nav [data-tab=pro]');

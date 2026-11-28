@@ -50,7 +50,8 @@ function riga(c){const R=S.R,n=conto(R,c),M=monthName(S.ym);
   if(c==='en')sotto='stipendio o pensione «È entrato» ed entrate extra';
   if(c==='tu')sotto='anche ferie, permessi e malattia';
   if(c==='at')sotto='ore, compensi e rimborsi del mese';
-  if(c==='inc'){const a=[...R.incassate.anni].sort();nome=`Anche ${n===1?'l’attività già incassata':`le ${n} attività già incassate`}`;sotto=`${n===1?'conta':'contano'} nelle tasse ${a.join(' e ')}`;}
+  // 24c.20: testi definitivi di 02 (tornata 60 §1.1)
+  if(c==='inc'){const a=[...R.incassate.anni].sort();nome=`Anche ${n===1?'l’attività già incassata':`le ${n} attività già incassate`}`;sotto=n===1?`Conta nelle tasse ${a.join(' e ')}. Se la togli, tasse e CU cambiano.`:`Contano nelle tasse ${a.join(' e ')}. Se le togli, tasse e CU cambiano.`;}
   if(c==='bu'){const b=R.buste.length,cd=R.ced.length;sotto=b&&cd?`la busta e il cedolino di ${M}`:b>1?`le buste di ${M}`:b?`la busta di ${M}`:`il cedolino di ${M}`;}
   if(!n)sotto='niente in questo mese';
   if(c==='inc'&&!n)return '';
@@ -75,6 +76,22 @@ function passo2(){const R=S.R,M=monthName(S.ym),N=totale(),s=new Set(scelte());
   // seconda riga dell'avviso (02, PROVVISORIA per 04): solo con le entrate e senza le spese, se c'è uno stipendio o una pensione «È entrato»
   const st=s.has('en')&&!s.has('sp')?R.entrate.find(x=>x.col==='entrate'):null;
   const riga2=st?`<br>Togli ${st.pen?'la pensione':'lo stipendio'} di ${MESI[+st.ym.slice(5)-1]} ${st.pen?'segnata entrata':'segnato entrato'}: le spese importate dalla banca prima del suo arrivo tornano a contare nel mese della loro data.`:'';
+  // 24c.20: righe dell'avviso di 02 (tornata 60 §2), una .sm per caso, nell'ordine: 1 (attività già incassate) e 4 (torna «in arrivo»).
+  // Le righe 2, 3, 5-8 hanno bisogno dei conti rifatti senza le voci (come il «prima → dopo», 23 A): nella 24c.21.
+  const righe=[];
+  if(s.has('inc')&&R.incassate.ev.length){const a=[...R.incassate.anni].sort().join(' e '),uno=R.incassate.ev.length===1;
+    righe.push(uno?`L'attività già incassata conta nelle tasse ${a} e nella CU. La ricevuta che hai già consegnato resta com'era, ma l'app non la conterà più.`
+      :`Le attività già incassate contano nelle tasse ${a} e nella CU. Le ricevute che hai già consegnato restano com'erano, ma l'app non le conterà più.`);}
+  // riga 4: la voce torna «in arrivo» se ha ancora da dove prendere l'importo: per lo stipendio busta, turni o contratto (orario fisso,
+  // paga mensile), per la pensione cedolino o profilo. Si guarda nei dati senza chiamare i lettori dell'app, che creano raccolte vuote (24c.18).
+  if(s.has('en'))for(const x of R.entrate.filter(x=>x.col==='entrate')){const stesso=x.ym===S.ym,M2=MESI[+x.ym.slice(5)-1];let resta=false;
+    if(x.pen){const c=(D().cedolini||{})[x.ym],p=(D().pensione||{}).profilo;
+      resta=!!(c&&!c.deleted&&!(stesso&&s.has('bu')))||!!(p&&!p.deleted&&String(p.dal||'').slice(0,7)<=x.ym);}
+    else{const lid=x.k.split('|')[1],l=(D().lavori||{})[lid];if(l&&!l.deleted){const b=(D().buste||{})[`${lid}|${x.ym}`];
+      const tu=Object.values(D().turni||{}).some(t=>t&&!t.deleted&&t.lid===lid&&typeof t.data==='string'&&t.data.startsWith(x.ym));
+      resta=!!(b&&!b.deleted&&!(stesso&&s.has('bu')))||(tu&&!(stesso&&s.has('tu')))||l.modo==='fisso'||(l.paga||{}).tipo==='mensile';}}
+    const t=x.pen?`La pensione di ${M2} torna «in arrivo».`:`Lo stipendio di ${M2} torna «in arrivo».`;if(resta&&!righe.includes(t))righe.push(t);}
+  const righeAvv=righe.map(t=>`<span class="sm emriga">${esc(t)}</span>`).join('');
   const imp=s.has('sp')?R.senzaImpronta:0;
   const pdf=s.has('bu')&&conDrive()?pdfDi(R):[];
   const soloCed=pdf.length&&pdf.every(x=>x.col==='cedolini');
@@ -86,8 +103,8 @@ function passo2(){const R=S.R,M=monthName(S.ym),N=totale(),s=new Set(scelte());
       <label class="check"><input type="checkbox" id="emSenza" ${S.senzaCopia?'checked':''}> Continuo senza salvare una copia</label></div>`;
   $('emBody').innerHTML=`<p>Spariscono <b>${pl(N,'voce','voci')}</b> di ${M}: ${parti()}.</p>
     ${conDrive()?'<p class="muted sm">Spariscono anche dagli altri telefoni collegati e da Google Drive.</p>':''}
-    <div class="vcavv" role="status"><b>⚠ Anche altri conti possono cambiare.</b><br>Tasse, CU e «Rimasti dai mesi prima» dei mesi dopo si ricalcolano senza queste voci.${riga2}</div>
-    ${imp?`<p class="muted sm emimp">${imp===1?'1 spesa importata dalla banca resta «Già importato»: se reimporti la lista, aggiungila a mano.':`${imp} spese importate dalla banca restano «Già importato»: se reimporti la lista, aggiungile a mano.`}</p>`:''}
+    <div class="vcavv" role="status"><b>⚠ Anche altri conti possono cambiare.</b><br>Tasse, CU e «Rimasti dai mesi prima» dei mesi dopo si ricalcolano senza queste voci.${righeAvv}${riga2}</div>
+    ${imp?`<p class="muted sm emimp">${imp===1?'1 spesa importata dalla banca resta «Già importato». Se reimporti la lista, non torna: aggiungila a mano.':`${imp} spese importate dalla banca restano «Già importato». Se reimporti la lista, non tornano: aggiungile a mano.`}</p>`:''}
     ${pdf.length?`<fieldset class="empdf"><legend>${dom}</legend>
       <label class="radio"><input type="radio" name="emPdf" value="lascia" ${S.pdf!=='cestino'?'checked':''}><span>Lasciali su Drive<small class="muted">La busta sparisce da Soldirini, il PDF resta nella cartella di Drive.</small></span></label>
       <label class="radio"><input type="radio" name="emPdf" value="cestino" ${S.pdf==='cestino'?'checked':''}><span>Spostali nel cestino di Drive<small class="muted">Dal cestino di Drive si possono recuperare per 30 giorni.</small></span></label></fieldset>`:''}
@@ -141,7 +158,7 @@ async function via(){if(!S||S.occupato||!(copiaOk()||S.senzaCopia))return;
   let msg=N===1?`✓ Eliminata 1 voce di ${M}.`:`✓ Eliminate ${N} voci di ${M}.`;
   if(pdf.length){const r=await nelCestino(pdf);if(r.n)msg+=` ${r.n} PDF ${r.n===1?'è':'sono'} nel cestino di Drive.`;
     if(r.no)msg+=` ${r.no} PDF ${r.no===1?'è rimasto':'sono rimasti'} su Drive: Soldirini non è riuscita a raggiungerl${r.no===1?'o':'i'}.`;}
-  S.occupato=false;chiudi();toast(msg);}
+  S.occupato=false;chiudi();toast(msg,'',msg.length>60?9000:0);} // 02 (tornata 60 §1.2): il messaggio lungo resta almeno 8 secondi
 
 // ---------- eventi ----------
 function bind(){

@@ -1,6 +1,6 @@
 'use strict';
 // ================= Soldirini v17 · Google Calendar =================
-// Su richiesta (Impostazioni → Google Calendar) crea un calendario per ogni progetto e per ogni lavoro
+// Su richiesta (Impostazioni → Account → Google Calendar) crea un calendario per ogni progetto e per ogni lavoro
 // e ci copia le attività, dal mese in cui si attiva in poi. Usa solo il permesso "calendar.app.created":
 // l'app vede e modifica soltanto i calendari creati da lei, non gli altri calendari dell'utente.
 (function(){

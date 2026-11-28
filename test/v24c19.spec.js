@@ -17,7 +17,7 @@ const dati = page => page.evaluate(() => {
   changed(); vaiA('ris'); });
 const sezioni = page => page.locator('#risBody > details.fold');
 const sezione = (page, t) => page.locator('#risBody > details.fold', { has: page.locator('summary', { hasText: t }) });
-const TITOLI = ['🐷 Metti da parte o preleva', '🎯 Obiettivi', '📈 Andamento 2026', 'Movimenti'];
+const TITOLI = ['🐷 Metti da parte o preleva', '🎯 Obiettivi', '📊 Andamento 2026', '📒 Movimenti']; // 24c.20: icone di 02 (tornata 62 §4)
 
 test.describe('24c.19 · D-183 pagina Risparmi con le sezioni riducibili', () => {
   test('aprendo la pagina: quattro sezioni chiuse, nell\'ordine di sempre; il riquadro in alto resta visibile; "Andamento" ha il totale dell\'anno nel titolo', async ({ browser }) => {
@@ -97,8 +97,8 @@ test.describe('24c.19 · D-183 pagina Risparmi con le sezioni riducibili', () =>
     const { page, errori } = await telefono(browser);
     await page.evaluate(() => { D().risparmi = {}; changed(); vaiA('ris'); });
     await expect(sezioni(page)).toHaveCount(4);
-    await expect(sezione(page, 'Obiettivi')).toContainText('Nessun obiettivo.');
-    await expect(sezione(page, 'Movimenti')).toContainText('Ancora nessun movimento.');
+    await expect(sezione(page, 'Obiettivi')).toContainText('Nessun obiettivo per ora.'); // 24c.20: testi definitivi di 02
+    await expect(sezione(page, 'Movimenti')).toContainText('Non hai ancora segnato niente.');
     await expect(sezione(page, 'Andamento').locator('summary .sum')).toHaveText('0,00 €');
     expect(errori).toEqual([]);
   });

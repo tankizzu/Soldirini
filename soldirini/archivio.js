@@ -16,7 +16,7 @@ try { if (window.top !== window.self) document.documentElement.style.display = '
   const NOME = 'soldirini', ST = 'dati', K = 'dati', ATTESA = 3000;
   const PARTE = 'da-parte'; // v24c (V9 di 03): "dati messi da parte" con una chiave a parte, mai uniti né mandati su Drive
   const SCRIPT = ['lib/jszip.min.js', 'lib/jspdf.umd.min.js', 'lib/html2canvas.min.js', 'numeri.js', 'docs.js', 'xlsx.js', 'modelli.js', 'app.js', 'plus.js', 'tasse.js',
-    'ui.js', 'word.js', 'pdfdoc.js', 'stipcalc.js', 'pencalc.js', 'buste.js', 'stipendio.js', 'attivita.js', 'fototurni.js', 'gcal.js', 'soldi.js', 'risparmi.js',
+    'ui.js', 'word.js', 'pdfdoc.js', 'stipcalc.js', 'pencalc.js', 'buste.js', 'stipendio.js', 'scelte.js', 'attivita.js', 'fototurni.js', 'gcal.js', 'soldi.js', 'risparmi.js',
     'pensione.js', 'entrate.js', 'extra.js', 'banca.js', 'copia.js', 'eliminamese.js', 'animazioni.js'];
   // modo: 'idb' oppure 'localStorage'; da: 'localStorage' (spostati ora) | 'nuovo' | 'perso' (IndexedDB vuoto dopo uno spostamento) | 'idb'
   // epoca (v24c, V10 di 03): cresce con "Esci", cambio account, "Sostituisci tutto", "Rimetti" e "Prendi i dati di Drive".

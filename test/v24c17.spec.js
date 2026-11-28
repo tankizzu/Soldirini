@@ -43,8 +43,9 @@ test.describe('24c.17 · D-176 salvadanaio senza quota', () => {
     for (const s of ['#rsPerc', '#rsSalv', '#rsSalvAltro']) await expect(page.locator(s)).toHaveCount(0);
     await expect(page.locator('#v-ris')).not.toContainText('Percentuale');
     await expect(page.locator('#v-ris')).not.toContainText('%');
-    await expect(page.locator('#rsMv')).toHaveText('Metto da parte');
-    await expect(page.locator('#rsPrel')).toHaveText('Prelevo');
+    // 24c.20: testi definitivi di 02 (tornata 59 §2.1-§2.2)
+    await expect(page.locator('#rsMv')).toHaveText('+ Ho messo da parte');
+    await expect(page.locator('#rsPrel')).toHaveText('Ho prelevato');
     await expect(page.locator('#rsTogli')).not.toBeChecked();
     // spenta: un movimento a mano non cambia i soldi del mese
     await segna(page, '#rsMv', '100', '2026-12-02');
@@ -53,7 +54,7 @@ test.describe('24c.17 · D-176 salvadanaio senza quota', () => {
     // "Prelevo": la finestra parte su Prelevo e salva un importo negativo
     await page.click('#rsPrel');
     await expect(page.locator('#mvTipo [data-t="out"]')).toHaveClass(/on/);
-    await expect(page.locator('#mvTit')).toHaveText('Prelevo dai risparmi');
+    await expect(page.locator('#mvTit')).toHaveText('Ho prelevato');
     await page.locator('#mvImp').fill('30'); await page.locator('#mvData').fill('2027-01-15'); await page.click('#mvSave');
     expect(await conti(page)).toEqual(c0);
     // accesa: il messo da parte è un'uscita a dicembre, il prelievo un'entrata a gennaio (nel mese della data)
@@ -300,11 +301,11 @@ test.describe('24c.17 · D-160 file della banca dopo «Importa»', () => {
     const lic = await page.evaluate(async () => (await fetch('licenze/index.html')).text());
     expect(lic).toContain('<b>pdf-lib 1.17.1</b>');
     const pr = await page.evaluate(async () => (await fetch('privacy.html')).text());
-    expect(pr).toContain('(versione 24c.17)');
+    expect(pr).toMatch(/\(versione 24c\.(1[7-9]|[2-9]\d)\)/); // 24c.20: la versione cambia con i rilasci che toccano l'informativa
     expect(pr).not.toContain('Il file non viene caricato su Google Drive, né altrove, e non viene conservato.');
     expect(pr).toContain('Con «Archivia su Drive» l’app mette una copia del file, così com’è, nella cartella “Soldirini/Movimenti banca” del <b>tuo</b> Google Drive.');
     expect(pr).toContain('e la cartella “Movimenti banca” se hai archiviato le liste della banca');
-    expect(pr).toContain('Per togliere solo un mese: Impostazioni → Copia di sicurezza → «Elimina i dati di un mese…».');
+    expect(pr).toContain('Per togliere solo un mese: Impostazioni → Dati e copie di sicurezza → Copia di sicurezza → «Elimina i dati di un mese…».'); // 24c.20 (D-182)
     expect(errori).toEqual([]);
   });
 });
@@ -328,7 +329,7 @@ const diversiDa = (page, prima) => page.evaluate(prima => { const a = JSON.parse
   return [...new Set([...Object.keys(a), ...Object.keys(b)])].filter(k => !(vuota(a[k]) && vuota(b[k])) && JSON.stringify(a[k]) !== JSON.stringify(b[k]))
     .map(k => `${k}: ${String(JSON.stringify(a[k])).slice(0, 400)} → ${String(JSON.stringify(b[k])).slice(0, 400)}`); }, prima);
 const rim = page => page.evaluate(() => ['2026-08', '2026-09', '2026-10', '2026-11', '2026-12'].map(m => [contiMese(m).rimanenti, rimastiPrima(m)]));
-const apriEM = async (page, ym) => { await page.evaluate(ym => { cur = ym; tab = 'pro'; render(); $('emApri').closest('details')?.setAttribute('open', ''); }, ym); await page.click('#emApri'); await expect(page.locator('#emModal')).toBeVisible(); };
+const apriEM = async (page, ym) => { await page.evaluate(ym => { cur = ym; tab = 'pro'; render(); (e => { for (let d = e && e.closest('details'); d; d = d.parentElement.closest('details')) d.open = true; })($('emApri')); }, ym); await page.click('#emApri'); await expect(page.locator('#emModal')).toBeVisible(); };
 const riga = (page, c) => page.locator(`#emBody [data-em="${c}"]`);
 
 test.describe('24c.17 · D-156 «Elimina i dati di un mese»', () => {
@@ -337,7 +338,7 @@ test.describe('24c.17 · D-156 «Elimina i dati di un mese»', () => {
     await datiEM(page);
     const r0 = await rim(page);
     expect(r0[2][0]).toBe(450); expect(r0[3][1]).toBe(1550); // ottobre 1.400 − 450 − 500; «Rimasti» di novembre 600 + 500 + 450
-    await page.evaluate(() => { tab = 'pro'; render(); $('emApri').closest('details')?.setAttribute('open', ''); });
+    await page.evaluate(() => { tab = 'pro'; render(); (e => { for (let d = e && e.closest('details'); d; d = d.parentElement.closest('details')) d.open = true; })($('emApri')); });
     await expect(page.locator('#emApri')).toHaveText('Elimina i dati di un mese…');
     await expect(page.locator('#emApri + p')).toHaveText('Per togliere tutto quello che hai segnato in un mese, per esempio un mese importato per errore. Le uscite fisse restano.');
     await page.evaluate(() => { cur = '2026-10'; render(); });
@@ -412,7 +413,7 @@ test.describe('24c.17 · D-156 «Elimina i dati di un mese»', () => {
     const v0 = await vicini();
     await apriEM(page, '2026-11');
     await expect(riga(page, 'sp').locator('xpath=..')).toContainText('comprese 2 importate dalla banca');
-    await expect(riga(page, 'inc').locator('xpath=..')).toContainText('Anche l’attività già incassataconta nelle tasse 20261');
+    await expect(riga(page, 'inc').locator('xpath=..')).toContainText('Anche l’attività già incassataConta nelle tasse 2026. Se la togli, tasse e CU cambiano.1'); // 24c.20: testo definitivo di 02 (tornata 60 §1.1)
     await page.click('#emTutto');
     await expect(riga(page, 'inc')).not.toBeChecked(); // «Scegli tutto» lascia fuori le attività già incassate (domanda 89 A)
     await expect(page.locator('#emFoot .emriep')).toHaveText('Scelte: 8 voci'); // 3 spese, 2 entrate, 1 turno, 1 attività, 1 busta
@@ -456,7 +457,7 @@ test.describe('24c.17 · D-156 «Elimina i dati di un mese»', () => {
     await sincronizza(page);
     expect(await page.evaluate(() => Object.values(D().spesePers).filter(s => !s.deleted).map(s => s.id))).toEqual(['o1']);
     // «Unisci» con la copia di prima: le voci non tornano (il segno è più recente)
-    await page.evaluate(() => { tab = 'pro'; render(); $('cpBox').closest('details')?.setAttribute('open', ''); document.querySelector('#cpBox [data-cp=riprendi]').click(); });
+    await page.evaluate(() => { tab = 'pro'; render(); (e => { for (let d = e && e.closest('details'); d; d = d.parentElement.closest('details')) d.open = true; })($('cpBox')); document.querySelector('#cpBox [data-cp=riprendi]').click(); });
     await page.setInputFiles('#cpFile', { name: 'c.soldirini', mimeType: 'application/octet-stream', buffer: copiaVecchia });
     await page.click('#cpBody .cpopt[data-modo=unisci]'); await page.click('[data-cp=usa]');
     await expect(page.locator('#toast')).toContainText('✓');
@@ -496,7 +497,7 @@ test.describe('24c.17 · D-156 «Elimina i dati di un mese»', () => {
     await expect(page.locator('#emBody .vcavv')).toContainText('Togli lo stipendio di ottobre segnato entrato: le spese importate dalla banca prima del suo arrivo tornano a contare nel mese della loro data.');
     await page.click('#emCambia'); await riga(page, 'sp').check(); await page.click('#emCont');
     await expect(page.locator('#emBody .vcavv')).not.toContainText('Togli lo stipendio');
-    await expect(page.locator('#emBody .emimp')).toHaveText('1 spesa importata dalla banca resta «Già importato»: se reimporti la lista, aggiungila a mano.');
+    await expect(page.locator('#emBody .emimp')).toHaveText('1 spesa importata dalla banca resta «Già importato». Se reimporti la lista, non torna: aggiungila a mano.'); // 24c.20 (02, tornata 60 §1.5)
     // errore (dati che non si possono scrivere): il messaggio e nessun cambiamento
     const prima = await page.evaluate(() => JSON.stringify(D()));
     await page.evaluate(() => Object.freeze(D().entrate));

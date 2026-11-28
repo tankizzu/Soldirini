@@ -40,14 +40,14 @@ test.describe('24c.16 · finestra "Turni da foto"', () => {
     expect(p.on).toBe(true); expect(p.premuto).toBe('true');
     expect(m.on).toBe(false); expect(m.premuto).toBe('false');
     expect(p.opacita).toBe('1'); expect(p.filtro).toBe('none');
-    expect(+m.opacita).toBeLessThan(0.6); expect(m.filtro).toContain('grayscale');
+    expect(+m.opacita).toBeCloseTo(0.6, 5); expect(m.filtro).toContain('grayscale'); // 24c.20 (02, tornata 59 §1.2): icona al 60%, bordo tratteggiato (v24c20.spec.js)
     expect(m.fondo).toBe('rgba(0, 0, 0, 0)'); expect(p.fondo).not.toBe(m.fondo);
     expect(p.ombra).not.toBe('none'); expect(m.ombra).toBe('none');
     // giorno 1 (vuoto) e giorno 7: nessun cerchio scelto, tutti con lo stile spento
     for (const g of [1, 7]) {
       const n = await page.locator(`#ftLista [data-ftd="2026-12-0${g}"].on`).count(); expect(n, 'giorno ' + g).toBe(0);
       const tutti = await page.locator(`#ftLista [data-ftd="2026-12-0${g}"] .ic`).evaluateAll(e => e.map(x => getComputedStyle(x).opacity));
-      expect(tutti.length).toBeGreaterThanOrEqual(5); for (const o of tutti) expect(+o).toBeLessThan(0.6);
+      expect(tutti.length).toBeGreaterThanOrEqual(5); for (const o of tutti) expect(+o).toBeLessThanOrEqual(0.6); // 24c.20: icona al 60% (02, tornata 59)
     }
     // toccando un cerchio spento diventa pieno (e viceversa)
     await page.locator('#ftLista [data-ftd="2026-12-01"]').first().click();

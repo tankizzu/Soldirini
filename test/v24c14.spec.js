@@ -224,7 +224,7 @@ test.describe('24c.14', () => {
   test('informativa definitiva di 03 (24c.11 e 24c.13)', async ({ browser }) => {
     const { page, errori } = await telefono(browser);
     const pr = await page.evaluate(async () => (await fetch('privacy.html')).text());
-    expect(pr).toMatch(/\(versione 24c\.1[4-9]\)/); // 24c.17: la versione dell'informativa cambia con i rilasci che la toccano
+    expect(pr).toMatch(/\(versione 24c\.(1[4-9]|[2-9]\d)\)/); // 24c.17: la versione dell'informativa cambia con i rilasci che la toccano
     expect(pr).toContain('entrate extra (restituzioni, regali, vendite e altro, con la data, l’importo, il tipo e la nota se la scrivi), uscite fisse, spese, risparmi');
     expect(pr).toContain('Quando nella lista c’è lo stipendio, salva anche il mese in cui ogni movimento conta nei tuoi soldi.');
     expect(pr).toContain('I bonifici ricevuti e gli altri accrediti che l’app non sa riconoscere vanno tra le «Entrate da confermare», con la data, l’importo e il <b>nome di chi te li manda</b>, che ti serve per capire cosa sono;');

@@ -132,7 +132,7 @@ test.describe('24c.12', () => {
     const copia = Buffer.from(await A.page.evaluate(async () => [...await Copia.crea(null)]));
     for (const modo of ['sostituisci', 'unisci']) {
       const { page, errori } = await telefono(browser);
-      await page.evaluate(() => { DB.meta.skipWelcome = true; tab = 'pro'; render(); $('cpBox').closest('details').open = true; document.querySelector('#cpBox [data-cp=riprendi]').click(); });
+      await page.evaluate(() => { DB.meta.skipWelcome = true; tab = 'pro'; render(); (e => { for (let d = e && e.closest('details'); d; d = d.parentElement.closest('details')) d.open = true; })($('cpBox')); document.querySelector('#cpBox [data-cp=riprendi]').click(); });
       await page.setInputFiles('#cpFile', { name: 'c.soldirini', mimeType: 'application/octet-stream', buffer: copia });
       await page.click(`#cpBody .cpopt[data-modo=${modo}]`); await page.click('[data-cp=usa]');
       if (modo === 'sostituisci') await page.click('[data-cp=sostituisci]');
@@ -149,7 +149,7 @@ test.describe('24c.12', () => {
     await A.page.evaluate(() => { Object.assign(D().bancaImpronte, { ['a'.repeat(64)]: { updatedAt: 5, extra: 'x' }, ['Z'.repeat(64)]: { updatedAt: 1 }, corto: { updatedAt: 1 } }); changed(); });
     const copia2 = Buffer.from(await A.page.evaluate(async () => [...await Copia.crea(null)]));
     const C = await telefono(browser);
-    await C.page.evaluate(() => { DB.meta.skipWelcome = true; tab = 'pro'; render(); $('cpBox').closest('details').open = true; document.querySelector('#cpBox [data-cp=riprendi]').click(); });
+    await C.page.evaluate(() => { DB.meta.skipWelcome = true; tab = 'pro'; render(); (e => { for (let d = e && e.closest('details'); d; d = d.parentElement.closest('details')) d.open = true; })($('cpBox')); document.querySelector('#cpBox [data-cp=riprendi]').click(); });
     await C.page.setInputFiles('#cpFile', { name: 'c.soldirini', mimeType: 'application/octet-stream', buffer: copia2 });
     await C.page.click('#cpBody .cpopt[data-modo=unisci]'); await C.page.click('[data-cp=usa]');
     await expect(C.page.locator('#toast')).toContainText('✓');
@@ -176,7 +176,7 @@ test.describe('24c.12', () => {
     // 24c.13 (D-165): il nome di chi manda il bonifico si salva solo per le entrate da confermare (v24c13.spec.js)
     expect(pr).toContain('né i nomi di chi riceve un tuo bonifico.'); // 24c.14: testo definitivo di 03 (v24c14.spec.js)
     expect(pr).toContain('Se la causale di un tuo bonifico contiene un nome, puoi cambiarla prima di importare.');
-    expect(pr).toContain('versione 24c.1');
+    expect(pr).toMatch(/versione 24c\.\d+/);
     expect(errori).toEqual([]);
   });
 
@@ -185,7 +185,7 @@ test.describe('24c.12', () => {
     await base(page);
     await page.evaluate(() => vaiA('dsp'));
     await expect(page.locator('#v-dsp .bcimp h3')).toHaveText('🏦 Movimenti della banca');
-    await expect(page.locator('#v-dsp .bcimp')).toContainText('Scegli la lista movimenti della tua banca in CSV o Excel (per ora solo ING). Soldirini la legge solo sul telefono e ne tiene una copia solo se scegli «Archivia su Drive».'); // 24c.17 (D-160), testo provvisorio per 02
+    await expect(page.locator('#v-dsp .bcimp')).toContainText('Scegli la lista movimenti della tua banca in CSV o Excel (per ora solo ING). Soldirini legge il file solo sul telefono. Ne tiene una copia solo se, alla fine, scegli «Archivia su Drive».'); // 24c.17 (D-160), testo provvisorio per 02
     // errore sotto il pulsante della pagina
     const [fc] = await Promise.all([page.waitForEvent('filechooser'), page.click('#v-dsp [data-bcimp]')]);
     await fc.setFiles(file('Data;Importo\r\n01/11/2026;-1\r\n', 'altra.csv'));
